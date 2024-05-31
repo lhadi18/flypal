@@ -9,6 +9,7 @@ const LandingPage = () => {
       }}
       style={styles.background}
     >
+      <View style={styles.overlay} />
       <View style={styles.container}>
         <Image
           source={{ uri: 'https://content.imageresizer.com/images/memes/War-Cat-meme-88f6yf.jpg' }}
@@ -31,6 +32,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)'
   },
   container: {
     alignItems: 'center'
