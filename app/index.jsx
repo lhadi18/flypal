@@ -1,44 +1,64 @@
+import {
+  SafeAreaView,
+  ScrollView,
+  View,
+  Image,
+  Text,
+  TouchableOpacity,
+  ImageBackground,
+  StyleSheet
+} from 'react-native'
+import { Link } from 'expo-router'
 import React from 'react'
-import { StyleSheet, Text, View, ImageBackground, Image, TouchableOpacity } from 'react-native'
 
 const LandingPage = () => {
   return (
-    <ImageBackground
-      source={{
-        uri: 'https://images.pexels.com/photos/314726/pexels-photo-314726.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-      }}
-      style={styles.background}
-    >
-      <View style={styles.overlay} />
-      <View style={styles.container}>
-        <Image
-          source={{ uri: 'https://content.imageresizer.com/images/memes/War-Cat-meme-88f6yf.jpg' }}
-          style={styles.logo}
-        />
-        <Text style={styles.welcomeText}>FlyPal</Text>
-        <TouchableOpacity style={styles.loginButton}>
-          <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.registerButton}>
-          <Text style={styles.registerButtonText}>Register</Text>
-        </TouchableOpacity>
-      </View>
+    <ImageBackground source={require('../assets/images/landing-background.jpeg')} style={styles.background}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.overlay} />
+        <ScrollView contentContainerStyle={styles.scrollViewContent} style={styles.scrollView}>
+          <View style={styles.container}>
+            <Image source={require('../assets/images/flypal-logo.png')} style={styles.logo} />
+            <Text style={styles.welcomeText}>FlyPal</Text>
+            <Link href="/sign-in" asChild>
+              <TouchableOpacity style={styles.loginButton}>
+                <Text style={styles.loginButtonText}>Login</Text>
+              </TouchableOpacity>
+            </Link>
+            <Link href="/sign-up" asChild>
+              <TouchableOpacity style={styles.registerButton}>
+                <Text style={styles.registerButtonText}>Register</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </ImageBackground>
   )
 }
 
 const styles = StyleSheet.create({
   background: {
-    flex: 1,
+    flex: 1
+  },
+  safeArea: {
+    flex: 1
+  },
+  scrollView: {
+    flex: 1
+  },
+  scrollViewContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center'
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)'
+    backgroundColor: 'rgba(255, 255, 255, 0.5)'
   },
   container: {
-    alignItems: 'center'
+    alignItems: 'center',
+    paddingHorizontal: 16
   },
   logo: {
     width: 255,
@@ -53,7 +73,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   loginButton: {
-    width: 250,
+    width: 320,
     backgroundColor: '#045D91',
     paddingVertical: 10,
     paddingHorizontal: 20,
@@ -75,7 +95,7 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   registerButton: {
-    width: 250,
+    width: 320,
     backgroundColor: 'white',
     borderColor: '#045D91',
     borderWidth: 1,
