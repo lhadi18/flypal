@@ -1,11 +1,15 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ScrollView } from 'react-native'
+import { registerUser } from '../../services/user-api'
+import { Picker } from '@react-native-picker/picker'
+import { ScrollView, Alert } from 'react-native'
+import { Link, useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import { Formik } from 'formik'
 import * as Yup from 'yup'
 
 const SignUp = () => {
+  const router = useRouter()
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
 
@@ -18,6 +22,26 @@ const SignUp = () => {
       .oneOf([Yup.ref('password'), null], 'Passwords must match')
       .required('Confirm Password is required')
   })
+
+  const handleSubmit = async (values, { setSubmitting, setErrors }) => {
+    try {
+      const response = await registerUser(values)
+      console.log('User registered successfully:', response)
+      Alert.alert('Success', 'User registered successfully!', [
+        { text: 'Close', onPress: () => console.log('Popup closed') },
+        { text: 'Login', onPress: () => router.push('/sign-in') }
+      ])
+    } catch (error) {
+      console.error('Registration error:', error)
+      if (error.message == 'User already exists') {
+        Alert.alert('Error', error.message)
+      } else {
+        Alert.alert('Error', 'Unable to register at the moment, please try again later.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <ImageBackground source={require('../../assets/images/landing-background.jpeg')} style={styles.background}>
@@ -43,12 +67,9 @@ const SignUp = () => {
                 confirmPassword: ''
               }}
               validationSchema={validationSchema}
-              onSubmit={values => {
-                console.log(values)
-                // Handle registration logic
-              }}
+              onSubmit={handleSubmit}
             >
-              {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+              {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
                 <View style={styles.formContainer}>
                   <View style={styles.nameContainer}>
                     <View style={[styles.inputContainer, styles.halfInputContainer]}>
@@ -160,7 +181,7 @@ const SignUp = () => {
                       )}
                     </View>
                   </View>
-                  <TouchableOpacity style={styles.registerButton} onPress={handleSubmit}>
+                  <TouchableOpacity style={styles.registerButton} onPress={handleSubmit} disabled={isSubmitting}>
                     <Text style={styles.registerButtonText}>Register</Text>
                   </TouchableOpacity>
                 </View>
@@ -171,7 +192,7 @@ const SignUp = () => {
               <Text style={styles.loginPrompt}>Already have an account? </Text>
               <TouchableOpacity
                 onPress={() => {
-                  /* Handle navigation to Login screen */
+                  router.push('/sign-in')
                 }}
               >
                 <Text style={styles.loginText}>Login</Text>

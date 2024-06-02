@@ -1,17 +1,35 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground, Alert } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { loginUser } from '../../services/user-api'
 import { ScrollView } from 'react-native'
+import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import { Formik } from 'formik'
 import * as Yup from 'yup'
 
 const SignIn = () => {
   const [passwordVisible, setPasswordVisible] = useState(false)
+  const router = useRouter()
 
   const validationSchema = Yup.object().shape({
     email: Yup.string().email('Invalid email').required('Email is required'),
     password: Yup.string().required('Password is required')
   })
+
+  const handleLogin = async values => {
+    const { email, password } = values
+
+    try {
+      const result = await loginUser({ email, password })
+
+      Alert.alert('Login Successful', `Welcome back, ${email}`)
+      // Navigate to the next screen or perform other actions
+      router.push('/roster')
+    } catch (error) {
+      Alert.alert('Login Failed', error.message || 'Invalid email or password')
+    }
+  }
 
   return (
     <ImageBackground source={require('../../assets/images/landing-background.jpeg')} style={styles.background}>
@@ -30,10 +48,7 @@ const SignIn = () => {
             <Formik
               initialValues={{ email: '', password: '' }}
               validationSchema={validationSchema}
-              onSubmit={values => {
-                console.log(values)
-                // Handle login
-              }}
+              onSubmit={handleLogin}
             >
               {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
                 <View style={styles.formContainer}>
@@ -93,7 +108,7 @@ const SignIn = () => {
               <Text style={styles.registerPrompt}>Don't have an account? </Text>
               <TouchableOpacity
                 onPress={() => {
-                  // Handle navigation to Register screen
+                  router.push('/sign-up')
                 }}
               >
                 <Text style={styles.registerText}>Register</Text>
