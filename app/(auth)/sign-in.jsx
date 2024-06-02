@@ -2,6 +2,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackgr
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { loginUser } from '../../services/user-api'
+import * as SecureStore from 'expo-secure-store'
 import { ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
@@ -22,9 +23,11 @@ const SignIn = () => {
 
     try {
       const result = await loginUser({ email, password })
+      const userId = result._id
+
+      await SecureStore.setItemAsync('userId', userId)
 
       Alert.alert('Login Successful', `Welcome back, ${email}`)
-      // Navigate to the next screen or perform other actions
       router.push('/roster')
     } catch (error) {
       Alert.alert('Login Failed', error.message || 'Invalid email or password')

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import User from '../models/user-model'
-import jwt from 'jsonwebtoken'
+import mongoose from 'mongoose'
 
 export const registerUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, password } = req.body
@@ -50,5 +50,33 @@ export const loginUser = async (req: Request, res: Response) => {
     }
   } catch (error) {
     res.status(500).json({ message: 'Server error' })
+  }
+}
+
+export const validateUserId = async (req: Request, res: Response) => {
+  const { userId } = req.body
+
+  console.log(req.body)
+
+  if (!userId) {
+    // return res.status(400).json({ message: 'User ID is required' })
+    return
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid User ID' })
+  }
+
+  try {
+    const user = await User.findById(userId)
+
+    if (user) {
+      return res.status(200).json({ _id: user._id })
+    } else {
+      return res.status(404).json({ message: 'User not found' })
+    }
+  } catch (error) {
+    console.error('Error validating user ID:', error)
+    return res.status(500).json({ message: 'Server error' })
   }
 }
