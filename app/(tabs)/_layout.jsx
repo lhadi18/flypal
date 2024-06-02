@@ -1,11 +1,7 @@
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs'
 import { View, Text, Image } from 'react-native'
 import icons from '../../constants/icons'
-import Checklists from './checklist'
 import { Tabs } from 'expo-router'
 import React from 'react'
-
-const TopTab = createMaterialTopTabNavigator()
 
 const TabIcon = ({ icon, color, name, focused }) => {
   return (

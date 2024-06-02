@@ -1,10 +1,12 @@
 import axios from 'axios'
 
+const API_URL = 'https://9ad1-2402-1980-2a6-32bb-f557-bffb-2dc4-8064.ngrok-free.app'
+
 export const registerUser = async userData => {
   try {
     const response = await axios({
       method: 'post',
-      url: `https://36b3-103-18-0-19.ngrok-free.app/api/users/register`,
+      url: `${API_URL}/api/users/register`,
       data: {
         ...userData
       }
@@ -24,7 +26,7 @@ export const loginUser = async userData => {
   try {
     const response = await axios({
       method: 'post',
-      url: `https://36b3-103-18-0-19.ngrok-free.app/api/users/login`,
+      url: `${API_URL}/api/users/login`,
       data: {
         ...userData
       }
@@ -44,7 +46,7 @@ export const validateUserId = async userId => {
   try {
     const response = await axios({
       method: 'post',
-      url: `https://36b3-103-18-0-19.ngrok-free.app/api/users/validateUserId`,
+      url: `${API_URL}/api/users/validateUserId`,
       data: {
         userId: userId
       }
