@@ -8,10 +8,37 @@ import {
   ImageBackground,
   StyleSheet
 } from 'react-native'
-import { Link } from 'expo-router'
-import React from 'react'
+import { validateUserId } from '../services/user-api'
+import * as SecureStore from 'expo-secure-store'
+import { useRouter, Link } from 'expo-router'
+import React, { useEffect } from 'react'
 
-const LandingPage = () => {
+const App = () => {
+  const router = useRouter()
+
+  useEffect(() => {
+    const reAuthenticate = async () => {
+      try {
+        console.log(1)
+        const userId = await SecureStore.getItemAsync('userId')
+        console.log(2)
+        console.log(userId)
+        if (userId) {
+          // Optionally validate the userId if necessary
+          const isValid = await validateUserId(userId)
+          console.log(isValid)
+          if (isValid) {
+            router.replace('/roster')
+          }
+        }
+      } catch (error) {
+        console.error('Failed to re-authenticate', error)
+      }
+    }
+
+    reAuthenticate()
+  }, [])
+
   return (
     <ImageBackground source={require('../assets/images/landing-background.jpeg')} style={styles.background}>
       <SafeAreaView style={styles.safeArea}>
@@ -118,4 +145,4 @@ const styles = StyleSheet.create({
   }
 })
 
-export default LandingPage
+export default App

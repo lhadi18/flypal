@@ -1,8 +1,7 @@
 import { View, Text, Image } from 'react-native'
+import icons from '../../constants/icons'
 import { Tabs } from 'expo-router'
 import React from 'react'
-
-import icons from '../../constants/icons'
 
 const TabIcon = ({ icon, color, name, focused }) => {
   return (
@@ -22,6 +21,8 @@ const TabsLayout = () => {
     <>
       <Tabs
         screenOptions={{
+          headerStyle: { backgroundColor: '#045D91' },
+          headerTintColor: '#fff',
           tabBarShowLabel: false,
           tabBarActiveTintColor: '#FFFFFF',
           tabBarInactiveTintColor: '#B0C4DE',
@@ -36,7 +37,7 @@ const TabsLayout = () => {
           name="roster"
           options={{
             title: 'Roster',
-            headerShown: false,
+            headerShown: true,
             tabBarIcon: ({ color, focused }) => (
               <TabIcon icon={icons.roster} color={color} name="Roster" focused={focused} />
             )
@@ -46,7 +47,7 @@ const TabsLayout = () => {
           name="destination"
           options={{
             title: 'Destination',
-            headerShown: false,
+            headerShown: true,
             tabBarIcon: ({ color, focused }) => (
               <TabIcon icon={icons.destination} color={color} name="Destination" focused={focused} />
             )
@@ -56,15 +57,15 @@ const TabsLayout = () => {
           name="social"
           options={{
             title: 'Social',
-            headerShown: false,
+            headerShown: true,
             tabBarIcon: ({ color, focused }) => <TabIcon icon={null} color={color} name="Social" focused={focused} />
           }}
         ></Tabs.Screen>
         <Tabs.Screen
-          name="checklists"
+          name="checklist"
           options={{
-            title: 'Checklists',
-            headerShown: false,
+            title: 'Checklist',
+            headerShown: true,
             tabBarIcon: ({ color, focused }) => (
               <TabIcon icon={null} color={color} name="Checklists" focused={focused} />
             )
@@ -74,7 +75,7 @@ const TabsLayout = () => {
           name="settings"
           options={{
             title: 'Settings',
-            headerShown: false,
+            headerShown: true,
             tabBarIcon: ({ color, focused }) => (
               <TabIcon icon={icons.settings} color={color} name="Settings" focused={focused} />
             )
