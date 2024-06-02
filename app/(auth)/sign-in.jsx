@@ -39,16 +39,18 @@ const SignIn = () => {
                 <View style={styles.formContainer}>
                   <View style={styles.inputContainer}>
                     <Text style={styles.label}>Email</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your email"
-                      placeholderTextColor="grey"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      onChangeText={handleChange('email')}
-                      onBlur={handleBlur('email')}
-                      value={values.email}
-                    />
+                    <View style={styles.emailContainer}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your email"
+                        placeholderTextColor="grey"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        onChangeText={handleChange('email')}
+                        onBlur={handleBlur('email')}
+                        value={values.email}
+                      />
+                    </View>
                     {touched.email && errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
                   </View>
                   <View style={styles.inputContainer}>
@@ -169,7 +171,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     backgroundColor: 'white',
-    color: 'black'
+    paddingHorizontal: 10,
+    color: 'black',
+    borderRadius: 5
   },
   inputContainer: {
     width: '100%',
@@ -216,6 +220,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold'
   },
+  emailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 5,
+    backgroundColor: 'white',
+    height: 40,
+  },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -224,7 +235,6 @@ const styles = StyleSheet.create({
     borderColor: 'grey',
     backgroundColor: 'white',
     height: 40,
-    paddingHorizontal: 10
   },
   toggleButton: {
     padding: 10,

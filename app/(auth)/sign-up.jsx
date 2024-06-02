@@ -53,14 +53,16 @@ const SignUp = () => {
                   <View style={styles.nameContainer}>
                     <View style={[styles.inputContainer, styles.halfInputContainer]}>
                       <Text style={styles.label}>First Name</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="First Name"
-                        placeholderTextColor="grey"
-                        onChangeText={handleChange('firstName')}
-                        onBlur={handleBlur('firstName')}
-                        value={values.firstName}
-                      />
+                      <View style={styles.name}>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="First Name"
+                          placeholderTextColor="grey"
+                          onChangeText={handleChange('firstName')}
+                          onBlur={handleBlur('firstName')}
+                          value={values.firstName}
+                        />
+                      </View>
                       <View style={styles.errorContainer}>
                         {touched.firstName && errors.firstName && (
                           <Text style={styles.errorText}>{errors.firstName}</Text>
@@ -69,14 +71,16 @@ const SignUp = () => {
                     </View>
                     <View style={[styles.inputContainer, styles.halfInputContainerLast]}>
                       <Text style={styles.label}>Last Name</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Last Name"
-                        placeholderTextColor="grey"
-                        onChangeText={handleChange('lastName')}
-                        onBlur={handleBlur('lastName')}
-                        value={values.lastName}
-                      />
+                      <View style={styles.name}>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Last Name"
+                          placeholderTextColor="grey"
+                          onChangeText={handleChange('lastName')}
+                          onBlur={handleBlur('lastName')}
+                          value={values.lastName}
+                        />
+                      </View>
                       <View style={styles.errorContainer}>
                         {touched.lastName && errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
                       </View>
@@ -84,16 +88,18 @@ const SignUp = () => {
                   </View>
                   <View style={styles.inputContainer}>
                     <Text style={styles.label}>Email</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your email"
-                      placeholderTextColor="grey"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      onChangeText={handleChange('email')}
-                      onBlur={handleBlur('email')}
-                      value={values.email}
-                    />
+                    <View style={styles.emailContainer}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter your email"
+                        placeholderTextColor="grey"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        onChangeText={handleChange('email')}
+                        onBlur={handleBlur('email')}
+                        value={values.email}
+                      />
+                    </View>
                     <View style={styles.errorContainer}>
                       {touched.email && errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
                     </View>
@@ -248,6 +254,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: 'white'
   },
+  name:{
+    borderRadius: 5,
+    backgroundColor: 'white',
+    height: 40,
+  },
   halfInputContainer: {
     flex: 1,
     marginRight: 10
@@ -259,6 +270,8 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     backgroundColor: 'white',
+    borderRadius: 5,
+    paddingHorizontal: 10,
     color: 'black'
   },
   inputContainer: {
@@ -313,7 +326,13 @@ const styles = StyleSheet.create({
     borderColor: 'grey',
     backgroundColor: 'white',
     height: 40,
-    paddingHorizontal: 10
+  },
+  emailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 5,
+    backgroundColor: 'white',
+    height: 40,
   },
   toggleButton: {
     padding: 10,
