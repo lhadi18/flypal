@@ -189,7 +189,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     backgroundColor: 'white',
-    paddingHorizontal: 10,
     color: 'black',
     borderRadius: 5
   },
@@ -252,6 +251,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderColor: 'grey',
     backgroundColor: 'white',
+    paddingHorizontal: 10,
     height: 40,
   },
   toggleButton: {

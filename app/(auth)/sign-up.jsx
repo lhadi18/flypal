@@ -292,7 +292,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: 'white',
     borderRadius: 5,
-    paddingHorizontal: 10,
     color: 'black'
   },
   inputContainer: {
@@ -345,6 +344,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 5,
     borderColor: 'grey',
+    paddingHorizontal: 10,
     backgroundColor: 'white',
     height: 40,
   },

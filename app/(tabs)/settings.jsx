@@ -22,7 +22,9 @@ const Settings = () => {
           <Text style={styles.info}>Homebase</Text>
           <Text style={styles.homebase}>City - Place</Text>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={() => navigation.navigate('profile')}>
               <View style={styles.buttonContent}>
                 <FontAwesomeIcon icon={faUser} style={styles.icon} />
                 <Text style={styles.textButton}>
