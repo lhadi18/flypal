@@ -14,7 +14,7 @@ const Settings = () => {
       <View style={styles.header}></View>
       <Image
         style={styles.avatar}
-        // source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }}
+        source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }} //default avatar
       />
       <View style={styles.body}>
         <View style={styles.bodyContent}>
@@ -22,9 +22,7 @@ const Settings = () => {
           <Text style={styles.info}>Homebase</Text>
           <Text style={styles.homebase}>City - Place</Text>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={styles.button}
-              onPress={() => navigation.navigate('profile')}>
+            <TouchableOpacity style={styles.button}>
               <View style={styles.buttonContent}>
                 <FontAwesomeIcon icon={faUser} style={styles.icon} />
                 <Text style={styles.textButton}>
@@ -93,10 +91,9 @@ const styles = StyleSheet.create({
     marginTop: 70,
   },
   body: {
-    marginTop: 40,
+    marginTop: 50,
   },
   bodyContent: {
-    flex: 1,
     alignItems: 'center',
     paddingHorizontal: 30,
     paddingVertical: 10
