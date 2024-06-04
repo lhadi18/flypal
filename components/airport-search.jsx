@@ -1,13 +1,17 @@
 import { View, TextInput, ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
+import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import Ionicons from 'react-native-vector-icons/Ionicons'
-import React, { useState, useCallback } from 'react'
 import axios from 'axios'
 import _ from 'lodash'
 
-const AirportSearch = ({ placeholder, onSelect }) => {
+const AirportSearch = forwardRef(({ placeholder, onSelect }, ref) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [selectedAirport, setSelectedAirport] = useState(null)
+
+  useImperativeHandle(ref, () => ({
+    clearSelection
+  }))
 
   const fetchAirports = async searchQuery => {
     try {
@@ -74,7 +78,7 @@ const AirportSearch = ({ placeholder, onSelect }) => {
       )}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   searchContainer: {

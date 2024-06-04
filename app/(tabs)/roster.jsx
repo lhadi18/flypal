@@ -11,8 +11,8 @@ import {
   Alert
 } from 'react-native'
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
-import React, { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { fetchAircraftTypes } from '../../services/aircraft-api'
 import { Dropdown } from 'react-native-element-dropdown'
@@ -30,8 +30,8 @@ const Roster = () => {
   const [events, setEvents] = useState([])
   const [modalVisible, setModalVisible] = useState(false)
   const [newEventTitle, setNewEventTitle] = useState('')
-  const [newEventOrigin, setNewEventOrigin] = useState('')
-  const [newEventDestination, setNewEventDestination] = useState('')
+  const [newEventOrigin, setNewEventOrigin] = useState(null)
+  const [newEventDestination, setNewEventDestination] = useState(null)
   const [newEventDepartureTime, setNewEventDepartureTime] = useState('')
   const [newEventArrivalTime, setNewEventArrivalTime] = useState('')
   const [newEventFlightNumber, setNewEventFlightNumber] = useState('')
@@ -41,6 +41,9 @@ const Roster = () => {
   const [isDeparturePickerVisible, setDeparturePickerVisible] = useState(false)
   const [isArrivalPickerVisible, setArrivalPickerVisible] = useState(false)
   const [aircraftTypeData, setAircraftTypeData] = useState([])
+
+  const originRef = useRef(null)
+  const destinationRef = useRef(null)
 
   const navigation = useNavigation()
   const route = useRoute()
@@ -136,8 +139,8 @@ const Roster = () => {
     const newEvent = {
       userId,
       type: newEventTitle,
-      origin: newEventOrigin.value, // Assuming newEventOrigin has a 'value' property storing the ObjectId
-      destination: newEventDestination.value,
+      origin: newEventOrigin?.value, // Assuming newEventOrigin has a 'value' property storing the ObjectId
+      destination: newEventDestination?.value,
       departureTime: newEventDepartureTime,
       arrivalTime: newEventArrivalTime,
       flightNumber: newEventFlightNumber,
@@ -154,6 +157,7 @@ const Roster = () => {
       console.log('New event added:', response.data)
       setEvents([...events, response.data])
       clearInputs()
+      clearOriginAndDestination()
       setModalVisible(false)
     } catch (error) {
       console.error('Error adding new event:', error)
@@ -231,13 +235,16 @@ const Roster = () => {
 
   const clearInputs = () => {
     setNewEventTitle('')
-    setNewEventOrigin('')
-    setNewEventDestination('')
     setNewEventDepartureTime('')
     setNewEventArrivalTime('')
     setNewEventFlightNumber('')
     setNewEventAircraftType('')
     setNewEventNotes('')
+  }
+
+  const clearOriginAndDestination = () => {
+    if (originRef.current) originRef.current.clearSelection()
+    if (destinationRef.current) destinationRef.current.clearSelection()
   }
 
   const confirmClearInputs = () => {
@@ -251,7 +258,10 @@ const Roster = () => {
         },
         {
           text: 'Yes',
-          onPress: clearInputs
+          onPress: () => {
+            clearInputs()
+            clearOriginAndDestination()
+          }
         }
       ],
       { cancelable: true }
@@ -292,7 +302,6 @@ const Roster = () => {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        {/* <View style={styles.modalOverlay}> */}
         <View style={styles.modalView}>
           <ScrollView contentContainerStyle={styles.scrollViewContent}>
             <View style={styles.modalHeader}>
@@ -330,9 +339,9 @@ const Roster = () => {
             />
 
             <Text style={styles.label}>Origin</Text>
-            <AirportSearch placeholder="Enter origin" onSelect={handleSelectOrigin} />
+            <AirportSearch ref={originRef} placeholder="Enter origin" onSelect={handleSelectOrigin} />
             <Text style={styles.label}>Destination</Text>
-            <AirportSearch placeholder="Enter destination" onSelect={handleSelectDestination} />
+            <AirportSearch ref={destinationRef} placeholder="Enter destination" onSelect={handleSelectDestination} />
             <Text style={styles.label}>Departure Time (local time)</Text>
             <TouchableOpacity
               onPress={() => setDeparturePickerVisible(true)}
@@ -432,7 +441,6 @@ const Roster = () => {
             </View>
           </ScrollView>
         </View>
-        {/* </View> */}
       </Modal>
     </SafeAreaView>
   )
