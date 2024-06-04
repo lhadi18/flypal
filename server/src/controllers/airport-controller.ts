@@ -1,25 +1,35 @@
+import Airport from '../models/airport-model' // Assuming default export
 import { Request, Response } from 'express'
-
-const Airport = require('../models/airport-model')
 
 export const getAirport = async (req: Request, res: Response) => {
   const query = req.query.query
 
-  if (typeof query !== 'string') {
-    res.status(400).send('Invalid query parameter')
-    return
+  if (typeof query !== 'string' || query.trim().length === 0) {
+    return res.status(400).send('Invalid or empty query parameter')
   }
 
   try {
+    const regexQuery = new RegExp(query.trim(), 'i')
     const airports = await Airport.find({
-      $or: [{ ident: new RegExp(query, 'i') }, { name: new RegExp(query, 'i') }, { iata_code: new RegExp(query, 'i') }]
-    }).lean() // Use lean() for faster performance as we only need to process the data
+      $or: [
+        { name: regexQuery },
+        { ICAO: regexQuery },
+        { IATA: regexQuery },
+        { city: regexQuery },
+        { country: regexQuery }
+      ]
+    }).lean()
 
-    const formattedAirports = airports.map((airport: { iata_code: any; ident: any; name: any }) => ({
-      ...airport,
-      display: airport.iata_code
-        ? `(${airport.iata_code}/${airport.ident}) - ${airport.name}`
-        : `(${airport.ident}) - ${airport.name}`
+    if (airports.length === 0) {
+      return res.status(404).json({ message: 'No airports found matching your query' })
+    }
+
+    const formattedAirports = airports.map(airport => ({
+      label: airport.IATA
+        ? `(${airport.IATA}/${airport.ICAO}) - ${airport.name}`
+        : `(${airport.ICAO}) - ${airport.name}`,
+      value: airport._id,
+      timezone: airport.tz_database // Include timezone in the response
     }))
 
     res.json(formattedAirports)

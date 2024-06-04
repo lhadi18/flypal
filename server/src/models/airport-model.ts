@@ -2,28 +2,32 @@ import mongoose from 'mongoose'
 
 const airportSchema = new mongoose.Schema(
   {
-    id: String,
-    ident: String,
-    type: String,
     name: String,
-    latitude_deg: String,
-    longitude_deg: String,
-    elevation_ft: String,
-    continent: String,
-    iso_country: String,
-    iso_region: String,
-    municipality: String,
-    scheduled_service: String,
-    gps_code: String,
-    iata_code: String,
-    local_code: String,
-    home_link: String,
-    wikipedia_link: String,
-    keywords: String
+    city: String,
+    country: String,
+    IATA: String,
+    ICAO: String,
+    latitude: Number,
+    longitude: Number,
+    altitude: Number,
+    timezone: String,
+    DST: String,
+    tz_database: String,
+    type: String,
+    source: String
   },
   { timestamps: true }
 )
 
+// Virtual for mapping `_id` to `id`
+airportSchema.virtual('id').get(function () {
+  return this._id.toHexString()
+})
+
+airportSchema.set('toJSON', {
+  virtuals: true
+})
+
 const Airport = mongoose.model('Airport', airportSchema)
 
-module.exports = Airport
+export default Airport

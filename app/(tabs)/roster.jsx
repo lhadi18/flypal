@@ -20,9 +20,10 @@ import AirportSearch from '@/components/airport-search'
 import * as DocumentPicker from 'expo-document-picker'
 import { CalendarList } from 'react-native-calendars'
 import { DUTY_TYPES } from '../../constants/duties'
+import * as SecureStore from 'expo-secure-store'
 import { Ionicons } from '@expo/vector-icons'
-
-const TopTab = createMaterialTopTabNavigator()
+import moment from 'moment-timezone'
+import axios from 'axios'
 
 const Roster = () => {
   const [selectedDate, setSelectedDate] = useState('')
@@ -124,23 +125,49 @@ const Roster = () => {
     </View>
   )
 
-  const handleAddEvent = () => {
-    if (newEventTitle && selectedDate) {
-      const newEvent = {
-        id: Math.random().toString(),
-        title: newEventTitle,
-        origin: newEventOrigin,
-        destination: newEventDestination,
-        departureTime: newEventDepartureTime,
-        arrivalTime: newEventArrivalTime,
-        flightNumber: newEventFlightNumber,
-        aircraftType: newEventAircraftType,
-        notes: newEventNotes
-      }
-      setEvents([...events, newEvent])
+  const handleAddEvent = async () => {
+    if (!newEventTitle) {
+      console.error('Event title is required')
+      return
+    }
+
+    // Fetch user ID from Secure Store
+    const userId = await SecureStore.getItemAsync('userId')
+    const newEvent = {
+      userId,
+      type: newEventTitle,
+      origin: newEventOrigin.value, // Assuming newEventOrigin has a 'value' property storing the ObjectId
+      destination: newEventDestination.value,
+      departureTime: newEventDepartureTime,
+      arrivalTime: newEventArrivalTime,
+      flightNumber: newEventFlightNumber,
+      aircraftType: newEventAircraftType,
+      notes: newEventNotes
+    }
+
+    try {
+      console.log(newEvent)
+      const response = await axios.post(
+        'https://b113-103-18-0-17.ngrok-free.app/api/roster/createRosterEntry',
+        newEvent
+      )
+      console.log('New event added:', response.data)
+      setEvents([...events, response.data])
       clearInputs()
       setModalVisible(false)
+    } catch (error) {
+      console.error('Error adding new event:', error)
     }
+  }
+
+  const handleSelectOrigin = airport => {
+    setNewEventOrigin(airport)
+    setNewEventDepartureTime('')
+  }
+
+  const handleSelectDestination = airport => {
+    setNewEventDestination(airport)
+    setNewEventArrivalTime('')
   }
 
   const handlePickDocument = async () => {
@@ -155,12 +182,50 @@ const Roster = () => {
   }
 
   const handleConfirmDeparture = date => {
-    setNewEventDepartureTime(date.toISOString())
+    if (!newEventOrigin) {
+      Alert.alert('Select origin first!')
+      return
+    }
+
+    const originTimezone = newEventOrigin.timezone
+    const formattedDepartureDate = moment(date).tz(originTimezone).toISOString()
+    console.log(formattedDepartureDate)
+
+    // Ensure arrival time has been set and is not before the new departure time
+    if (newEventArrivalTime) {
+      const formattedArrivalDate = moment(newEventArrivalTime).toISOString()
+
+      if (moment(formattedDepartureDate).isAfter(moment(formattedArrivalDate))) {
+        Alert.alert('Error', 'Departure time cannot be later than the arrival time.')
+        return
+      }
+    }
+
+    setNewEventDepartureTime(formattedDepartureDate)
     setDeparturePickerVisible(false)
   }
 
   const handleConfirmArrival = date => {
-    setNewEventArrivalTime(date.toISOString())
+    if (!newEventDestination) {
+      Alert.alert('Select destination first!')
+      return
+    }
+
+    const destinationTimezone = newEventDestination.timezone
+    const formattedArrivalDate = moment(date).tz(destinationTimezone).toISOString()
+    console.log(formattedArrivalDate)
+
+    // Ensure departure time has been set and is not after the new arrival time
+    if (newEventDepartureTime) {
+      const formattedDepartureDate = moment(newEventDepartureTime).toISOString()
+
+      if (moment(formattedArrivalDate).isBefore(moment(formattedDepartureDate))) {
+        Alert.alert('Error', 'Arrival time cannot be earlier than the departure time.')
+        return
+      }
+    }
+
+    setNewEventArrivalTime(formattedArrivalDate)
     setArrivalPickerVisible(false)
   }
 
@@ -255,19 +320,26 @@ const Roster = () => {
               placeholder="Select duty type"
               searchPlaceholder="Search..."
               value={newEventTitle}
-              onChange={item => setNewEventTitle(item.value)}
-              renderLeftIcon={() => <Ionicons style={styles.icon} color="grey" name="briefcase-outline" size={20} />}
+              onChange={item => {
+                setNewEventTitle(item.value)
+                // Reset times when duty type changes
+                setNewEventDepartureTime('')
+                setNewEventArrivalTime('')
+              }}
+              renderLeftIcon={() => <Ionicons style={styles.icon} color="#045D91" name="briefcase-outline" size={20} />}
             />
 
             <Text style={styles.label}>Origin</Text>
-            <AirportSearch placeholder="Enter origin" onSelect={airport => setNewEventOrigin(airport)} />
-
+            <AirportSearch placeholder="Enter origin" onSelect={handleSelectOrigin} />
             <Text style={styles.label}>Destination</Text>
-            <AirportSearch placeholder="Enter destination" onSelect={airport => setNewEventDestination(airport)} />
-
-            <Text style={styles.label}>Departure Time</Text>
-            <TouchableOpacity onPress={() => setDeparturePickerVisible(true)} style={styles.datePicker}>
-              <Ionicons name="time-outline" size={20} color="grey" style={styles.inputIcon} />
+            <AirportSearch placeholder="Enter destination" onSelect={handleSelectDestination} />
+            <Text style={styles.label}>Departure Time (local time)</Text>
+            <TouchableOpacity
+              onPress={() => setDeparturePickerVisible(true)}
+              style={[styles.datePicker, !newEventOrigin || !newEventDestination ? styles.disabledButton : {}]}
+              disabled={!newEventOrigin || !newEventDestination}
+            >
+              <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
                 {newEventDepartureTime
                   ? `${new Date(newEventDepartureTime).toLocaleDateString()} ${new Date(newEventDepartureTime)
@@ -283,9 +355,13 @@ const Roster = () => {
               onCancel={() => setDeparturePickerVisible(false)}
             />
 
-            <Text style={styles.label}>Arrival Time</Text>
-            <TouchableOpacity onPress={() => setArrivalPickerVisible(true)} style={styles.datePicker}>
-              <Ionicons name="time-outline" size={20} color="grey" style={styles.inputIcon} />
+            <Text style={styles.label}>Arrival Time (local time)</Text>
+            <TouchableOpacity
+              onPress={() => setArrivalPickerVisible(true)}
+              style={[styles.datePicker, !newEventOrigin || !newEventDestination ? styles.disabledButton : {}]}
+              disabled={!newEventOrigin || !newEventDestination}
+            >
+              <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
                 {newEventArrivalTime
                   ? `${new Date(newEventArrivalTime).toLocaleDateString()} ${new Date(newEventArrivalTime)
@@ -303,7 +379,7 @@ const Roster = () => {
 
             <Text style={styles.label}>Flight Number</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="airplane-outline" size={20} color="grey" style={styles.inputIcon} />
+              <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter flight number"
@@ -329,12 +405,12 @@ const Roster = () => {
               searchPlaceholder="Search..."
               value={newEventAircraftType}
               onChange={item => setNewEventAircraftType(item.value)}
-              renderLeftIcon={() => <Ionicons style={styles.icon} color="grey" name="airplane-outline" size={20} />}
+              renderLeftIcon={() => <Ionicons style={styles.icon} color="#045D91" name="airplane-outline" size={20} />}
             />
 
             <Text style={styles.label}>Notes</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="clipboard-outline" size={20} color="grey" style={styles.inputIcon} />
+              <Ionicons name="clipboard-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Notes"
@@ -565,6 +641,10 @@ const styles = StyleSheet.create({
   dateText: {
     textColor: 'black',
     fontSize: 14
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+    borderColor: '#999'
   }
 })
 

@@ -52,4 +52,4 @@ const AircraftSchema = new mongoose.Schema({
 const Aircraft = mongoose.model('Aircraft', AircraftSchema)
 
 // Export the model
-module.exports = Aircraft
+export default Aircraft
