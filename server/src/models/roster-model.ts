@@ -20,8 +20,8 @@ const rosterSchema = new mongoose.Schema(
       required: true,
       ref: 'Airport'
     },
-    departureTime: String,
-    arrivalTime: String,
+    departureTime: Date,
+    arrivalTime: Date,
     flightNumber: String,
     aircraftType: {
       type: mongoose.Schema.Types.ObjectId,
