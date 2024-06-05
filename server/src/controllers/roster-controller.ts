@@ -55,3 +55,56 @@ export const getRosterEntries = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch roster entries' })
   }
 }
+
+export const updateRosterEntry = async (req: Request, res: Response) => {
+  const { rosterId } = req.params
+  const { userId, type, origin, destination, departureTime, arrivalTime, flightNumber, aircraftType, notes } = req.body
+
+  if (!mongoose.Types.ObjectId.isValid(rosterId)) {
+    return res.status(400).json({ error: 'Invalid roster ID' })
+  }
+
+  try {
+    const updatedEntry = await Roster.findByIdAndUpdate(
+      rosterId,
+      {
+        userId,
+        type,
+        origin,
+        destination,
+        departureTime,
+        arrivalTime,
+        flightNumber,
+        aircraftType,
+        notes
+      },
+      { new: true, runValidators: true }
+    ).populate('origin destination aircraftType')
+
+    if (!updatedEntry) {
+      return res.status(404).json({ error: 'Roster entry not found' })
+    }
+
+    res.status(200).json(updatedEntry)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update roster entry' })
+  }
+}
+
+export const deleteRosterEntry = async (req: Request, res: Response) => {
+  const { rosterId } = req.params
+
+  if (!mongoose.Types.ObjectId.isValid(rosterId)) {
+    return res.status(400).json({ error: 'Invalid roster ID' })
+  }
+
+  try {
+    const deletedEntry = await Roster.findByIdAndDelete(rosterId)
+    if (!deletedEntry) {
+      return res.status(404).json({ error: 'Roster entry not found' })
+    }
+    res.status(200).json({ message: 'Roster entry deleted successfully' })
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete roster entry' })
+  }
+}

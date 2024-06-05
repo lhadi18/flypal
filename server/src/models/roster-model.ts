@@ -12,12 +12,12 @@ const rosterSchema = new mongoose.Schema(
     type: String,
     origin: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
+      required: false,
       ref: 'Airport'
     },
     destination: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
+      required: false,
       ref: 'Airport'
     },
     departureTime: Date,
@@ -25,7 +25,7 @@ const rosterSchema = new mongoose.Schema(
     flightNumber: String,
     aircraftType: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
+      required: false,
       ref: 'Aircraft'
     },
     notes: String

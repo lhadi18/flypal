@@ -14,8 +14,8 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { fetchAircraftTypes } from '../../services/aircraft-api'
-import { Dropdown } from 'react-native-element-dropdown'
 import AirportSearch from '@/components/airport-search'
+import RNPickerSelect from 'react-native-picker-select'
 import * as DocumentPicker from 'expo-document-picker'
 import { CalendarList } from 'react-native-calendars'
 import { DUTY_TYPES } from '../../constants/duties'
@@ -43,6 +43,7 @@ const Roster = () => {
   const [rosterEntries, setRosterEntries] = useState({})
   const [editMode, setEditMode] = useState(false)
   const [editEventId, setEditEventId] = useState(null)
+  const [markedDates, setMarkedDates] = useState({})
 
   const originRef = useRef(null)
   const destinationRef = useRef(null)
@@ -67,7 +68,7 @@ const Roster = () => {
   useEffect(() => {
     const today = getCurrentDate()
     setSelectedDate(today)
-    fetchRosterEntries(today, 5) // Fetch entries for the next 5 months
+    fetchRosterEntries(today) // Fetch entries from 4 months ahead and 4 months behind
   }, [])
 
   useEffect(() => {
@@ -80,10 +81,27 @@ const Roster = () => {
       })
   }, [])
 
-  const fetchRosterEntries = async (startDate, monthsSpan) => {
+  useEffect(() => {
+    const generateMarkedDates = () => {
+      const dates = {}
+      Object.keys(rosterEntries).forEach(date => {
+        dates[date] = {
+          marked: true,
+          dotColor: '#50cebb', // Customize this color as needed
+          activeOpacity: 0
+        }
+      })
+      return dates
+    }
+
+    const markedDates = generateMarkedDates()
+    setMarkedDates(markedDates)
+  }, [rosterEntries])
+
+  const fetchRosterEntries = async startDate => {
     const userId = await SecureStore.getItemAsync('userId')
-    const start = moment(startDate).startOf('day')
-    const end = moment(startDate).add(monthsSpan, 'months').endOf('day')
+    const start = moment(startDate).subtract(4, 'months').startOf('day')
+    const end = moment(startDate).add(4, 'months').endOf('day')
 
     try {
       const response = await axios.get('https://b113-103-18-0-17.ngrok-free.app/api/roster/getRosterEntries', {
@@ -100,7 +118,6 @@ const Roster = () => {
         return acc
       }, {})
 
-      console.log(rosterEntries)
       setRosterEntries(rosterEntries)
       if (startDate in rosterEntries) {
         setEvents(rosterEntries[startDate])
@@ -150,23 +167,42 @@ const Roster = () => {
   }
 
   const getLocalTime = (time, timezone) => {
-    return moment(time).tz(timezone).format('YYYY-MM-DD HH:mm:ss')
+    return moment(time).tz(timezone).format('HH:mm [GMT]Z')
   }
 
-  const handleDeleteEvent = async eventId => {
-    try {
-      await axios.delete(`https://b113-103-18-0-17.ngrok-free.app/api/roster/deleteRosterEntry/${eventId}`)
-      const today = getCurrentDate()
-      await fetchRosterEntries(today, 5) // Refresh the entries
-    } catch (error) {
-      console.error('Error deleting event:', error)
-    }
+  const handleDeleteEvent = rosterId => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this roster entry?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Yes',
+          onPress: async () => {
+            try {
+              await axios.delete(`https://b113-103-18-0-17.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`)
+              const today = getCurrentDate()
+              await fetchRosterEntries(today) // Refresh the entries
+            } catch (error) {
+              console.error('Error deleting event:', error)
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    )
   }
 
   const renderEventItem = ({ item, index }) => (
     <View style={[styles.eventItem, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9f9f9' }]}>
       <View style={styles.eventHeader}>
-        <Text style={styles.eventFlightNumber}>{item.flightNumber}</Text>
+        <Text style={styles.eventFlightNumber}>
+          {item.origin.IATA} <Ionicons name="airplane-outline" size={20} color="#045D91" /> {item.destination.IATA} (
+          {item.flightNumber})
+        </Text>
         <View style={styles.eventActions}>
           <TouchableOpacity style={styles.editButton} onPress={() => handleEditEvent(item)}>
             <Ionicons name="pencil-outline" size={20} color="#045D91" />
@@ -178,26 +214,36 @@ const Roster = () => {
       </View>
       <View style={styles.eventBody}>
         <View style={styles.eventRow}>
-          <Ionicons name="airplane-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>{item.aircraftType.Model}</Text>
-        </View>
-        <View style={styles.eventRow}>
-          <Ionicons name="location-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>
-            {item.origin.name} ({item.origin.city}, {item.origin.country}) ➔ {item.destination.name} (
-            {item.destination.city}, {item.destination.country})
+          <Ionicons name="time-outline" size={18} color="#045D91" />
+          <Text style={[styles.eventText, styles.importantText]}>
+            {getLocalTime(item.departureTime, item.origin.tz_database)}
           </Text>
         </View>
         <View style={styles.eventRow}>
           <Ionicons name="time-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>
-            {getLocalTime(item.departureTime, item.origin.tz_database)} -{' '}
+          <Text style={[styles.eventText, styles.importantText]}>
             {getLocalTime(item.arrivalTime, item.destination.tz_database)}
           </Text>
         </View>
         <View style={styles.eventRow}>
+          <Ionicons name="location-outline" size={18} color="#045D91" />
+          <Text style={styles.eventText}>
+            From: {item.origin.name} ({item.origin.city})
+          </Text>
+        </View>
+        <View style={styles.eventRow}>
+          <Ionicons name="location-outline" size={18} color="#045D91" />
+          <Text style={styles.eventText}>
+            To: {item.destination.name} ({item.destination.city})
+          </Text>
+        </View>
+        <View style={styles.eventRow}>
+          <Ionicons name="airplane-outline" size={18} color="#045D91" />
+          <Text style={styles.eventText}>Aircraft: {item.aircraftType.Model}</Text>
+        </View>
+        <View style={styles.eventRow}>
           <Ionicons name="clipboard-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>{item.notes}</Text>
+          <Text style={styles.eventText}>Notes: {item.notes}</Text>
         </View>
       </View>
     </View>
@@ -207,12 +253,23 @@ const Roster = () => {
     setEditMode(true)
     setEditEventId(event._id)
     setNewEventTitle(event.type)
-    setNewEventOrigin(event.origin)
-    setNewEventDestination(event.destination)
+    setNewEventOrigin({
+      value: event.origin._id,
+      label: `(${event.origin.IATA}/${event.origin.ICAO}) - ${event.origin.name}`,
+      timezone: event.origin.tz_database
+    })
+    setNewEventDestination({
+      value: event.destination._id,
+      label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.origin.name}`,
+      timezone: event.destination.tz_database
+    })
     setNewEventDepartureTime(event.departureTime)
     setNewEventArrivalTime(event.arrivalTime)
     setNewEventFlightNumber(event.flightNumber)
-    setNewEventAircraftType(event.aircraftType.value)
+    setNewEventAircraftType({
+      value: event.aircraftType._id,
+      label: `${event.aircraftType.Model}`
+    })
     setNewEventNotes(event.notes)
     setModalVisible(true)
   }
@@ -232,23 +289,19 @@ const Roster = () => {
       departureTime: newEventDepartureTime,
       arrivalTime: newEventArrivalTime,
       flightNumber: newEventFlightNumber,
-      aircraftType: newEventAircraftType,
+      aircraftType: newEventAircraftType?.value,
       notes: newEventNotes
     }
+    console.log(newEvent)
+    console.log(editEventId)
 
     try {
       if (editMode) {
         // Update existing event
-        const response = await axios.put(
-          `https://b113-103-18-0-17.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
-          newEvent
-        )
+        await axios.put(`https://b113-103-18-0-17.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`, newEvent)
       } else {
         // Create new event
-        const response = await axios.post(
-          'https://b113-103-18-0-17.ngrok-free.app/api/roster/createRosterEntry',
-          newEvent
-        )
+        await axios.post('https://b113-103-18-0-17.ngrok-free.app/api/roster/createRosterEntry', newEvent)
       }
 
       clearInputs()
@@ -256,7 +309,7 @@ const Roster = () => {
       setModalVisible(false)
       // Fetch roster entries again
       const today = getCurrentDate()
-      await fetchRosterEntries(today, 5) // Fetch entries for the next 5 months
+      await fetchRosterEntries(today) // Fetch entries from 4 months ahead and 4 months behind
     } catch (error) {
       console.error('Error saving event:', error)
     }
@@ -288,10 +341,10 @@ const Roster = () => {
     }
 
     const originTimezone = newEventOrigin.timezone
-    const formattedDepartureDate = moment(date).tz(originTimezone).toISOString()
+    const formattedDepartureDate = moment(date).tz(originTimezone).format('YYYY-MM-DDTHH:mm:ssZ')
 
     if (newEventArrivalTime) {
-      const formattedArrivalDate = moment(newEventArrivalTime).toISOString()
+      const formattedArrivalDate = moment(newEventArrivalTime).format('YYYY-MM-DDTHH:mm:ssZ')
 
       if (moment(formattedDepartureDate).isAfter(moment(formattedArrivalDate))) {
         Alert.alert('Error', 'Departure time cannot be later than the arrival time.')
@@ -310,10 +363,10 @@ const Roster = () => {
     }
 
     const destinationTimezone = newEventDestination.timezone
-    const formattedArrivalDate = moment(date).tz(destinationTimezone).toISOString()
+    const formattedArrivalDate = moment(date).tz(destinationTimezone).format('YYYY-MM-DDTHH:mm:ssZ')
 
     if (newEventDepartureTime) {
-      const formattedDepartureDate = moment(newEventDepartureTime).toISOString()
+      const formattedDepartureDate = moment(newEventDepartureTime).format('YYYY-MM-DDTHH:mm:ssZ')
 
       if (moment(formattedArrivalDate).isBefore(moment(formattedDepartureDate))) {
         Alert.alert('Error', 'Arrival time cannot be earlier than the departure time.')
@@ -380,11 +433,37 @@ const Roster = () => {
             <CalendarList
               onDayPress={handleDayPress}
               markedDates={{
-                [selectedDate]: { selected: true, marked: true, selectedColor: '#F04D23' }
+                ...markedDates,
+                [selectedDate]: { selected: true, marked: false, selectedColor: '#F04D23' }
               }}
               horizontal
               pagingEnabled
               showScrollIndicator={false}
+              theme={{
+                'stylesheet.calendar.header': {
+                  header: {
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    paddingLeft: 10,
+                    paddingRight: 10,
+                    marginTop: 15,
+                    alignItems: 'center'
+                  },
+                  monthText: {
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                    color: '#000'
+                  },
+                  arrow: {
+                    padding: 10
+                  },
+                  week: {
+                    marginTop: 15,
+                    flexDirection: 'row',
+                    justifyContent: 'space-around'
+                  }
+                }
+              }}
             />
           </>
         }
@@ -409,27 +488,31 @@ const Roster = () => {
             <View style={styles.divider} />
 
             <Text style={styles.label}>Duty Type</Text>
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              inputSearchStyle={styles.inputSearchStyle}
-              iconStyle={styles.iconStyle}
-              data={DUTY_TYPES}
-              search
-              maxHeight={300}
-              labelField="label"
-              valueField="value"
-              placeholder="Select duty type"
-              searchPlaceholder="Search..."
-              value={newEventTitle}
-              onChange={item => {
-                setNewEventTitle(item.value)
-                setNewEventDepartureTime('')
-                setNewEventArrivalTime('')
-              }}
-              renderLeftIcon={() => <Ionicons style={styles.icon} color="#045D91" name="briefcase-outline" size={20} />}
-            />
+            <View style={styles.inputWrapper}>
+              <Ionicons name="briefcase-outline" size={20} color="#045D91" style={styles.inputIcon} />
+              <RNPickerSelect
+                onValueChange={value => setNewEventTitle(value)}
+                items={DUTY_TYPES.map(duty => ({ label: duty.label, value: duty.value }))}
+                style={{
+                  ...pickerSelectStyles,
+                  inputIOS: {
+                    ...pickerSelectStyles.inputIOS,
+                    paddingRight: 30 // to ensure the text is never behind the icon
+                  },
+                  inputAndroid: {
+                    ...pickerSelectStyles.inputAndroid,
+                    paddingRight: 30 // to ensure the text is never behind the icon
+                  },
+                  placeholder: {
+                    ...pickerSelectStyles.placeholder,
+                    paddingLeft: 0 // Adjust to match the padding left of the input
+                  }
+                }}
+                value={newEventTitle}
+                placeholder={{ label: 'Select duty type', value: null }}
+                useNativeAndroidPickerStyle={false} // to use the custom styles on Android
+              />
+            </View>
 
             <Text style={styles.label}>Origin</Text>
             <AirportSearch
@@ -454,9 +537,7 @@ const Roster = () => {
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
                 {newEventDepartureTime
-                  ? `${new Date(newEventDepartureTime).toLocaleDateString()} ${new Date(newEventDepartureTime)
-                      .toLocaleTimeString()
-                      .slice(0, 5)}`
+                  ? `${moment(newEventDepartureTime).format('HH:mm [GMT]Z')}`
                   : 'Select departure time'}
               </Text>
             </TouchableOpacity>
@@ -475,11 +556,7 @@ const Roster = () => {
             >
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
-                {newEventArrivalTime
-                  ? `${new Date(newEventArrivalTime).toLocaleDateString()} ${new Date(newEventArrivalTime)
-                      .toLocaleTimeString()
-                      .slice(0, 5)}`
-                  : 'Select arrival time'}
+                {newEventArrivalTime ? `${moment(newEventArrivalTime).format('HH:mm [GMT]Z')}` : 'Select arrival time'}
               </Text>
             </TouchableOpacity>
             <DateTimePickerModal
@@ -502,24 +579,31 @@ const Roster = () => {
             </View>
 
             <Text style={styles.label}>Aircraft Type</Text>
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              inputSearchStyle={styles.inputSearchStyle}
-              iconStyle={styles.iconStyle}
-              data={aircraftTypeData}
-              search
-              maxHeight={300}
-              labelField="label"
-              valueField="value"
-              placeholder="Select aircraft type"
-              searchPlaceholder="Search..."
-              value={newEventAircraftType}
-              onChange={item => setNewEventAircraftType(item.value)}
-              renderLeftIcon={() => <Ionicons style={styles.icon} color="#045D91" name="airplane-outline" size={20} />}
-            />
-
+            <View style={styles.inputWrapper}>
+              <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
+              <RNPickerSelect
+                onValueChange={value => setNewEventAircraftType(value)}
+                items={aircraftTypeData.map(type => ({ label: type.label, value: type.value }))}
+                style={{
+                  ...pickerSelectStyles,
+                  inputIOS: {
+                    ...pickerSelectStyles.inputIOS,
+                    paddingRight: 30 // to ensure the text is never behind the icon
+                  },
+                  inputAndroid: {
+                    ...pickerSelectStyles.inputAndroid,
+                    paddingRight: 30 // to ensure the text is never behind the icon
+                  },
+                  placeholder: {
+                    ...pickerSelectStyles.placeholder,
+                    paddingLeft: 0 // Adjust to match the padding left of the input
+                  }
+                }}
+                value={newEventAircraftType}
+                placeholder={{ label: 'Select aircraft type', value: null }}
+                useNativeAndroidPickerStyle={false} // to use the custom styles on Android
+              />
+            </View>
             <Text style={styles.label}>Notes</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="clipboard-outline" size={20} color="#045D91" style={styles.inputIcon} />
@@ -556,6 +640,34 @@ const Roster = () => {
   )
 }
 
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 0,
+    borderWidth: 0, // No border for the inner input
+    color: 'black',
+    flex: 1,
+    height: '100%', // Ensure it matches the height of the input wrapper
+    justifyContent: 'center' // Vertically center the text
+    // paddingLeft: 0 // Adjust to match the icon
+  },
+  inputAndroid: {
+    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 0, // No border for the inner input
+    color: 'black',
+    flex: 1,
+    height: '100%', // Ensure it matches the height of the input wrapper
+    justifyContent: 'center' // Vertically center the text
+  },
+  placeholder: {
+    color: 'grey' // Align the placeholder text with the input text
+    // paddingLeft: 0 // Ensure the placeholder text aligns with the input text
+  }
+})
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -588,7 +700,7 @@ const styles = StyleSheet.create({
     marginBottom: 10
   },
   eventFlightNumber: {
-    fontSize: 18,
+    fontSize: 22, // Larger text size
     fontWeight: 'bold',
     color: '#045D91'
   },
@@ -607,8 +719,19 @@ const styles = StyleSheet.create({
   },
   eventText: {
     marginLeft: 10,
-    color: 'grey',
-    fontSize: 16
+    color: '#333',
+    fontSize: 18, // Larger text size
+    lineHeight: 24
+  },
+  importantText: {
+    fontWeight: 'bold',
+    color: '#000'
+  },
+  editButton: {
+    marginLeft: 10
+  },
+  deleteButton: {
+    marginLeft: 10
   },
   modalOverlay: {
     flex: 1,
@@ -661,40 +784,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#333'
-  },
-  dropdown: {
-    width: '100%',
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 10,
-    borderColor: '#045D91',
-    paddingHorizontal: 10,
-    marginBottom: 20,
-    backgroundColor: 'white',
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-
-    elevation: 5
-  },
-  placeholderStyle: {
-    color: 'grey',
-    fontSize: 16
-  },
-  selectedTextStyle: {
-    fontSize: 16
-  },
-  inputSearchStyle: {
-    fontSize: 16
-  },
-  iconStyle: {
-    fontSize: 16
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -800,12 +889,6 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#ccc',
     borderColor: '#999'
-  },
-  editButton: {
-    marginLeft: 10
-  },
-  deleteButton: {
-    marginLeft: 10
   },
   buttonContainer: {
     flexDirection: 'row',
