@@ -289,11 +289,9 @@ const Roster = () => {
       departureTime: newEventDepartureTime,
       arrivalTime: newEventArrivalTime,
       flightNumber: newEventFlightNumber,
-      aircraftType: newEventAircraftType?.value,
+      aircraftType: newEventAircraftType,
       notes: newEventNotes
     }
-    console.log(newEvent)
-    console.log(editEventId)
 
     try {
       if (editMode) {
@@ -586,8 +584,10 @@ const Roster = () => {
             <View style={styles.inputWrapper}>
               <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <RNPickerSelect
-                onValueChange={value => setNewEventAircraftType(value)}
-                items={aircraftTypeData.map(type => ({ label: type.label, value: type.value }))}
+                onValueChange={value => {
+                  setNewEventAircraftType(value)
+                }}
+                items={aircraftTypeData}
                 style={{
                   ...pickerSelectStyles,
                   inputIOS: {
