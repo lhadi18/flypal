@@ -216,25 +216,25 @@ const Roster = () => {
         <View style={styles.eventRow}>
           <Ionicons name="time-outline" size={18} color="#045D91" />
           <Text style={[styles.eventText, styles.importantText]}>
-            {getLocalTime(item.departureTime, item.origin.tz_database)}
+            {moment(item.departureTime).format('DD/MM/YYYY HH:mm [GMT]Z')}
           </Text>
         </View>
         <View style={styles.eventRow}>
           <Ionicons name="time-outline" size={18} color="#045D91" />
           <Text style={[styles.eventText, styles.importantText]}>
-            {getLocalTime(item.arrivalTime, item.destination.tz_database)}
+            {moment(item.arrivalTime).format('DD/MM/YYYY HH:mm [GMT]Z')}
           </Text>
         </View>
         <View style={styles.eventRow}>
           <Ionicons name="location-outline" size={18} color="#045D91" />
           <Text style={styles.eventText}>
-            From: {item.origin.name} ({item.origin.city})
+            From: {item.origin.name} ({item.origin.city}, {item.origin.country})
           </Text>
         </View>
         <View style={styles.eventRow}>
           <Ionicons name="location-outline" size={18} color="#045D91" />
           <Text style={styles.eventText}>
-            To: {item.destination.name} ({item.destination.city})
+            To: {item.destination.name} ({item.destination.city}, {item.destination.country})
           </Text>
         </View>
         <View style={styles.eventRow}>
@@ -480,9 +480,11 @@ const Roster = () => {
             <View style={styles.modalHeader}>
               <Ionicons name={editMode ? 'pencil-outline' : 'add-circle'} size={24} color="#045D91" />
               <Text style={styles.modalText}>{editMode ? 'Edit Roster Entry' : 'Add Roster Entry'}</Text>
-              <TouchableOpacity onPress={confirmClearInputs} style={styles.clearButton}>
-                <Ionicons name="trash-outline" size={24} color="red" />
-              </TouchableOpacity>
+              {!editMode && (
+                <TouchableOpacity onPress={confirmClearInputs} style={styles.clearButton}>
+                  <Ionicons name="trash-outline" size={24} color="red" />
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.divider} />
@@ -537,7 +539,7 @@ const Roster = () => {
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
                 {newEventDepartureTime
-                  ? `${moment(newEventDepartureTime).format('HH:mm [GMT]Z')}`
+                  ? `${moment(newEventDepartureTime).format('DD/MM/YYYY HH:mm [GMT]Z')}`
                   : 'Select departure time'}
               </Text>
             </TouchableOpacity>
@@ -556,7 +558,9 @@ const Roster = () => {
             >
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
-                {newEventArrivalTime ? `${moment(newEventArrivalTime).format('HH:mm [GMT]Z')}` : 'Select arrival time'}
+                {newEventArrivalTime
+                  ? `${moment(newEventArrivalTime).format('DD/MM/YYYY HH:mm [GMT]Z')}`
+                  : 'Select arrival time'}
               </Text>
             </TouchableOpacity>
             <DateTimePickerModal
