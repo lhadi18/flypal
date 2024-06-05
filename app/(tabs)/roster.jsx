@@ -167,7 +167,7 @@ const Roster = () => {
   }
 
   const getLocalTime = (time, timezone) => {
-    return moment(time).tz(timezone).format('HH:mm [GMT]Z')
+    return moment(time).tz(timezone).format('DD/MM/YYYY HH:mm [GMT]Z')
   }
 
   const handleDeleteEvent = rosterId => {
@@ -216,13 +216,13 @@ const Roster = () => {
         <View style={styles.eventRow}>
           <Ionicons name="time-outline" size={18} color="#045D91" />
           <Text style={[styles.eventText, styles.importantText]}>
-            {moment(item.departureTime).format('DD/MM/YYYY HH:mm [GMT]Z')}
+            {getLocalTime(item.departureTime, item.origin.tz_database)}
           </Text>
         </View>
         <View style={styles.eventRow}>
           <Ionicons name="time-outline" size={18} color="#045D91" />
           <Text style={[styles.eventText, styles.importantText]}>
-            {moment(item.arrivalTime).format('DD/MM/YYYY HH:mm [GMT]Z')}
+            {getLocalTime(item.arrivalTime, item.destination.tz_database)}
           </Text>
         </View>
         <View style={styles.eventRow}>
@@ -539,7 +539,7 @@ const Roster = () => {
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
                 {newEventDepartureTime
-                  ? `${moment(newEventDepartureTime).format('DD/MM/YYYY HH:mm [GMT]Z')}`
+                  ? `${getLocalTime(newEventDepartureTime, newEventOrigin?.timezone)}`
                   : 'Select departure time'}
               </Text>
             </TouchableOpacity>
@@ -559,7 +559,7 @@ const Roster = () => {
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
                 {newEventArrivalTime
-                  ? `${moment(newEventArrivalTime).format('DD/MM/YYYY HH:mm [GMT]Z')}`
+                  ? `${getLocalTime(newEventArrivalTime, newEventDestination?.timezone)}`
                   : 'Select arrival time'}
               </Text>
             </TouchableOpacity>
