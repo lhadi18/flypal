@@ -22,3 +22,6 @@ expo-env.d.ts
 
 # Ignore all .pem files
 *.pem
+package.json
+services/user-api.js
+services/user-api.js

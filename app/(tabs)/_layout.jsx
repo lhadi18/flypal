@@ -1,7 +1,13 @@
-import { View, Text, Image } from 'react-native'
+// _layout.jsx
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs'
+import { View, Text, Image, TouchableOpacity } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { useNavigation } from 'expo-router'
 import icons from '../../constants/icons'
 import { Tabs } from 'expo-router'
 import React from 'react'
+
+const TopTab = createMaterialTopTabNavigator()
 
 const TabIcon = ({ icon, color, name, focused }) => {
   return (
@@ -17,6 +23,8 @@ const TabIcon = ({ icon, color, name, focused }) => {
 }
 
 const TabsLayout = () => {
+  const navigation = useNavigation()
+
   return (
     <>
       <Tabs
@@ -38,11 +46,28 @@ const TabsLayout = () => {
           options={{
             title: 'Roster',
             headerShown: true,
+            headerLeft: () => (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 18 }}>
+                <TouchableOpacity onPress={() => navigation.navigate('')}>
+                  <Ionicons name="people" size={26} color="white" style={{ marginTop: 3 }} />
+                </TouchableOpacity>
+              </View>
+            ),
+            headerRight: () => (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 18 }}>
+                <TouchableOpacity onPress={() => navigation.navigate('roster', { action: 'pickDocument' })}>
+                  <Ionicons name="cloud-upload" size={26} color="white" style={{ marginRight: 20, marginTop: 1 }} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('roster', { action: 'addEvent' })}>
+                  <Ionicons name="add-circle" size={26} color="white" />
+                </TouchableOpacity>
+              </View>
+            ),
             tabBarIcon: ({ color, focused }) => (
               <TabIcon icon={icons.roster} color={color} name="Roster" focused={focused} />
             )
           }}
-        ></Tabs.Screen>
+        />
         <Tabs.Screen
           name="destination"
           options={{
@@ -52,7 +77,7 @@ const TabsLayout = () => {
               <TabIcon icon={icons.destination} color={color} name="Destination" focused={focused} />
             )
           }}
-        ></Tabs.Screen>
+        />
         <Tabs.Screen
           name="social"
           options={{
@@ -60,7 +85,7 @@ const TabsLayout = () => {
             headerShown: true,
             tabBarIcon: ({ color, focused }) => <TabIcon icon={null} color={color} name="Social" focused={focused} />
           }}
-        ></Tabs.Screen>
+        />
         <Tabs.Screen
           name="checklist"
           options={{
@@ -70,7 +95,7 @@ const TabsLayout = () => {
               <TabIcon icon={null} color={color} name="Checklists" focused={focused} />
             )
           }}
-        ></Tabs.Screen>
+        />
         <Tabs.Screen
           name="settings"
           options={{
@@ -80,7 +105,7 @@ const TabsLayout = () => {
               <TabIcon icon={icons.settings} color={color} name="Settings" focused={focused} />
             )
           }}
-        ></Tabs.Screen>
+        />
       </Tabs>
     </>
   )
