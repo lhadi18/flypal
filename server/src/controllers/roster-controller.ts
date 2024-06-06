@@ -108,3 +108,70 @@ export const deleteRosterEntry = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to delete roster entry' })
   }
 }
+
+export const getCurrentMonthRoster = async (req: Request, res: Response) => {
+  const { userId } = req.query
+
+  if (typeof userId !== 'string') {
+    return res.status(400).json({ error: 'Invalid query parameters' })
+  }
+
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing required parameters' })
+  }
+
+  try {
+    const parsedUserId = new mongoose.Types.ObjectId(userId)
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+    const rosters = await Roster.find({
+      userId: parsedUserId,
+      departureTime: { $gte: startOfMonth, $lte: endOfMonth }
+    }).populate('origin destination aircraftType')
+
+    res.json(rosters)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch roster entries for the current month' })
+  }
+}
+
+export const getNext30DaysRoster = async (req: Request, res: Response) => {
+  const { userId } = req.query
+
+  if (typeof userId !== 'string') {
+    return res.status(400).json({ error: 'Invalid query parameters' })
+  }
+
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing required parameters' })
+  }
+
+  try {
+    const parsedUserId = new mongoose.Types.ObjectId(userId)
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endOf30Days = new Date(startOfToday.getTime() + 30 * 24 * 60 * 60 * 1000 - 1) // End of the 30th day
+
+    const rosters = await Roster.find({
+      userId: parsedUserId,
+      departureTime: { $gte: startOfToday, $lte: endOf30Days }
+    }).populate('origin destination aircraftType')
+
+    const uniqueDestinations = new Map()
+
+    const uniqueRoster = rosters.filter(roster => {
+      const destinationKey = roster.destination?._id.toString()
+      if (!uniqueDestinations.has(destinationKey)) {
+        uniqueDestinations.set(destinationKey, true)
+        return true
+      }
+      return false
+    })
+
+    res.json(uniqueRoster)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch roster entries for the next 30 days' })
+  }
+}

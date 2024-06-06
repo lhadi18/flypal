@@ -75,13 +75,16 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
         )}
       </View>
       {results.length > 0 && (
-        <ScrollView>
-          {results.map(item => (
-            <TouchableOpacity key={item.value} style={styles.resultItem} onPress={() => handleSelect(item)}>
-              <Text style={styles.itemText}>{item.label}</Text>
-            </TouchableOpacity>
+        <View style={styles.resultsContainer}>
+          {results.map((item, index) => (
+            <View key={item.value}>
+              <TouchableOpacity style={styles.resultItem} onPress={() => handleSelect(item)}>
+                <Text style={styles.itemText}>{item.label}</Text>
+              </TouchableOpacity>
+              {index < results.length - 1 && <View style={styles.separator} />}
+            </View>
           ))}
-        </ScrollView>
+        </View>
       )}
     </View>
   )
@@ -118,12 +121,21 @@ const styles = StyleSheet.create({
   clearButton: {
     marginLeft: 10
   },
+  resultsContainer: {
+    borderWidth: 1,
+    borderColor: '#4386AD',
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    marginTop: 10
+  },
   resultItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#ddd'
+    padding: 15
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#4386AD'
   },
   itemText: {
     fontSize: 16
