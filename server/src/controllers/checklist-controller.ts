@@ -33,26 +33,28 @@ export const createChecklist = async (req: Request, res: Response) => {
 };
 
 // Get all checklists for a user
-export const getChecklists = async (req: Request, res: Response) => {
-  const { userId } = req.params;
-
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ message: 'Invalid User ID' });
-  }
-
-  try {
-    const checklists = await Checklist.find({ userId });
-
-    if (!checklists) {
-      return res.status(404).json({ message: 'No checklists found for this user' });
+export const getChecklist = async (req: Request, res: Response) => {
+    const { userId } = req.body // Extract userId from request body
+    console.log('Received userId:', userId);
+    
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid User ID' });
     }
-
-    res.status(200).json(checklists);
-  } catch (error) {
-    console.error('Error fetching checklists:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+  
+    try {
+      const checklists = await Checklist.find({ userId });
+  
+      if (!checklists || checklists.length === 0) {
+        return res.status(404).json({ message: 'No checklists found for this user' });
+      }
+  
+      res.status(200).json(checklists);
+    } catch (error) {
+      console.error('Error fetching checklists:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  };
+  
 
 // Delete a checklist
 export const deleteChecklist = async (req: Request, res: Response) => {

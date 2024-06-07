@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, Modal } from 'react-native'
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { faPlus } from '@fortawesome/free-solid-svg-icons'
@@ -18,6 +18,7 @@ const Checklists = () => {
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false)
   const [newItemText, setNewItemText] = useState('')
   const [checklistItemOptions, setChecklistItemOptions] = useState([])
+  const [checklists, setChecklists] = useState([]);
 
   const handleOpenForm = () => {
     setIsFormOpen(true)
@@ -86,14 +87,32 @@ const Checklists = () => {
       items: checklistItemOptions
     }
     try {
-      const response = await axios.post('https://2778-183-171-133-92.ngrok-free.app/api/checklists', checklistData)
+      const response = await axios.post('https://c889-183-171-129-177.ngrok-free.app/api/checklist/createChecklist', checklistData)
       console.log('Checklist created:', response.data)
-      // Reset form fields after successful creation
       handleCloseForm()
     } catch (error) {
       console.error('Error saving event:', error)
+      console.log(checklistData)
     }
   }
+
+  const fetchChecklists = async () => {
+    try {
+        const userId = await SecureStore.getItemAsync('userId');
+        const response = await axios.get(`https://c889-183-171-129-177.ngrok-free.app/api/checklist/getChecklist`, {
+          data: {
+            userId
+          }
+        });
+        setChecklists(response.data);
+    } catch (error) {
+        console.error('Error fetching checklists:', error);
+    }
+};
+
+useEffect(() => {
+  fetchChecklists();
+}, [checklists]);
 
   return (
     <View style={styles.container}>
@@ -101,33 +120,90 @@ const Checklists = () => {
       <TouchableOpacity style={styles.button} onPress={handleOpenForm}>
         <FontAwesomeIcon icon={faPlus} size={32} color="#fff" />
       </TouchableOpacity>
-      {isFormOpen && (
-        <CreateItemChecklistForm
-          newItem={newItem}
-          onItemChange={handleItemChange}
-          flightRoute={flightRoute}
-          onFlightRouteChange={handleFlightRouteChange}
-          travelDate={travelDate}
-          onTravelDateChange={handleTravelDateChange}
-          showDatePicker={showDatePicker}
-          displayDatePicker={displayDatePicker}
-          hideDatePicker={hideDatePicker}
-          isDatePickerVisible={isDatePickerVisible}
-          setChecklistItemOptions={setChecklistItemOptions}
-          setShowDatePicker={setShowDatePicker}
-          handleConfirm={handleConfirm}
-          newItemText={newItemText}
-          setNewItemText={setNewItemText}
-          checklistItemOptions={checklistItemOptions}
-          onAddChecklistItem={handleAddChecklistItem}
-          onRemoveChecklistItem={handleRemoveChecklistItem}
-          leftColumnItems={leftColumnItems}
-          rightColumnItems={rightColumnItems}
-          isLimitReached={isLimitReached}
-          onClose={handleCloseForm}
-          onCreate={handleCreateChecklist}
-        />
-      )}
+      <Modal
+        visible={isFormOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseForm}
+      >
+        <View style={styles.modalContainer}>
+          {isFormOpen && (
+            <CreateItemChecklistForm
+              newItem={newItem}
+              onItemChange={handleItemChange}
+              flightRoute={flightRoute}
+              onFlightRouteChange={handleFlightRouteChange}
+              travelDate={travelDate}
+              onTravelDateChange={handleTravelDateChange}
+              showDatePicker={showDatePicker}
+              displayDatePicker={displayDatePicker}
+              hideDatePicker={hideDatePicker}
+              isDatePickerVisible={isDatePickerVisible}
+              setShowDatePicker={setShowDatePicker}
+              handleConfirm={handleConfirm}
+              newItemText={newItemText}
+              setNewItemText={setNewItemText}
+              onAddChecklistItem={handleAddChecklistItem}
+              onRemoveChecklistItem={handleRemoveChecklistItem}
+              leftColumnItems={leftColumnItems}
+              rightColumnItems={rightColumnItems}
+              isLimitReached={isLimitReached}
+              onClose={handleCloseForm}
+              onCreate={handleCreateChecklist}
+            />
+          )}
+          </View>
+      </Modal>
+      {checklists.map((checklist, index) => (
+        <View key={index} style={formStyles.box}>
+          <View style={styles.rowBox}>
+            <View style={styles.itemInfo}>
+              <Text style={styles.headerDetails}>{checklist.title}</Text>
+            </View>
+          </View>
+          <View>
+            <View style={styles.rowBox}>
+              <View style={styles.columnBox}>
+                <View>
+                  <Text style={styles.headerInfo}>Flight Route</Text>
+                </View>
+                <View>
+                  <Text style={styles.headerDetails}>{checklist.flightRoute}</Text>
+                </View>
+              </View>
+              <View style={styles.columnBox}>
+                <View>
+                  <Text style={styles.headerInfo}>Travel Date</Text>
+                </View>
+                <View>
+                  <Text style={styles.headerDetails}>{checklist.travelDate}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          <View>
+            <Text style={formStyles.checklistTitle}>Item List</Text>
+            <View style={{ flexDirection: 'row' }}>
+              <View style={{ flex: 1 }}>
+                {checklist.items.slice(0, 10).map((item, itemIndex) => (
+                  <View key={itemIndex} style={formStyles.checklistItem}>
+                    <Text style={formStyles.checklistItemNumber}>{itemIndex + 1}.</Text>
+                    <Text style={formStyles.checklistItemText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={{ flex: 1 }}>
+                {checklist.items.slice(10).map((item, itemIndex) => (
+                  <View key={itemIndex + 10} style={formStyles.checklistItem}>
+                    <Text style={formStyles.checklistItemNumber}>{itemIndex + 11}.</Text>
+                    <Text style={formStyles.checklistItemText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+      ))}
     </View>
   )
 }
@@ -138,17 +214,12 @@ const CreateItemChecklistForm = ({
   flightRoute,
   onFlightRouteChange,
   travelDate,
-  onTravelDateChange,
-  showDatePicker,
-  setShowDatePicker,
   displayDatePicker,
   hideDatePicker,
   isDatePickerVisible,
   handleConfirm,
   newItemText,
   setNewItemText,
-  setChecklistItemOptions,
-  checklistItemOptions,
   onAddChecklistItem,
   onRemoveChecklistItem,
   leftColumnItems,
@@ -175,7 +246,7 @@ const CreateItemChecklistForm = ({
           />
           <Ionicons name="pencil" size={18} color="#000" />
         </View>
-        <View style={formStyles.inputDetails}>
+        <View style={formStyles.inputBox}>
           <TextInput
             style={formStyles.details}
             placeholder="Enter flight route..."
@@ -185,7 +256,7 @@ const CreateItemChecklistForm = ({
           />
           <Ionicons name="pencil" size={18} color="#000" />
         </View>
-        <View style={formStyles.inputDetails}>
+        <View style={formStyles.inputBox}>
           <TouchableOpacity onPress={displayDatePicker} style={formStyles.details}>
             <Text style={[formStyles.dateText, travelDate ? {} : { color: 'grey' }]}>
               {travelDate ? `${getLocalTime(travelDate)}` : 'Select travel date   '}
@@ -200,7 +271,7 @@ const CreateItemChecklistForm = ({
           <Ionicons name="pencil" size={18} color="#000" />
         </View>
         <View>
-          <Text style={formStyles.checklistTitle}>Essential</Text>
+          <Text style={formStyles.checklistTitle}>Item List</Text>
           <View style={{ flexDirection: 'row' }}>
             <View style={{ flex: 1 }}>
               {leftColumnItems.map((option, index) => (
@@ -213,7 +284,7 @@ const CreateItemChecklistForm = ({
                 </View>
               ))}
               {!isLimitReached && leftColumnItems.length < 10 && (
-                <View style={formStyles.inputDetails}>
+                <View style={formStyles.inputBox}>
                   <Ionicons name="add-circle" size={18} color="grey" />
                   <TextInput
                     style={[formStyles.input, { fontStyle: 'normal' }]}
@@ -240,7 +311,7 @@ const CreateItemChecklistForm = ({
                 </View>
               ))}
               {!isLimitReached && rightColumnItems.length < 10 && leftColumnItems.length === 10 && (
-                <View style={formStyles.inputDetails}>
+                <View style={formStyles.inputBox}>
                   <Ionicons name="add-circle" size={18} color="grey" />
                   <TextInput
                     style={[formStyles.input, { fontStyle: 'normal' }]}
@@ -292,6 +363,32 @@ const styles = StyleSheet.create({
     bottom: 30,
     right: 30,
     elevation: 5
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  itemInfo: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#5F5F5F',
+  },
+  rowBox: {
+    flex: 1, 
+    flexDirection: 'row',
+    marginBottom: 10
+  },
+  columnBox: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  headerInfo: {
+    color: '#2F80ED',
+    fontSize: 12,
+  },
+  headerDetails: {
+    fontWeight: 600
   }
 })
 
@@ -325,7 +422,8 @@ const formStyles = StyleSheet.create({
     paddingBottom: 3,
     borderBottomWidth: 1,
     borderBottomColor: '#5F5F5F',
-    fontSize: 12
+    fontSize: 12,
+    alignItems: 'stretch'
   },
   details: {
     marginBottom: 10,
@@ -336,14 +434,6 @@ const formStyles = StyleSheet.create({
   },
   inputBox: {
     flexDirection: 'row',
-    alignItems: 'stretch'
-  },
-  inputDetails: {
-    flexDirection: 'row',
-    alignItems: 'stretch'
-  },
-  inputContainer: {
-    flexDirection: 'column',
     alignItems: 'stretch'
   },
   input: {
@@ -381,7 +471,7 @@ const formStyles = StyleSheet.create({
   },
   checklistTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: 600,
     marginBottom: 5,
     color: '#6A6A6A'
   },
