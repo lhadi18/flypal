@@ -42,9 +42,11 @@
 //   console.log(`HTTPS Server running on port ${PORT}`)
 // })
 
+import diningRoutes from './routes/dining-recommendation-routes'
 import aircraftRoutes from './routes/aircraft-routes'
 import airportRoutes from './routes/airport-routes'
 import rosterRoutes from './routes/roster-routes'
+import placesRoutes from './routes/places-routes'
 import eventRoutes from './routes/event-routes'
 import userRoutes from './routes/user-routes'
 import connectDB from './config'
@@ -65,6 +67,8 @@ app.use('/api/aircraft', aircraftRoutes)
 app.use('/api/airport', airportRoutes)
 app.use('/api/roster', rosterRoutes)
 app.use('/api/events', eventRoutes)
+app.use('/api/places', placesRoutes)
+app.use('/api/dining', diningRoutes)
 
 const PORT = process.env.PORT || 9000
 

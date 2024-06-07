@@ -10,7 +10,15 @@ const RootLayout = () => {
       <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: 'Back' }}></Stack.Screen>
       <Stack.Screen
         name="destinations"
-        options={{ headerTitle: 'Destination Information', headerShown: true, headerBackTitle: 'Back' }}
+        options={{
+          headerTitle: 'Destination Information',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: 'white',
+          headerStyle: {
+            backgroundColor: '#045D91' // Replace with your desired color
+          }
+        }}
       ></Stack.Screen>
     </Stack>
   )

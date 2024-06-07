@@ -8,7 +8,8 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert
+  Alert,
+  ActivityIndicator // Import ActivityIndicator
 } from 'react-native'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
@@ -44,6 +45,7 @@ const Roster = () => {
   const [editMode, setEditMode] = useState(false)
   const [editEventId, setEditEventId] = useState(null)
   const [markedDates, setMarkedDates] = useState({})
+  const [loading, setLoading] = useState(false) // Add loading state
 
   const originRef = useRef(null)
   const destinationRef = useRef(null)
@@ -104,13 +106,16 @@ const Roster = () => {
     const end = moment(startDate).add(4, 'months').endOf('day')
 
     try {
-      const response = await axios.get('https://b113-103-18-0-17.ngrok-free.app/api/roster/getRosterEntries', {
-        params: {
-          userId,
-          startDate: start.toISOString(),
-          endDate: end.toISOString()
+      const response = await axios.get(
+        'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/getRosterEntries',
+        {
+          params: {
+            userId,
+            startDate: start.toISOString(),
+            endDate: end.toISOString()
+          }
         }
-      })
+      )
       const rosterEntries = response.data.reduce((acc, entry) => {
         const date = moment(entry.departureTime).format('YYYY-MM-DD')
         if (!acc[date]) acc[date] = []
@@ -183,7 +188,9 @@ const Roster = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://b113-103-18-0-17.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`)
+              await axios.delete(
+                `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`
+              )
               const today = getCurrentDate()
               await fetchRosterEntries(today) // Refresh the entries
             } catch (error) {
@@ -280,6 +287,8 @@ const Roster = () => {
       return
     }
 
+    setLoading(true) // Start loading
+
     const userId = await SecureStore.getItemAsync('userId')
     const newEvent = {
       userId,
@@ -296,10 +305,16 @@ const Roster = () => {
     try {
       if (editMode) {
         // Update existing event
-        await axios.put(`https://b113-103-18-0-17.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`, newEvent)
+        await axios.put(
+          `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
+          newEvent
+        )
       } else {
         // Create new event
-        await axios.post('https://b113-103-18-0-17.ngrok-free.app/api/roster/createRosterEntry', newEvent)
+        await axios.post(
+          'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/createRosterEntry',
+          newEvent
+        )
       }
 
       clearInputs()
@@ -310,6 +325,8 @@ const Roster = () => {
       await fetchRosterEntries(today) // Fetch entries from 4 months ahead and 4 months behind
     } catch (error) {
       console.error('Error saving event:', error)
+    } finally {
+      setLoading(false) // Stop loading
     }
   }
 
@@ -633,8 +650,16 @@ const Roster = () => {
               >
                 <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.addButton]} onPress={handleAddEvent}>
-                <Text style={styles.buttonText}>{editMode ? 'Update' : 'Add'}</Text>
+              <TouchableOpacity
+                style={[styles.button, styles.addButton]}
+                onPress={handleAddEvent}
+                disabled={loading} // Disable button when loading
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" /> // Show spinner when loading
+                ) : (
+                  <Text style={styles.buttonText}>{editMode ? 'Update' : 'Add'}</Text>
+                )}
               </TouchableOpacity>
             </View>
           </ScrollView>

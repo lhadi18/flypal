@@ -1,8 +1,9 @@
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Linking, ActivityIndicator } from 'react-native'
-import { googleMaps } from '../../constants/icons'
 import { useGlobalStore } from '../../store/store'
 import React, { useState, useEffect } from 'react'
+import { FontAwesome } from '@expo/vector-icons'
 import { Ionicons } from '@expo/vector-icons'
+import icons from '@/constants/icons'
 
 const Events = () => {
   const selectedAirport = useGlobalStore(state => state.selectedAirport)
@@ -542,6 +543,9 @@ const Events = () => {
 
   const renderEventItem = ({ item }) => (
     <View style={styles.eventCard}>
+      <TouchableOpacity onPress={() => toggleBookmark(item.title)} style={styles.bookmarkButton}>
+        <Image source={item.bookmarked ? icons.bookmarkFilled : icons.bookmarkOutline} style={styles.bookmarkIcon} />
+      </TouchableOpacity>
       <View style={styles.eventHeader}>
         <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
         <View style={styles.eventHeaderText}>
@@ -555,11 +559,9 @@ const Events = () => {
         <TouchableOpacity onPress={() => Linking.openURL(item.link)} style={styles.actionButton}>
           <Text style={styles.actionText}>More Info</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => openMaps(item.event_location_map.link)} style={styles.actionButton}>
-          <Image source={googleMaps} style={styles.icon} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => toggleBookmark(item.title)} style={styles.actionButton}>
-          <Ionicons name={item.bookmarked ? 'md-bookmark' : 'md-bookmark-outline'} size={24} color="white" />
+        <TouchableOpacity onPress={() => openMaps(item.event_location_map.link)} style={styles.mapsButton}>
+          <FontAwesome name="map-marker" size={20} color="#FFF" />
+          <Text style={styles.mapsButtonText}>Maps</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -639,7 +641,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 }
+    shadowOffset: { width: 0, height: 2 },
+    position: 'relative' // Needed for positioning the bookmark button
   },
   eventHeader: {
     flexDirection: 'row',
@@ -701,6 +704,28 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     resizeMode: 'contain'
+  },
+  mapsButton: {
+    backgroundColor: '#4386AD',
+    padding: 10,
+    borderRadius: 5,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  mapsButtonText: {
+    color: '#FFF',
+    marginLeft: 5,
+    fontWeight: 'bold'
+  },
+  bookmarkButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 1
+  },
+  bookmarkIcon: {
+    width: 24,
+    height: 24
   }
 })
 

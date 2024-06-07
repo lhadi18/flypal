@@ -28,9 +28,12 @@ const Destination = () => {
           return
         }
 
-        const response = await axios.get('https://b113-103-18-0-17.ngrok-free.app/api/roster/getNext30DaysRoster', {
-          params: { userId }
-        })
+        const response = await axios.get(
+          'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/getNext30DaysRoster',
+          {
+            params: { userId }
+          }
+        )
         setRoster(response.data)
       } catch (error) {
         console.error(error)
@@ -45,12 +48,30 @@ const Destination = () => {
       <ScrollView contentContainerStyle={styles.container}>
         <AirportSearch placeholder="Search for Airports" onSelect={handleSelectAirport} />
         <Text style={styles.journeyHeader}>Journey Ahead: Your next stops</Text>
+        <TouchableOpacity style={styles.button} onPress={() => router.push('my-bookmarks')}>
+          <View style={styles.buttonTextContainer}>
+            <AntDesign name="book" size={16} color="#4386AD" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>My Bookmarks</Text>
+          </View>
+          <AntDesign name="right" size={16} color="#4386AD" style={styles.arrowIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={() => router.push('my-recommendations')}>
+          <View style={styles.buttonTextContainer}>
+            <AntDesign name="staro" size={16} color="#4386AD" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>My Recommendations</Text>
+          </View>
+          <AntDesign name="right" size={16} color="#4386AD" style={styles.arrowIcon} />
+        </TouchableOpacity>
         {roster.length > 0 ? (
           <View style={styles.rosterContainer}>
             {roster.map((item, index) => (
               <TouchableOpacity
                 key={index}
-                style={[styles.rosterItem, index === 0 && styles.firstRosterItem]}
+                style={[
+                  styles.rosterItem,
+                  index === 0 && styles.firstRosterItem,
+                  index === roster.length - 1 && styles.lastRosterItem
+                ]}
                 onPress={() => handleSelectAirport(item.destination)}
               >
                 <View style={styles.rosterTextContainer}>
@@ -112,7 +133,12 @@ const styles = StyleSheet.create({
     borderColor: '#4386AD',
     borderWidth: 1,
     borderRadius: 10,
-    padding: 10
+    padding: 10,
+    shadowColor: '#000', // Add shadow color
+    shadowOffset: { width: 0, height: 2 }, // Add shadow offset
+    shadowOpacity: 0.2, // Add shadow opacity
+    shadowRadius: 4, // Add shadow radius
+    elevation: 3 // Add elevation for Android shadow
   },
   rosterList: {
     marginTop: 20
@@ -128,6 +154,9 @@ const styles = StyleSheet.create({
   firstRosterItem: {
     paddingTop: 10,
     paddingBottom: 15
+  },
+  lastRosterItem: {
+    borderBottomWidth: 0 // Remove the line for the last item
   },
   rosterTextContainer: {
     flex: 1,
@@ -156,6 +185,36 @@ const styles = StyleSheet.create({
   noDestinationsText: {
     fontSize: 16,
     color: '#666'
+  },
+  button: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderColor: '#4386AD',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    marginTop: 20, // Reduced margin to decrease distance between buttons
+    shadowColor: '#000', // Add shadow color
+    shadowOffset: { width: 0, height: 2 }, // Add shadow offset
+    shadowOpacity: 0.2, // Add shadow opacity
+    shadowRadius: 4, // Add shadow radius
+    elevation: 3 // Add elevation for Android shadow
+  },
+  buttonTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center', // Align text and icon
+    marginRight: 10 // Ensure some space between text and arrow
+  },
+  buttonIcon: {
+    marginRight: 10 // Space between icon and text
+  },
+  buttonText: {
+    fontSize: 16,
+    color: 'black'
   }
 })
 
