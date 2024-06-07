@@ -99,6 +99,7 @@ const Checklists = () => {
   const fetchChecklists = async () => {
     try {
         const userId = await SecureStore.getItemAsync('userId');
+        console.log(userId)
         const response = await axios.get(`https://c889-183-171-129-177.ngrok-free.app/api/checklist/getChecklist`, {
           data: {
             userId
