@@ -14,7 +14,7 @@ import {
   TouchableWithoutFeedback
 } from 'react-native'
 import { fetchUserRecommendations, deleteRecommendation, updateRecommendation } from '../../services/destination-api'
-import InteractableStarRating from '@/components/interactable-star-rating' // Importing the InteractableStarRating component
+import InteractableStarRating from '@/components/interactable-star-rating'
 import RecommendationCard from '@/components/recommendation-card'
 import React, { useState, useEffect, useRef } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'

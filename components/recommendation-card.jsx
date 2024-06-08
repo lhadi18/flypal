@@ -1,16 +1,10 @@
 import { StyleSheet, Text, View, Image, TouchableOpacity, Modal } from 'react-native'
 import NonInteractableStarRating from '@/components/noninteractable-star-rating'
-import { Ionicons } from '@expo/vector-icons' // Added Ionicons for the delete button
+import { Ionicons } from '@expo/vector-icons'
 import React, { useState } from 'react'
 import icons from '@/constants/icons'
 
-const RecommendationCard = ({
-  recommendation,
-  openImageModal,
-  handleLike,
-  handleDelete,
-  handleEdit // Added handleEdit prop
-}) => {
+const RecommendationCard = ({ recommendation, openImageModal, handleLike, handleDelete, handleEdit }) => {
   const [isImageModalVisible, setImageModalVisible] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
 
@@ -34,7 +28,7 @@ const RecommendationCard = ({
           <Ionicons name="trash-outline" size={24} color="red" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.editButton} onPress={() => handleEdit(recommendation)}>
-          <Ionicons name="pencil-outline" size={24} color="blue" />
+          <Ionicons name="pencil-outline" size={24} color="#045D91" />
         </TouchableOpacity>
         <Text style={styles.restaurantName}>{recommendation.restaurantName}</Text>
         <Text style={styles.address}>{recommendation.location}</Text>

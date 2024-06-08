@@ -5,7 +5,6 @@ import { bucket } from '../services/gcs'
 import { v4 as uuidv4 } from 'uuid'
 import { Multer } from 'multer'
 
-// Extend the Request type to include file
 interface CustomRequest extends Request {
   file?: Express.Multer.File
 }
@@ -113,7 +112,7 @@ export const likeRecommendation = async (req: Request, res: Response) => {
 
     await recommendation.save()
 
-    const populatedRecommendation = await DiningRecommendation.findById(id).populate('user').lean() // Use lean to get a plain JS object
+    const populatedRecommendation = await DiningRecommendation.findById(id).populate('user').lean()
 
     if (!populatedRecommendation) {
       return res.status(404).json({ error: 'Failed to retrieve updated recommendation' })
@@ -138,7 +137,7 @@ export const deleteRecommendation = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Recommendation not found' })
     }
 
-    // Optionally, you can also delete the associated image from Google Cloud Storage if required
+    // Delete from Google Cloud Storage
     if (recommendation.imageUrl) {
       const fileName = recommendation.imageUrl.split('/').pop()
       if (fileName) {

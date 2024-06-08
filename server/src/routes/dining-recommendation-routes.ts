@@ -17,6 +17,5 @@ router.get('/crew-picks/:airportId', getCrewPicks)
 router.post('/crew-picks/:id/like', likeRecommendation)
 router.get('/user-recommendations/:userId', getUserRecommendations)
 router.delete('/recommendation/:id', deleteRecommendation)
-router.put('/recommendation/:id', upload.single('image'), updateDiningRecommendation) // New route for updating recommendation
-
+router.put('/recommendation/:id', upload.single('image'), updateDiningRecommendation)
 export default router

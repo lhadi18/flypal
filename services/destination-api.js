@@ -9,7 +9,7 @@ export const fetchNearbyPlaces = async (latitude, longitude) => {
       params: {
         latitude,
         longitude,
-        radius: 7500, // 5 km radius
+        radius: 7500,
         type: 'cafe'
       }
     })
@@ -32,8 +32,8 @@ export const saveRecommendation = async data => {
   if (data.image) {
     formData.append('image', {
       uri: data.image,
-      type: 'image/jpeg', // or the appropriate image type
-      name: 'photo.jpg' // or the appropriate image name
+      type: 'image/jpeg',
+      name: 'photo.jpg'
     })
   }
 
@@ -96,8 +96,8 @@ export const updateRecommendation = async data => {
   if (data.image) {
     formData.append('image', {
       uri: data.image,
-      type: 'image/jpeg', // or the appropriate image type
-      name: 'photo.jpg' // or the appropriate image name
+      type: 'image/jpeg',
+      name: 'photo.jpg'
     })
   }
 
