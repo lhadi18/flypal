@@ -51,7 +51,6 @@ export const validateUserId = async userId => {
         userId: userId
       }
     })
-    console.log(4)
     console.log(response.data)
     return response.data
   } catch (error) {
