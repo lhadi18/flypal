@@ -244,14 +244,18 @@ const Roster = () => {
             To: {item.destination.name} ({item.destination.city}, {item.destination.country})
           </Text>
         </View>
-        <View style={styles.eventRow}>
-          <Ionicons name="airplane-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>Aircraft: {item.aircraftType.Model}</Text>
-        </View>
-        <View style={styles.eventRow}>
-          <Ionicons name="clipboard-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>Notes: {item.notes}</Text>
-        </View>
+        {item.aircraftType && (
+          <View style={styles.eventRow}>
+            <Ionicons name="airplane-outline" size={18} color="#045D91" />
+            <Text style={styles.eventText}>Aircraft: {item.aircraftType.Model}</Text>
+          </View>
+        )}
+        {item.notes && (
+          <View style={styles.eventRow}>
+            <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+            <Text style={styles.eventText}>Notes: {item.notes}</Text>
+          </View>
+        )}
       </View>
     </View>
   )
@@ -283,7 +287,7 @@ const Roster = () => {
 
   const handleAddEvent = async () => {
     if (!newEventTitle) {
-      console.error('Event title is required')
+      Alert.alert('Error', 'Event title is required')
       return
     }
 
@@ -298,8 +302,8 @@ const Roster = () => {
       departureTime: newEventDepartureTime,
       arrivalTime: newEventArrivalTime,
       flightNumber: newEventFlightNumber,
-      aircraftType: newEventAircraftType?.value,
-      notes: newEventNotes
+      aircraftType: newEventAircraftType?.value || null, // Handle optional field
+      notes: newEventNotes || '' // Handle optional field
     }
 
     try {
@@ -634,7 +638,7 @@ const Roster = () => {
               />
             </View>
 
-            <Text style={styles.label}>Aircraft Type</Text>
+            <Text style={styles.label}>Aircraft Type (Optional)</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <RNPickerSelect
@@ -658,16 +662,17 @@ const Roster = () => {
                   }
                 }}
                 value={newEventAircraftType}
-                placeholder={{ label: 'Select aircraft type', value: null }}
+                placeholder={{ label: 'Select aircraft type (Optional)', value: null }}
                 useNativeAndroidPickerStyle={false} // to use the custom styles on Android
               />
             </View>
-            <Text style={styles.label}>Notes</Text>
+
+            <Text style={styles.label}>Notes (Optional)</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="clipboard-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Notes"
+                placeholder="Notes (Optional)"
                 placeholderTextColor={'grey'}
                 value={newEventNotes}
                 onChangeText={setNewEventNotes}
