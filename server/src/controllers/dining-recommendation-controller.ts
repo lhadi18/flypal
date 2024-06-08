@@ -80,7 +80,6 @@ export const getCrewPicks = async (req: Request, res: Response) => {
 
 export const getUserRecommendations = async (req: Request, res: Response) => {
   const { userId } = req.params
-  console.log(userId)
   try {
     const userRecommendations = await DiningRecommendation.find({ user: userId }).populate('user', 'firstName lastName')
     res.status(200).json(userRecommendations)

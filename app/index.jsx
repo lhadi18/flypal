@@ -23,7 +23,6 @@ const App = () => {
         if (userId) {
           // Optionally validate the userId if necessary
           const isValid = await validateUserId(userId)
-          console.log(isValid)
           if (isValid) {
             router.push('/roster')
           }

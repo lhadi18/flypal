@@ -8,7 +8,6 @@ const API_KEY = process.env.SERP_API_KEY
 
 export const fetchEvents = async (city: string, country: string) => {
   const query = `Events+in+${city}`
-  console.log(API_KEY)
   try {
     const response = await axios.get('https://serpapi.com/search.json', {
       params: {
