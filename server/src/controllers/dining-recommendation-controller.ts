@@ -44,7 +44,7 @@ export const addDiningRecommendation = async (req: CustomRequest, res: Response)
     }
 
     if (req.file) {
-      const blob = bucket.file(`${uuidv4()}_${req.file.originalname}`)
+      const blob = bucket.file(`dining-recommendation-images/${uuidv4()}_${req.file.originalname}`)
       const blobStream = blob.createWriteStream({
         resumable: false,
         contentType: req.file.mimetype
