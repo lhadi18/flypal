@@ -298,7 +298,7 @@ const Roster = () => {
       departureTime: newEventDepartureTime,
       arrivalTime: newEventArrivalTime,
       flightNumber: newEventFlightNumber,
-      aircraftType: newEventAircraftType,
+      aircraftType: newEventAircraftType?.value,
       notes: newEventNotes
     }
 
@@ -344,8 +344,40 @@ const Roster = () => {
     let result = await DocumentPicker.getDocumentAsync({
       type: ['application/pdf', 'text/csv']
     })
-    if (result.type === 'success') {
-      setDocument(result)
+    if (result.assets && result.assets.length > 0) {
+      const file = result.assets[0]
+      uploadFile(file)
+    }
+  }
+
+  const uploadFile = async file => {
+    setLoading(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType
+      })
+
+      const response = await axios.post(
+        'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/pdf/upload',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      )
+
+      console.log('File uploaded successfully:', response.data)
+      Alert.alert('Success', 'File uploaded successfully')
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      Alert.alert('Error', 'Error uploading file')
+    } finally {
+      setLoading(false)
     }
   }
 

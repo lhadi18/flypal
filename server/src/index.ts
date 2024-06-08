@@ -6,6 +6,7 @@ import rosterRoutes from './routes/roster-routes'
 import placesRoutes from './routes/places-routes'
 import eventRoutes from './routes/event-routes'
 import userRoutes from './routes/user-routes'
+import pdfRoutes from './routes/pdf-routes'
 import connectDB from './config'
 import express from 'express'
 import dotenv from 'dotenv'
@@ -27,6 +28,7 @@ app.use('/api/events', eventRoutes)
 app.use('/api/places', placesRoutes)
 app.use('/api/dining', diningRoutes)
 app.use('/api/airline', airlineRoutes)
+app.use('/api/pdf', pdfRoutes)
 
 const PORT = process.env.PORT || 9000
 
