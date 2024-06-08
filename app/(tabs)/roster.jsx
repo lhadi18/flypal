@@ -267,11 +267,11 @@ const Roster = () => {
     })
     setNewEventDestination({
       value: event.destination._id,
-      label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.origin.name}`,
+      label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.destination.name}`,
       timezone: event.destination.tz_database
     })
-    setNewEventDepartureTime(event.departureTime)
-    setNewEventArrivalTime(event.arrivalTime)
+    setNewEventDepartureTime(formatTimeWithGMT(event.departureTime, event.origin.tz_database))
+    setNewEventArrivalTime(formatTimeWithGMT(event.arrivalTime, event.destination.tz_database))
     setNewEventFlightNumber(event.flightNumber)
     setNewEventAircraftType({
       value: event.aircraftType._id,
@@ -387,13 +387,14 @@ const Roster = () => {
       return
     }
 
+    // Set picked time to the origin's timezone
     const originTimezone = newEventOrigin.timezone
-    const formattedDepartureDate = moment(date).tz(originTimezone).format('YYYY-MM-DDTHH:mm:ssZ')
+    const formattedDepartureDate = moment(date).tz(originTimezone).format()
 
     if (newEventArrivalTime) {
-      const formattedArrivalDate = moment(newEventArrivalTime).format('YYYY-MM-DDTHH:mm:ssZ')
+      const arrivalDateTime = moment(newEventArrivalTime).tz(newEventDestination.timezone)
 
-      if (moment(formattedDepartureDate).isAfter(moment(formattedArrivalDate))) {
+      if (moment(date).isAfter(arrivalDateTime)) {
         Alert.alert('Error', 'Departure time cannot be later than the arrival time.')
         return
       }
@@ -409,13 +410,14 @@ const Roster = () => {
       return
     }
 
+    // Set picked time to the destination's timezone
     const destinationTimezone = newEventDestination.timezone
-    const formattedArrivalDate = moment(date).tz(destinationTimezone).format('YYYY-MM-DDTHH:mm:ssZ')
+    const formattedArrivalDate = moment(date).tz(destinationTimezone).format()
 
     if (newEventDepartureTime) {
-      const formattedDepartureDate = moment(newEventDepartureTime).format('YYYY-MM-DDTHH:mm:ssZ')
+      const departureDateTime = moment(newEventDepartureTime).tz(newEventOrigin.timezone)
 
-      if (moment(formattedArrivalDate).isBefore(moment(formattedDepartureDate))) {
+      if (moment(date).isBefore(departureDateTime)) {
         Alert.alert('Error', 'Arrival time cannot be earlier than the departure time.')
         return
       }
@@ -423,6 +425,13 @@ const Roster = () => {
 
     setNewEventArrivalTime(formattedArrivalDate)
     setArrivalPickerVisible(false)
+  }
+
+  // Displaying the times with GMT offset
+  const formatTimeWithGMT = (timeString, timezone) => {
+    const localTime = moment.tz(timeString, timezone).format('DD/MM/YYYY HH:mm')
+    const gmtOffset = moment.tz(timeString, timezone).format('Z')
+    return `${localTime} GMT${gmtOffset}`
   }
 
   const clearInputs = () => {
@@ -585,9 +594,7 @@ const Roster = () => {
             >
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
-                {newEventDepartureTime
-                  ? `${getLocalTime(newEventDepartureTime, newEventOrigin?.timezone)}`
-                  : 'Select departure time'}
+                {newEventDepartureTime || 'Select departure time'}
               </Text>
             </TouchableOpacity>
             <DateTimePickerModal
@@ -605,9 +612,7 @@ const Roster = () => {
             >
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
-                {newEventArrivalTime
-                  ? `${getLocalTime(newEventArrivalTime, newEventDestination?.timezone)}`
-                  : 'Select arrival time'}
+                {newEventArrivalTime || 'Select arrival time'}
               </Text>
             </TouchableOpacity>
             <DateTimePickerModal
