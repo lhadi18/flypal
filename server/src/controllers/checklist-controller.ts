@@ -34,12 +34,12 @@ export const createChecklist = async (req: Request, res: Response) => {
 
 // Get all checklists for a user
 export const getChecklist = async (req: Request, res: Response) => {
-    const { userId } = req.body // Extract userId from request body
+    const { userId } = req.query 
     console.log('Received userId:', userId);
-    
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+
+    if (typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: 'Invalid User ID' });
-    }
+  }
   
     try {
       const checklists = await Checklist.find({ userId });
@@ -61,7 +61,7 @@ export const deleteChecklist = async (req: Request, res: Response) => {
   const { checklistId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(checklistId)) {
-    return res.status(400).json({ message: 'Invalid Checklist ID' });
+    return res.status(400).json({ error: 'Invalid Checklist ID' })
   }
 
   try {
