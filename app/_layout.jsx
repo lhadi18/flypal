@@ -16,7 +16,19 @@ const RootLayout = () => {
           headerBackTitle: 'Back',
           headerTintColor: 'white',
           headerStyle: {
-            backgroundColor: '#045D91' // Replace with your desired color
+            backgroundColor: '#045D91'
+          }
+        }}
+      ></Stack.Screen>
+      <Stack.Screen
+        name="recommendations"
+        options={{
+          headerTitle: 'My Recommendations',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: 'white',
+          headerStyle: {
+            backgroundColor: '#045D91'
           }
         }}
       ></Stack.Screen>

@@ -55,7 +55,7 @@ const Destination = () => {
           </View>
           <AntDesign name="right" size={16} color="#4386AD" style={styles.arrowIcon} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('my-recommendations')}>
+        <TouchableOpacity style={styles.button} onPress={() => router.push('recommendations/my-recommendation')}>
           <View style={styles.buttonTextContainer}>
             <AntDesign name="staro" size={16} color="#4386AD" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>My Recommendations</Text>
@@ -100,7 +100,7 @@ const Destination = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8f8f8'
+    backgroundColor: 'white'
   },
   container: {
     flexGrow: 1,

@@ -79,6 +79,17 @@ export const getCrewPicks = async (req: Request, res: Response) => {
   }
 }
 
+export const getUserRecommendations = async (req: Request, res: Response) => {
+  const { userId } = req.params
+  console.log(userId)
+  try {
+    const userRecommendations = await DiningRecommendation.find({ user: userId }).populate('user', 'firstName lastName')
+    res.status(200).json(userRecommendations)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch user recommendations' })
+  }
+}
+
 export const likeRecommendation = async (req: Request, res: Response) => {
   const { id } = req.params
   const { userId } = req.body
@@ -114,5 +125,87 @@ export const likeRecommendation = async (req: Request, res: Response) => {
     })
   } catch (error) {
     res.status(500).json({ error: 'Failed to update likes' })
+  }
+}
+
+export const deleteRecommendation = async (req: Request, res: Response) => {
+  const { id } = req.params
+
+  try {
+    const recommendation = await DiningRecommendation.findById(id)
+
+    if (!recommendation) {
+      return res.status(404).json({ error: 'Recommendation not found' })
+    }
+
+    // Optionally, you can also delete the associated image from Google Cloud Storage if required
+    if (recommendation.imageUrl) {
+      const fileName = recommendation.imageUrl.split('/').pop()
+      if (fileName) {
+        const file = bucket.file(`dining-recommendation-images/${fileName}`)
+        if (file) await file.delete()
+      }
+    }
+
+    await DiningRecommendation.deleteOne({ _id: id })
+    res.status(200).json({ message: 'Recommendation deleted successfully' })
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete recommendation' })
+  }
+}
+
+export const updateDiningRecommendation = async (req: CustomRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const { restaurantName, location, review, rating, tags } = req.body
+
+    let parsedTags: string[] = []
+    try {
+      parsedTags = JSON.parse(tags)
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid tags format' })
+    }
+
+    let updatedFields: any = {
+      restaurantName,
+      location,
+      review,
+      rating,
+      tags: parsedTags
+    }
+
+    if (req.file) {
+      const blob = bucket.file(`dining-recommendation-images/${uuidv4()}_${req.file.originalname}`)
+      const blobStream = blob.createWriteStream({
+        resumable: false,
+        contentType: req.file.mimetype
+      })
+
+      blobStream.on('error', (err: any) => {
+        console.error('Blob stream error:', err)
+        res.status(500).json({ message: err.message })
+      })
+
+      blobStream.on('finish', async () => {
+        updatedFields.imageUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+        await updateRecommendation()
+      })
+
+      blobStream.end(req.file.buffer)
+    } else {
+      await updateRecommendation()
+    }
+
+    async function updateRecommendation() {
+      const updatedRecommendation = await DiningRecommendation.findByIdAndUpdate(id, updatedFields, {
+        new: true
+      }).populate('user', 'firstName lastName')
+      if (!updatedRecommendation) {
+        return res.status(404).json({ message: 'Recommendation not found' })
+      }
+      res.status(200).json(updatedRecommendation)
+    }
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
   }
 }

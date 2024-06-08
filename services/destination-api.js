@@ -74,3 +74,49 @@ export const likeRecommendation = async (id, userId) => {
   const response = await axios.post(`${API_URL}/api/dining/crew-picks/${id}/like`, { userId })
   return response.data
 }
+
+export const fetchUserRecommendations = async userId => {
+  const response = await axios.get(`${API_URL}/api/dining/user-recommendations/${userId}`)
+  console.log(response.data)
+  return response.data
+}
+
+export const deleteRecommendation = async id => {
+  await axios.delete(`${API_URL}/api/dining/recommendation/${id}`)
+}
+
+export const updateRecommendation = async data => {
+  const formData = new FormData()
+  formData.append('restaurantName', data.restaurantName)
+  formData.append('location', data.location)
+  formData.append('review', data.review)
+  formData.append('rating', data.rating)
+  formData.append('tags', JSON.stringify(data.tags))
+
+  if (data.image) {
+    formData.append('image', {
+      uri: data.image,
+      type: 'image/jpeg', // or the appropriate image type
+      name: 'photo.jpg' // or the appropriate image name
+    })
+  }
+
+  try {
+    const response = await axios.put(`${API_URL}/api/dining/recommendation/${data._id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
+    if (response.status === 200) {
+      console.log('Dining recommendation updated successfully')
+      return response.data
+    } else {
+      console.error('Failed to update dining recommendation')
+      throw new Error('Failed to update dining recommendation')
+    }
+  } catch (error) {
+    console.error('Error:', error)
+    throw error
+  }
+}
