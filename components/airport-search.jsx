@@ -8,6 +8,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [selectedAirport, setSelectedAirport] = useState(initialValue || null)
+  const [noResults, setNoResults] = useState(false)
 
   useImperativeHandle(ref, () => ({
     clearSelection
@@ -28,9 +29,15 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
           params: { query: searchQuery }
         }
       )
-      setResults(response.data)
+      if (response.data.length === 0) {
+        setNoResults(true)
+      } else {
+        setNoResults(false)
+        setResults(response.data)
+      }
     } catch (error) {
-      console.error('Error fetching airports:', error)
+      // console.error('Error fetching airports:', error)
+      setNoResults(true)
     }
   }
 
@@ -42,6 +49,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
       debouncedFetchAirports(text)
     } else {
       setResults([])
+      setNoResults(false)
     }
   }
 
@@ -49,6 +57,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
     setSelectedAirport(airport)
     setQuery(airport.label)
     setResults([])
+    setNoResults(false)
     onSelect(airport)
   }
 
@@ -56,6 +65,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
     setSelectedAirport(null)
     setQuery('')
     setResults([])
+    setNoResults(false)
     onSelect(null)
   }
 
@@ -87,6 +97,11 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
               {index < results.length - 1 && <View style={styles.separator} />}
             </View>
           ))}
+        </View>
+      )}
+      {noResults && (
+        <View style={styles.noResultsContainer}>
+          <Text style={styles.noResultsText}>No airports found</Text>
         </View>
       )}
     </View>
@@ -142,6 +157,14 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 16
+  },
+  noResultsContainer: {
+    marginTop: 10,
+    alignItems: 'center'
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: 'grey'
   }
 })
 
