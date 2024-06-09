@@ -294,41 +294,55 @@ const Roster = () => {
     setLoading(true) // Start loading
 
     const userId = await SecureStore.getItemAsync('userId')
+
+    // Ensure date format is correct
+    const formattedDepartureTime = moment(newEventDepartureTime).toISOString()
+    const formattedArrivalTime = moment(newEventArrivalTime).toISOString()
+
     const newEvent = {
       userId,
       type: newEventTitle,
       origin: newEventOrigin?.value,
       destination: newEventDestination?.value,
-      departureTime: newEventDepartureTime,
-      arrivalTime: newEventArrivalTime,
+      departureTime: formattedDepartureTime,
+      arrivalTime: formattedArrivalTime,
       flightNumber: newEventFlightNumber,
       aircraftType: newEventAircraftType?.value || null, // Handle optional field
       notes: newEventNotes || '' // Handle optional field
     }
 
+    console.log('New Event Data:', newEvent) // Log the event data being sent to the backend
+
     try {
+      let response
       if (editMode) {
         // Update existing event
-        await axios.put(
+        response = await axios.put(
           `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
           newEvent
         )
       } else {
         // Create new event
-        await axios.post(
+        response = await axios.post(
           'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/createRosterEntry',
           newEvent
         )
       }
 
-      clearInputs()
-      clearOriginAndDestination()
-      setModalVisible(false)
-      // Fetch roster entries again
-      const today = getCurrentDate()
-      await fetchRosterEntries(today) // Fetch entries from 4 months ahead and 4 months behind
+      if (response.status === 200 || response.status === 201) {
+        clearInputs()
+        clearOriginAndDestination()
+        setModalVisible(false)
+
+        // Fetch roster entries again
+        const today = getCurrentDate()
+        await fetchRosterEntries(today) // Fetch entries from 4 months ahead and 4 months behind
+      } else {
+        Alert.alert('Error', 'Failed to save event. Please try again.')
+      }
     } catch (error) {
       console.error('Error saving event:', error)
+      Alert.alert('Error', 'Error saving event. Please try again.')
     } finally {
       setLoading(false) // Stop loading
     }
