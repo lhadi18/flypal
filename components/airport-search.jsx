@@ -8,6 +8,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [selectedAirport, setSelectedAirport] = useState(initialValue || null)
+  const [noResults, setNoResults] = useState(false)
 
   useImperativeHandle(ref, () => ({
     clearSelection
@@ -22,12 +23,21 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
 
   const fetchAirports = async searchQuery => {
     try {
-      const response = await axios.get(`https://b113-103-18-0-17.ngrok-free.app/api/airport/getAirport`, {
-        params: { query: searchQuery }
-      })
-      setResults(response.data)
+      const response = await axios.get(
+        `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/airport/getAirport`,
+        {
+          params: { query: searchQuery }
+        }
+      )
+      if (response.data.length === 0) {
+        setNoResults(true)
+      } else {
+        setNoResults(false)
+        setResults(response.data)
+      }
     } catch (error) {
-      console.error('Error fetching airports:', error)
+      // console.error('Error fetching airports:', error)
+      setNoResults(true)
     }
   }
 
@@ -39,6 +49,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
       debouncedFetchAirports(text)
     } else {
       setResults([])
+      setNoResults(false)
     }
   }
 
@@ -46,6 +57,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
     setSelectedAirport(airport)
     setQuery(airport.label)
     setResults([])
+    setNoResults(false)
     onSelect(airport)
   }
 
@@ -53,6 +65,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
     setSelectedAirport(null)
     setQuery('')
     setResults([])
+    setNoResults(false)
     onSelect(null)
   }
 
@@ -75,13 +88,21 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
         )}
       </View>
       {results.length > 0 && (
-        <ScrollView>
-          {results.map(item => (
-            <TouchableOpacity key={item.value} style={styles.resultItem} onPress={() => handleSelect(item)}>
-              <Text style={styles.itemText}>{item.label}</Text>
-            </TouchableOpacity>
+        <View style={styles.resultsContainer}>
+          {results.map((item, index) => (
+            <View key={item.value}>
+              <TouchableOpacity style={styles.resultItem} onPress={() => handleSelect(item)}>
+                <Text style={styles.itemText}>{item.label}</Text>
+              </TouchableOpacity>
+              {index < results.length - 1 && <View style={styles.separator} />}
+            </View>
           ))}
-        </ScrollView>
+        </View>
+      )}
+      {noResults && (
+        <View style={styles.noResultsContainer}>
+          <Text style={styles.noResultsText}>No airports found</Text>
+        </View>
       )}
     </View>
   )
@@ -118,15 +139,32 @@ const styles = StyleSheet.create({
   clearButton: {
     marginLeft: 10
   },
+  resultsContainer: {
+    borderWidth: 1,
+    borderColor: '#4386AD',
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    marginTop: 10
+  },
   resultItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#ddd'
+    padding: 15
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#4386AD'
   },
   itemText: {
     fontSize: 16
+  },
+  noResultsContainer: {
+    marginTop: 10,
+    alignItems: 'center'
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: 'grey'
   }
 })
 

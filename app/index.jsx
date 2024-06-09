@@ -19,16 +19,12 @@ const App = () => {
   useEffect(() => {
     const reAuthenticate = async () => {
       try {
-        console.log(1)
         const userId = await SecureStore.getItemAsync('userId')
-        console.log(2)
-        console.log(userId)
         if (userId) {
           // Optionally validate the userId if necessary
           const isValid = await validateUserId(userId)
-          console.log(isValid)
           if (isValid) {
-            router.replace('/roster')
+            router.push('/roster')
           }
         }
       } catch (error) {

@@ -8,7 +8,8 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert
+  Alert,
+  ActivityIndicator // Import ActivityIndicator
 } from 'react-native'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
@@ -44,6 +45,7 @@ const Roster = () => {
   const [editMode, setEditMode] = useState(false)
   const [editEventId, setEditEventId] = useState(null)
   const [markedDates, setMarkedDates] = useState({})
+  const [loading, setLoading] = useState(false) // Add loading state
 
   const originRef = useRef(null)
   const destinationRef = useRef(null)
@@ -104,13 +106,16 @@ const Roster = () => {
     const end = moment(startDate).add(4, 'months').endOf('day')
 
     try {
-      const response = await axios.get('https://b113-103-18-0-17.ngrok-free.app/api/roster/getRosterEntries', {
-        params: {
-          userId,
-          startDate: start.toISOString(),
-          endDate: end.toISOString()
+      const response = await axios.get(
+        'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/getRosterEntries',
+        {
+          params: {
+            userId,
+            startDate: start.toISOString(),
+            endDate: end.toISOString()
+          }
         }
-      })
+      )
       const rosterEntries = response.data.reduce((acc, entry) => {
         const date = moment(entry.departureTime).format('YYYY-MM-DD')
         if (!acc[date]) acc[date] = []
@@ -183,7 +188,9 @@ const Roster = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://b113-103-18-0-17.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`)
+              await axios.delete(
+                `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`
+              )
               const today = getCurrentDate()
               await fetchRosterEntries(today) // Refresh the entries
             } catch (error) {
@@ -237,14 +244,18 @@ const Roster = () => {
             To: {item.destination.name} ({item.destination.city}, {item.destination.country})
           </Text>
         </View>
-        <View style={styles.eventRow}>
-          <Ionicons name="airplane-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>Aircraft: {item.aircraftType.Model}</Text>
-        </View>
-        <View style={styles.eventRow}>
-          <Ionicons name="clipboard-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>Notes: {item.notes}</Text>
-        </View>
+        {item.aircraftType && (
+          <View style={styles.eventRow}>
+            <Ionicons name="airplane-outline" size={18} color="#045D91" />
+            <Text style={styles.eventText}>Aircraft: {item.aircraftType.Model}</Text>
+          </View>
+        )}
+        {item.notes && (
+          <View style={styles.eventRow}>
+            <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+            <Text style={styles.eventText}>Notes: {item.notes}</Text>
+          </View>
+        )}
       </View>
     </View>
   )
@@ -260,15 +271,15 @@ const Roster = () => {
     })
     setNewEventDestination({
       value: event.destination._id,
-      label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.origin.name}`,
+      label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.destination.name}`,
       timezone: event.destination.tz_database
     })
-    setNewEventDepartureTime(event.departureTime)
-    setNewEventArrivalTime(event.arrivalTime)
+    setNewEventDepartureTime(formatTimeWithGMT(event.departureTime, event.origin.tz_database))
+    setNewEventArrivalTime(formatTimeWithGMT(event.arrivalTime, event.destination.tz_database))
     setNewEventFlightNumber(event.flightNumber)
     setNewEventAircraftType({
-      value: event.aircraftType._id,
-      label: `${event.aircraftType.Model}`
+      value: event.aircraftType,
+      label: `${event.aircraftType}`
     })
     setNewEventNotes(event.notes)
     setModalVisible(true)
@@ -276,9 +287,11 @@ const Roster = () => {
 
   const handleAddEvent = async () => {
     if (!newEventTitle) {
-      console.error('Event title is required')
+      Alert.alert('Error', 'Event title is required')
       return
     }
+
+    setLoading(true) // Start loading
 
     const userId = await SecureStore.getItemAsync('userId')
     const newEvent = {
@@ -289,17 +302,23 @@ const Roster = () => {
       departureTime: newEventDepartureTime,
       arrivalTime: newEventArrivalTime,
       flightNumber: newEventFlightNumber,
-      aircraftType: newEventAircraftType,
-      notes: newEventNotes
+      aircraftType: newEventAircraftType?.value || null, // Handle optional field
+      notes: newEventNotes || '' // Handle optional field
     }
 
     try {
       if (editMode) {
         // Update existing event
-        await axios.put(`https://b113-103-18-0-17.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`, newEvent)
+        await axios.put(
+          `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
+          newEvent
+        )
       } else {
         // Create new event
-        await axios.post('https://b113-103-18-0-17.ngrok-free.app/api/roster/createRosterEntry', newEvent)
+        await axios.post(
+          'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/createRosterEntry',
+          newEvent
+        )
       }
 
       clearInputs()
@@ -310,6 +329,8 @@ const Roster = () => {
       await fetchRosterEntries(today) // Fetch entries from 4 months ahead and 4 months behind
     } catch (error) {
       console.error('Error saving event:', error)
+    } finally {
+      setLoading(false) // Stop loading
     }
   }
 
@@ -327,8 +348,40 @@ const Roster = () => {
     let result = await DocumentPicker.getDocumentAsync({
       type: ['application/pdf', 'text/csv']
     })
-    if (result.type === 'success') {
-      setDocument(result)
+    if (result.assets && result.assets.length > 0) {
+      const file = result.assets[0]
+      uploadFile(file)
+    }
+  }
+
+  const uploadFile = async file => {
+    setLoading(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType
+      })
+
+      const response = await axios.post(
+        'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/pdf/upload',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      )
+
+      console.log('File uploaded successfully:', response.data)
+      Alert.alert('Success', 'File uploaded successfully')
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      Alert.alert('Error', 'Error uploading file')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -338,13 +391,14 @@ const Roster = () => {
       return
     }
 
+    // Set picked time to the origin's timezone
     const originTimezone = newEventOrigin.timezone
-    const formattedDepartureDate = moment(date).tz(originTimezone).format('YYYY-MM-DDTHH:mm:ssZ')
+    const formattedDepartureDate = moment(date).tz(originTimezone).toISOString()
 
     if (newEventArrivalTime) {
-      const formattedArrivalDate = moment(newEventArrivalTime).format('YYYY-MM-DDTHH:mm:ssZ')
+      const arrivalDateTime = moment(newEventArrivalTime).tz(newEventDestination.timezone)
 
-      if (moment(formattedDepartureDate).isAfter(moment(formattedArrivalDate))) {
+      if (moment(date).isAfter(arrivalDateTime)) {
         Alert.alert('Error', 'Departure time cannot be later than the arrival time.')
         return
       }
@@ -360,13 +414,14 @@ const Roster = () => {
       return
     }
 
+    // Set picked time to the destination's timezone
     const destinationTimezone = newEventDestination.timezone
-    const formattedArrivalDate = moment(date).tz(destinationTimezone).format('YYYY-MM-DDTHH:mm:ssZ')
+    const formattedArrivalDate = moment(date).tz(destinationTimezone).toISOString()
 
     if (newEventDepartureTime) {
-      const formattedDepartureDate = moment(newEventDepartureTime).format('YYYY-MM-DDTHH:mm:ssZ')
+      const departureDateTime = moment(newEventDepartureTime).tz(newEventOrigin.timezone)
 
-      if (moment(formattedArrivalDate).isBefore(moment(formattedDepartureDate))) {
+      if (moment(date).isBefore(departureDateTime)) {
         Alert.alert('Error', 'Arrival time cannot be earlier than the departure time.')
         return
       }
@@ -374,6 +429,13 @@ const Roster = () => {
 
     setNewEventArrivalTime(formattedArrivalDate)
     setArrivalPickerVisible(false)
+  }
+
+  // Displaying the times with GMT offset
+  const formatTimeWithGMT = (timeString, timezone) => {
+    const localTime = moment.tz(timeString, timezone).format('DD/MM/YYYY HH:mm')
+    const gmtOffset = moment.tz(timeString, timezone).format('Z')
+    return `${localTime} GMT${gmtOffset}`
   }
 
   const clearInputs = () => {
@@ -536,9 +598,7 @@ const Roster = () => {
             >
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
-                {newEventDepartureTime
-                  ? `${getLocalTime(newEventDepartureTime, newEventOrigin?.timezone)}`
-                  : 'Select departure time'}
+                {newEventDepartureTime || 'Select departure time'}
               </Text>
             </TouchableOpacity>
             <DateTimePickerModal
@@ -556,9 +616,7 @@ const Roster = () => {
             >
               <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
-                {newEventArrivalTime
-                  ? `${getLocalTime(newEventArrivalTime, newEventDestination?.timezone)}`
-                  : 'Select arrival time'}
+                {newEventArrivalTime || 'Select arrival time'}
               </Text>
             </TouchableOpacity>
             <DateTimePickerModal
@@ -580,7 +638,7 @@ const Roster = () => {
               />
             </View>
 
-            <Text style={styles.label}>Aircraft Type</Text>
+            <Text style={styles.label}>Aircraft Type (Optional)</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <RNPickerSelect
@@ -604,16 +662,17 @@ const Roster = () => {
                   }
                 }}
                 value={newEventAircraftType}
-                placeholder={{ label: 'Select aircraft type', value: null }}
+                placeholder={{ label: 'Select aircraft type (Optional)', value: null }}
                 useNativeAndroidPickerStyle={false} // to use the custom styles on Android
               />
             </View>
-            <Text style={styles.label}>Notes</Text>
+
+            <Text style={styles.label}>Notes (Optional)</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="clipboard-outline" size={20} color="#045D91" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Notes"
+                placeholder="Notes (Optional)"
                 placeholderTextColor={'grey'}
                 value={newEventNotes}
                 onChangeText={setNewEventNotes}
@@ -633,8 +692,16 @@ const Roster = () => {
               >
                 <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.addButton]} onPress={handleAddEvent}>
-                <Text style={styles.buttonText}>{editMode ? 'Update' : 'Add'}</Text>
+              <TouchableOpacity
+                style={[styles.button, styles.addButton]}
+                onPress={handleAddEvent}
+                disabled={loading} // Disable button when loading
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" /> // Show spinner when loading
+                ) : (
+                  <Text style={styles.buttonText}>{editMode ? 'Update' : 'Add'}</Text>
+                )}
               </TouchableOpacity>
             </View>
           </ScrollView>
