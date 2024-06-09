@@ -1,15 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator, TextInput } from 'react-native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUser, faBell, faUserGroup, faKey, faTrash, faChevronRight, faChevronLeft } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store'
+import StyledAirportSearch from '@/components/sign-up-airport-search'
+import AirlineSearch from '@/components/sign-up-airline-search'
+import RNPickerSelect from 'react-native-picker-select'
+import { ROLES } from '../../constants/roles'
+import { useRouter } from 'expo-router'
 
 const Settings = () => {
   const [currentScreen, setCurrentScreen] = useState('Settings');
   const [userDetails, setUserDetails] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentUserDetails, setCurrentUserDetails] = useState(null)
+  const [oldPasswordVisible, setOldPasswordVisible] = useState(false)
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [error, setError] = useState('');
+  const router = useRouter()
 
+  const deleteUserAccount = userId => {
+    Alert.alert(
+      'Confirm Delete',
+      'Do you want to delete this account?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Yes',
+          onPress: async () => {
+            try {
+              await axios.delete(`https://57be-103-18-0-20.ngrok-free.app/user/deleteUser/${userId}`)
+              router.push('/sign-in')
+            } catch (error) {
+              console.error('Error deleting checklist:', error)
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    )
+  };
   const renderSettings = () => (
     <View style={styles.container}>
       <View style={styles.header}></View>
@@ -44,14 +82,14 @@ const Settings = () => {
               </View>
               <FontAwesomeIcon icon={faChevronRight} style={styles.iconRight} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={() => setCurrentScreen('ChangePassword')}>
               <View style={styles.buttonContent}>
                 <FontAwesomeIcon icon={faKey} style={styles.icon} />
                 <Text style={styles.textButton}>Change Password</Text>
               </View>
               <FontAwesomeIcon icon={faChevronRight} style={styles.iconRight} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={() => deleteUserAccount(userDetails.userId)}>
               <View style={styles.buttonContent}>
                 <FontAwesomeIcon icon={faTrash} style={styles.iconDelete} />
                 <Text style={styles.deleteButton}>Delete Account</Text>
@@ -69,7 +107,7 @@ const Settings = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId');
       console.log(userId);
-      const response = await axios.get(`https://5e21-183-171-24-71.ngrok-free.app/api/user/getUserDetails`, {
+      const response = await axios.get(`https://57be-103-18-0-20.ngrok-free.app/api/user/getUserId`, {
         params: { 
           userId 
         }
@@ -87,13 +125,67 @@ const Settings = () => {
     fetchUserDetails();
   }, []);
 
+  const handleEditUserDetails = userData => {
+    setCurrentUserDetails(userData)
+  }
+
+  const updateUserDetails = async () => {
+    const userId = await SecureStore.getItemAsync('userId')
+    const updatedUserData = {
+      userId,
+      firstName: currentUserDetails.firstName,
+      lastName: currentUserDetails.lastName,
+      email: currentUserDetails.email,
+      role: currentUserDetails.role,
+      homebase: currentUserDetails.homebase,
+      airline: currentUserDetails.airline
+    }
+    try {
+      const response = await axios.put(`https://57be-103-18-0-20.ngrok-free.app/api/user/updateUserId/${currentUserDetails._id}`, updatedUserData)
+      console.log('User profile updated:', response.data)
+      handleEditUserDetails();
+      setCurrentScreen('UserProfile');
+    } catch (error) {
+      console.error('Error updating checklist:', error)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmNewPassword) {
+      setError('New password and confirm password do not match');
+      return;
+    }
+  
+    setError('');
+    try {
+      await updateUserPassword(oldPassword, newPassword, confirmNewPassword);
+      setCurrentScreen('Settings');
+    } catch (error) {
+      console.error('Error updating password:', error);
+    }
+  };
+
+  const updateUserPassword = async (oldPassword, newPassword, confirmNewPassword) => {
+    const userId = await SecureStore.getItemAsync('userId');
+  
+    const data = {
+      userId,
+      oldPassword,
+      newPassword,
+      confirmNewPassword,
+    };
+  
+    try {
+      const response = await axios.put(`https://57be-103-18-0-20.ngrok-free.app/api/user/updatePassword/${userId}`, data);
+      console.log('Password updated:', response.data);
+    } catch (error) {
+      console.error('Error updating password:', error.response ? error.response.data : error.message);
+    }
+  };
+
   const renderUserProfile = () => (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => setCurrentScreen('Settings')} style={styles.backButton}>
-          <FontAwesomeIcon icon={faChevronLeft} size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+      <View style={styles.header}></View>
       <Image
         style={styles.avatar}
         source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }}
@@ -128,25 +220,28 @@ const Settings = () => {
                 </View>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Rank</Text>
+              <Text style={styles.infoTitle}>Role</Text>
                 <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>Captain</Text>
+                  <Text style={styles.infoValue}>{userDetails?.role || 'N/A'}</Text>
                 </View>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoTitle}>Homebase</Text>
                 <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>KBR - Kota Bharu</Text>
+                  <Text style={styles.infoValue}>{userDetails?.homebase || 'N/A'}</Text>
                 </View>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoTitle}>Airline</Text>
                 <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>Air Asia X</Text>
+                  <Text style={styles.infoValue}>{userDetails?.airline || 'N/A'}</Text>
                 </View>
             </View>
             <View style={styles.buttonEdit}>
-              <TouchableOpacity style={styles.editButton}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentScreen('Settings')}>
+                <Text style={styles.cancelText}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.editButton} onPress={() => setCurrentScreen('EditProfile')}>
                 <Text style={styles.editText}>Edit Profile</Text>
               </TouchableOpacity>
             </View>
@@ -157,15 +252,283 @@ const Settings = () => {
     </ScrollView>
   );
 
+  const renderEditProfile = () => (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity>
+          <FontAwesomeIcon icon={faChevronLeft} size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+      <Image
+        style={styles.avatar}
+        source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }}
+      />
+      <View style={styles.bodyProfile}>
+        <View style={styles.boxProfile}>
+          <View style={styles.headerProfile}>
+            <Text style={styles.headerText}>User Profile</Text>
+          </View>
+          {loading ? (
+            <ActivityIndicator size="large" color="#0000ff" />
+          ) : (
+            <View style={styles.infoContainer}>
+              <View style={styles.infoItem}>
+                <View style={styles.infoColumn}>
+                  <Text style={styles.infoTitle}>First Name</Text>
+                  <View style={styles.infoStyles}>
+                    <TextInput
+                      style={styles.input}
+                      value={currentUserDetails.firstName}
+                      onChangeText={(text) => handleEditUserDetails({ ...currentUserDetails, firstName: text })}
+                    />
+                  </View>
+                </View>
+                <View style={styles.infoColumn}>
+                  <Text style={styles.infoTitle}>Last Name</Text>
+                  <View style={styles.infoStyles}>
+                    <TextInput
+                      style={styles.input}
+                      value={currentUserDetails.lastName}
+                      onChangeText={(text) => handleEditUserDetails({ ...currentUserDetails, lastName: text })}
+                    />
+                  </View>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>E-mail Address</Text>
+                <View style={styles.infoStyles}>
+                  <Text style={styles.infoValue}>{userDetails?.email || 'N/A'}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Role</Text>
+                <View style={styles.infoStyles}>
+                  <RNPickerSelect
+                    onValueChange={(value) => handleEditUserDetails({ ...currentUserDetails, role: value })}
+                    items={ROLES}
+                    style={pickerSelectStyles}
+                    placeholder={{
+                      label: 'Select your role',
+                      value: null,
+                      color: 'grey'
+                    }}
+                    value={currentUserDetails.role}
+                  />
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Homebase</Text>
+                <View style={styles.infoStyles}>
+                  <StyledAirportSearch
+                    placeholder="Enter your homebase"
+                    onSelect={airport => handleEditUserDetails({ ...currentUserDetails, homebase: airport ? airport.id : '' })}
+                    initialValue={currentUserDetails.homebase}
+                  />
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Airline</Text>
+                <View style={styles.infoStyles}>
+                  <AirlineSearch
+                    placeholder="Enter your airline"
+                    onSelect={airline => handleEditUserDetails({ ...currentUserDetails, airline: airline ? airline.id : '' })} // Use airline ID
+                    initialValue={values.airline}
+                  />
+                </View>
+              </View>
+              <View style={styles.buttonEdit}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentScreen('UserProfile')}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.editButton} onPress={updateUserDetails}>
+                  <Text style={styles.editText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  const renderEditPassword = () => (
+    <ScrollView style={styles.container}>
+      <View style={styles.bodyProfile}>
+        <View style={styles.boxProfile}>
+          <View style={styles.headerProfile}>
+            <Text style={styles.headerText}>User Profile</Text>
+          </View>
+          {loading ? (
+            <ActivityIndicator size="large" color="#0000ff" />
+          ) : (
+            <View style={styles.infoContainer}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Old Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.passwordInput, { paddingRight: 40 }]}
+                    placeholder="Enter old password"
+                    placeholderTextColor="grey"
+                    secureTextEntry={!oldPasswordVisible}
+                    value={oldPassword}
+                    onChangeText={setOldPassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.toggleButton}
+                    onPress={() => setOldPasswordVisible(!oldPasswordVisible)}
+                  >
+                    <Image
+                      source={
+                        oldPasswordVisible
+                          ? require('../../assets/icons/pass-show.png')
+                          : require('../../assets/icons/pass-hide.png')
+                      }
+                      style={styles.toggleButtonImage}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>New Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.passwordInput, { paddingRight: 40 }]}
+                    placeholder="Enter new password"
+                    placeholderTextColor="grey"
+                    secureTextEntry={!passwordVisible}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.toggleButton}
+                    onPress={() => passwordVisible(!passwordVisible)}
+                  >
+                    <Image
+                      source={
+                        passwordVisible
+                          ? require('../../assets/icons/pass-show.png')
+                          : require('../../assets/icons/pass-hide.png')
+                      }
+                      style={styles.toggleButtonImage}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Confirm New Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.passwordInput, { paddingRight: 40 }]}
+                    placeholder="Enter confirm new password"
+                    placeholderTextColor="grey"
+                    secureTextEntry={!confirmPasswordVisible}
+                    value={confirmNewPassword}
+                    onChangeText={setConfirmNewPassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.toggleButton}
+                    onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
+                  >
+                    <Image
+                      source={
+                        confirmPasswordVisible
+                          ? require('../../assets/icons/pass-show.png')
+                          : require('../../assets/icons/pass-hide.png')
+                      }
+                      style={styles.toggleButtonImage}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              <View style={styles.buttonEdit}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentScreen('Settings')}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.editButton} onPress={handleChangePassword}>
+                  <Text style={styles.editText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </ScrollView>
+  )
+
   return (
     <>
       {currentScreen === 'Settings' && renderSettings()}
       {currentScreen === 'UserProfile' && renderUserProfile()}
+      {currentScreen === 'EditProfile' && renderEditProfile()}
+      {currentScreen === 'ChangePassword' && renderEditPassword()}
     </>
   );
 };
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'grey',
+    borderRadius: 5,
+    color: 'black',
+    paddingRight: 30,
+    backgroundColor: 'white',
+    height: 40
+  },
+  inputAndroid: {
+    fontSize: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 0.5,
+    borderColor: 'grey',
+    borderRadius: 5,
+    color: 'black',
+    paddingRight: 30,
+    backgroundColor: 'white',
+    height: 40
+  },
+  placeholder: {
+    color: 'grey',
+    fontSize: 14 // matching the text size
+  }
+})
 
 const styles = StyleSheet.create({
+  error: {
+    color: 'red',
+    marginBottom: 10,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 5,
+    borderColor: 'grey',
+    paddingHorizontal: 10,
+    backgroundColor: 'white',
+    height: 40,
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    backgroundColor: 'white',
+    borderRadius: 5,
+    color: 'black'
+  },
+  toggleButton: {
+    padding: 10,
+    position: 'absolute',
+    right: 5
+  },
+  toggleButtonImage: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
+    tintColor: '#808080'
+  },
   header: {
     backgroundColor: '#538FC7',
     height: 150,
@@ -319,6 +682,7 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     fontWeight: 'bold',
+    marginBottom: 5
   },
   infoValue: {
   },
@@ -343,6 +707,20 @@ const styles = StyleSheet.create({
   },
   editText: {
     color: '#fff',
+    fontWeight: '600',
+    textAlign: 'center'
+  },
+  cancelButton: {
+    backgroundColor: '#fff',
+    borderColor: '#656565',
+    borderWidth: 1,
+    borderRadius: 10,
+    width: '45%',
+    marginHorizontal: 5,
+    padding: 5
+  },
+  cancelText: {
+    color: '#656565',
     fontWeight: '600',
     textAlign: 'center'
   }

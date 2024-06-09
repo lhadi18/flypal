@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import User from '../models/user-model'
 import mongoose from 'mongoose'
+const bcrypt = require('bcryptjs');
 
 export const registerUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, password, homebase, airline, role } = req.body
@@ -89,7 +90,7 @@ export const validateUserId = async (req: Request, res: Response) => {
 }
 
 export const getUserDetails = async (req: Request, res: Response) => {
-  const { userId } = req.query;
+  const { userId } = req.params;
   console.log('Received userId:', userId);
 
   if (typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -109,6 +110,73 @@ export const getUserDetails = async (req: Request, res: Response) => {
   }
 };
 
+export const updateUserDetails = async (req: Request, res: Response) => {
+  const { id } = req.params
+  const { firstName, lastName, email, homebase, airline, role } = req.body
+
+  try {
+    const user = await User.findById(id)
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    user.firstName = firstName
+    user.lastName = lastName
+    user.email = email
+    user.homebase = homebase
+    user.airline = airline
+    user.role = role
+
+    await user.save()
+
+    res.status(200).json({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      homebase: user.homebase,
+      airline: user.airline,
+      role: user.role
+    })
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+export const updateUserPassword = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { oldPassword, newPassword, confirmNewPassword } = req.body;
+
+  try {
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if old password is correct
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Old password is incorrect' });
+    }
+
+    // Check if new password and confirm new password match
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({ message: 'New password and confirm new password do not match' });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+
+    await user.save();
+
+    res.status(200).json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 // For Admin Dashboard
 export const getUsers = async (req: Request, res: Response) => {
@@ -215,3 +283,5 @@ export const updateUser = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' })
   }
 }
+
+

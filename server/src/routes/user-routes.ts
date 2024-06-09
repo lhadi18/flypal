@@ -1,7 +1,7 @@
 import {
   registerUser,
   loginUser,
-  validateUserId, getUserDetails,
+  validateUserId, getUserDetails, updateUserDetails, updateUserPassword,
   getUsers,
   deleteUser,
   createUser,
@@ -15,6 +15,8 @@ router.post('/register', registerUser)
 router.post('/login', loginUser)
 router.post('/validateUserId', validateUserId)
 router.get('/getUserId', getUserDetails);
+router.put('/updateUserId', updateUserDetails)
+router.put('/updatePassword/:id', updateUserPassword);
 router.get('/getUsers', getUsers)
 router.delete('/deleteUser/:id', deleteUser)
 router.post('/createUser', createUser)
