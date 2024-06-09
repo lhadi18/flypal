@@ -24,7 +24,6 @@ import InteractableStarRating from '@/components/interactable-star-rating'
 import { MaterialIcons, FontAwesome } from '@expo/vector-icons'
 import { useGlobalStore } from '../../store/store'
 import React, { useState, useEffect } from 'react'
-import placesData from '../../googleplaces.json' // temp
 import * as SecureStore from 'expo-secure-store'
 import * as ImagePicker from 'expo-image-picker'
 import icons from '../../constants/icons'
