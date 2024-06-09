@@ -18,18 +18,22 @@ export const getAirport = async (req: Request, res: Response) => {
         { city: regexQuery },
         { country: regexQuery }
       ]
-    }).lean()
+    })
+      .limit(10)
+      .lean()
 
     if (airports.length === 0) {
       return res.status(404).json({ message: 'No airports found matching your query' })
     }
 
     const formattedAirports = airports.map(airport => ({
+      ...airport,
+      id: airport._id, // Add the virtual `id` field
       label: airport.IATA
         ? `(${airport.IATA}/${airport.ICAO}) - ${airport.name}`
         : `(${airport.ICAO}) - ${airport.name}`,
       value: airport._id,
-      timezone: airport.tz_database // Include timezone in the response
+      timezone: airport.tz_database
     }))
 
     res.json(formattedAirports)

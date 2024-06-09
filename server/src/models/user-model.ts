@@ -1,12 +1,25 @@
-import mongoose, { CallbackError, Schema } from 'mongoose'
-import { User } from '../interfaces/user'
+import mongoose, { CallbackError, Schema, Document } from 'mongoose'
 import bcrypt from 'bcrypt'
+
+export interface User extends Document {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  homebase: mongoose.Schema.Types.ObjectId
+  airline: mongoose.Schema.Types.ObjectId
+  role: string
+  matchPassword(enteredPassword: string): Promise<boolean>
+}
 
 const userSchema: Schema<User> = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
+  password: { type: String, required: true },
+  homebase: { type: mongoose.Schema.Types.ObjectId, ref: 'Airport', required: true },
+  airline: { type: mongoose.Schema.Types.ObjectId, ref: 'Airline', required: true },
+  role: { type: String, required: true }
 })
 
 userSchema.pre<User>('save', async function (next) {

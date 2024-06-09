@@ -22,6 +22,5 @@ expo-env.d.ts
 
 # Ignore all .pem files
 *.pem
-package.json
-services/user-api.js
-services/user-api.js
+
+impactful-arbor-425611-c6-dab6360bfb16.json

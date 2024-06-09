@@ -7,8 +7,6 @@ import icons from '../../constants/icons'
 import { Tabs } from 'expo-router'
 import React from 'react'
 
-const TopTab = createMaterialTopTabNavigator()
-
 const TabIcon = ({ icon, color, name, focused }) => {
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center', paddingBottom: 3 }}>
@@ -48,7 +46,7 @@ const TabsLayout = () => {
             headerShown: true,
             headerLeft: () => (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 18 }}>
-                <TouchableOpacity onPress={() => navigation.navigate('')}>
+                <TouchableOpacity onPress={() => null}>
                   <Ionicons name="people" size={26} color="white" style={{ marginTop: 3 }} />
                 </TouchableOpacity>
               </View>
@@ -83,7 +81,9 @@ const TabsLayout = () => {
           options={{
             title: 'Social',
             headerShown: true,
-            tabBarIcon: ({ color, focused }) => <TabIcon icon={null} color={color} name="Social" focused={focused} />
+            tabBarIcon: ({ color, focused }) => (
+              <TabIcon icon={icons.social} color={color} name="Social" focused={focused} />
+            )
           }}
         />
         <Tabs.Screen
@@ -92,7 +92,7 @@ const TabsLayout = () => {
             title: 'Checklist',
             headerShown: true,
             tabBarIcon: ({ color, focused }) => (
-              <TabIcon icon={null} color={color} name="Checklists" focused={focused} />
+              <TabIcon icon={icons.checklist} color={color} name="Checklists" focused={focused} />
             )
           }}
         />

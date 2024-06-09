@@ -1,9 +1,21 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground } from 'react-native'
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ImageBackground,
+  ScrollView,
+  Alert
+} from 'react-native'
+import StyledAirportSearch from '@/components/sign-up-airport-search'
+import AirlineSearch from '@/components/sign-up-airline-search'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import RNPickerSelect from 'react-native-picker-select'
 import { registerUser } from '../../services/user-api'
-import { Picker } from '@react-native-picker/picker'
-import { ScrollView, Alert } from 'react-native'
-import { Link, useRouter } from 'expo-router'
+import { ROLES } from '../../constants/roles'
+import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
 import { Formik } from 'formik'
 import * as Yup from 'yup'
@@ -16,6 +28,9 @@ const SignUp = () => {
   const validationSchema = Yup.object().shape({
     firstName: Yup.string().required('First Name is required'),
     lastName: Yup.string().required('Last Name is required'),
+    role: Yup.string().required('Role is required'),
+    homebase: Yup.string().required('Homebase is required'),
+    airline: Yup.string().required('Airline is required'),
     email: Yup.string().email('Invalid email').required('Email is required'),
     password: Yup.string().min(8, 'Password must be at least 8 characters').required('Password is required'),
     confirmPassword: Yup.string()
@@ -33,7 +48,7 @@ const SignUp = () => {
       ])
     } catch (error) {
       console.error('Registration error:', error)
-      if (error.message == 'User already exists') {
+      if (error.message === 'User already exists') {
         Alert.alert('Error', error.message)
       } else {
         Alert.alert('Error', 'Unable to register at the moment, please try again later.')
@@ -62,6 +77,9 @@ const SignUp = () => {
               initialValues={{
                 firstName: '',
                 lastName: '',
+                role: '',
+                homebase: '',
+                airline: '',
                 email: '',
                 password: '',
                 confirmPassword: ''
@@ -69,20 +87,22 @@ const SignUp = () => {
               validationSchema={validationSchema}
               onSubmit={handleSubmit}
             >
-              {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
+              {({ handleChange, handleBlur, handleSubmit, setFieldValue, values, errors, touched, isSubmitting }) => (
                 <View style={styles.formContainer}>
                   <View style={styles.nameContainer}>
                     <View style={[styles.inputContainer, styles.halfInputContainer]}>
                       <Text style={styles.label}>First Name</Text>
                       <View style={styles.name}>
+                        <View style={styles.name}>
                         <TextInput
-                          style={styles.input}
-                          placeholder="First Name"
-                          placeholderTextColor="grey"
-                          onChangeText={handleChange('firstName')}
-                          onBlur={handleBlur('firstName')}
-                          value={values.firstName}
-                        />
+                            style={styles.input}
+                            placeholder="First Name"
+                            placeholderTextColor="grey"
+                            onChangeText={handleChange('firstName')}
+                            onBlur={handleBlur('firstName')}
+                            value={values.firstName}
+                          />
+                      </View>
                       </View>
                       <View style={styles.errorContainer}>
                         {touched.firstName && errors.firstName && (
@@ -105,6 +125,47 @@ const SignUp = () => {
                       <View style={styles.errorContainer}>
                         {touched.lastName && errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
                       </View>
+                    </View>
+                  </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Role</Text>
+                    <View style={styles.pickerContainer}>
+                      <RNPickerSelect
+                        onValueChange={handleChange('role')}
+                        items={ROLES}
+                        style={pickerSelectStyles}
+                        placeholder={{
+                          label: 'Select your role',
+                          value: null,
+                          color: 'grey'
+                        }}
+                        value={values.role}
+                      />
+                    </View>
+                    <View style={styles.errorContainer}>
+                      {touched.role && errors.role && <Text style={styles.errorText}>{errors.role}</Text>}
+                    </View>
+                  </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Homebase</Text>
+                    <StyledAirportSearch
+                      placeholder="Enter your homebase"
+                      onSelect={airport => setFieldValue('homebase', airport ? airport.id : '')} // Use airport ID
+                      initialValue={values.homebase}
+                    />
+                    <View style={styles.errorContainer}>
+                      {touched.homebase && errors.homebase && <Text style={styles.errorText}>{errors.homebase}</Text>}
+                    </View>
+                  </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Airline</Text>
+                    <AirlineSearch
+                      placeholder="Enter your airline"
+                      onSelect={airline => setFieldValue('airline', airline ? airline.id : '')} // Use airline ID
+                      initialValue={values.airline}
+                    />
+                    <View style={styles.errorContainer}>
+                      {touched.airline && errors.airline && <Text style={styles.errorText}>{errors.airline}</Text>}
                     </View>
                   </View>
                   <View style={styles.inputContainer}>
@@ -144,8 +205,8 @@ const SignUp = () => {
                         <Image
                           source={
                             passwordVisible
-                              ? require('../../assets/icons/pass-hide.png')
-                              : require('../../assets/icons/pass-show.png')
+                              ? require('../../assets/icons/pass-show.png')
+                              : require('../../assets/icons/pass-hide.png')
                           }
                           style={styles.toggleButtonImage}
                         />
@@ -174,8 +235,8 @@ const SignUp = () => {
                         <Image
                           source={
                             confirmPasswordVisible
-                              ? require('../../assets/icons/pass-hide.png')
-                              : require('../../assets/icons/pass-show.png')
+                              ? require('../../assets/icons/pass-show.png')
+                              : require('../../assets/icons/pass-hide.png')
                           }
                           style={styles.toggleButtonImage}
                         />
@@ -196,11 +257,7 @@ const SignUp = () => {
 
             <View style={styles.loginContainer}>
               <Text style={styles.loginPrompt}>Already have an account? </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  router.push('/sign-in')
-                }}
-              >
+              <TouchableOpacity onPress={() => router.push('/sign-in')}>
                 <Text style={styles.loginText}>Login</Text>
               </TouchableOpacity>
             </View>
@@ -210,6 +267,37 @@ const SignUp = () => {
     </ImageBackground>
   )
 }
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'grey',
+    borderRadius: 5,
+    color: 'black',
+    paddingRight: 30,
+    backgroundColor: 'white',
+    height: 40
+  },
+  inputAndroid: {
+    fontSize: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 0.5,
+    borderColor: 'grey',
+    borderRadius: 5,
+    color: 'black',
+    paddingRight: 30,
+    backgroundColor: 'white',
+    height: 40
+  },
+  placeholder: {
+    color: 'grey',
+    fontSize: 14 // matching the text size
+  }
+})
 
 const styles = StyleSheet.create({
   background: {
@@ -243,7 +331,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     width: '95%',
-    alignItems: 'left'
+    alignItems: 'flex-start'
   },
   createAccountText: {
     fontSize: 26,
@@ -280,6 +368,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     height: 40,
   },
+  name: {
+    borderRadius: 5,
+    backgroundColor: 'white',
+    height: 40
+  },
   halfInputContainer: {
     flex: 1,
     marginRight: 10
@@ -295,13 +388,20 @@ const styles = StyleSheet.create({
     color: 'black'
   },
   inputContainer: {
-    width: '100%'
+    width: '100%',
+    marginBottom: 10
   },
   label: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
     color: '#636363'
+  },
+  pickerContainer: {
+    height: 40,
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    paddingLeft: 0
   },
   registerButton: {
     width: '100%',
@@ -347,6 +447,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: 'white',
     height: 40,
+  },
+  emailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    backgroundColor: 'white',
+    height: 40
   },
   emailContainer: {
     flexDirection: 'row',

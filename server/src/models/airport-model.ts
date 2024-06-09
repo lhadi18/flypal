@@ -14,7 +14,9 @@ const airportSchema = new mongoose.Schema(
     DST: String,
     tz_database: String,
     type: String,
-    source: String
+    source: String,
+    city_latitude: Number,
+    city_longitude: Number
   },
   { timestamps: true }
 )
