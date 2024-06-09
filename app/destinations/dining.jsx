@@ -75,11 +75,15 @@ const Dining = () => {
   const selectedAirport = useGlobalStore(state => state.selectedAirport)
 
   useEffect(() => {
-    if (selectedTab === 'Our Picks' && selectedAirport) {
-      setPlaces(placesData)
-    } else {
-      setFilteredOptions(diningOptions)
+    const fetchData = async () => {
+      if (selectedTab === 'Our Picks' && selectedAirport) {
+        const nearbyPlaces = await fetchNearbyPlaces(selectedAirport.city_latitude, selectedAirport.city_longitude)
+        setPlaces(nearbyPlaces)
+      } else {
+        setFilteredOptions(diningOptions)
+      }
     }
+    fetchData()
   }, [selectedTab, selectedAirport])
 
   useEffect(() => {
@@ -93,7 +97,6 @@ const Dining = () => {
         }
       }
     }
-
     getCrewPicks()
   }, [selectedAirport])
 

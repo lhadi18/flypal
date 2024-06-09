@@ -278,8 +278,8 @@ const Roster = () => {
     setNewEventArrivalTime(formatTimeWithGMT(event.arrivalTime, event.destination.tz_database))
     setNewEventFlightNumber(event.flightNumber)
     setNewEventAircraftType({
-      value: event.aircraftType._id,
-      label: `${event.aircraftType.Model}`
+      value: event.aircraftType,
+      label: `${event.aircraftType}`
     })
     setNewEventNotes(event.notes)
     setModalVisible(true)
@@ -393,7 +393,7 @@ const Roster = () => {
 
     // Set picked time to the origin's timezone
     const originTimezone = newEventOrigin.timezone
-    const formattedDepartureDate = moment(date).tz(originTimezone).format()
+    const formattedDepartureDate = moment(date).tz(originTimezone).toISOString()
 
     if (newEventArrivalTime) {
       const arrivalDateTime = moment(newEventArrivalTime).tz(newEventDestination.timezone)
@@ -416,7 +416,7 @@ const Roster = () => {
 
     // Set picked time to the destination's timezone
     const destinationTimezone = newEventDestination.timezone
-    const formattedArrivalDate = moment(date).tz(destinationTimezone).format()
+    const formattedArrivalDate = moment(date).tz(destinationTimezone).toISOString()
 
     if (newEventDepartureTime) {
       const departureDateTime = moment(newEventDepartureTime).tz(newEventOrigin.timezone)

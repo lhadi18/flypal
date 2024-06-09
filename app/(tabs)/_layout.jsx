@@ -49,7 +49,7 @@ const TabsLayout = () => {
             headerShown: true,
             headerLeft: () => (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 18 }}>
-                <TouchableOpacity onPress={() => navigation.navigate('')}>
+                <TouchableOpacity onPress={() => null}>
                   <Ionicons name="people" size={26} color="white" style={{ marginTop: 3 }} />
                 </TouchableOpacity>
               </View>
