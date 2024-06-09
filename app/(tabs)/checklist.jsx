@@ -166,150 +166,152 @@ useEffect(() => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Item Checklist</Text>
-      <TouchableOpacity style={styles.button} onPress={handleOpenForm}>
-        <FontAwesomeIcon icon={faPlus} size={32} color="#fff" />
-      </TouchableOpacity>
-      <Modal
-        visible={isFormOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={handleCloseForm}
-      >
-        <View style={styles.modalContainer}>
-          {isFormOpen && (
-            <CreateItemChecklistForm
-              newItem={newItem}
-              onItemChange={handleItemChange}
-              flightRoute={flightRoute}
-              onFlightRouteChange={handleFlightRouteChange}
-              travelDate={travelDate}
-              onTravelDateChange={handleTravelDateChange}
-              showDatePicker={showDatePicker}
-              displayDatePicker={displayDatePicker}
-              hideDatePicker={hideDatePicker}
-              isDatePickerVisible={isDatePickerVisible}
-              setShowDatePicker={setShowDatePicker}
-              handleConfirm={handleConfirm}
-              newItemText={newItemText}
-              setNewItemText={setNewItemText}
-              onAddChecklistItem={handleAddChecklistItem}
-              onRemoveChecklistItem={handleRemoveChecklistItem}
-              leftColumnItems={leftColumnItems}
-              rightColumnItems={rightColumnItems}
-              isLimitReached={isLimitReached}
-              onClose={handleCloseForm}
-              onCreate={handleCreateChecklist}
-            />
-          )}
-          </View>
-      </Modal>
-      <Modal
-        visible={isEditFormOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsEditFormOpen(false)}
-      >
-        <View style={styles.modalContainer}>
-          {isEditFormOpen && (
-            <EditChecklistForm
-              checklist={currentChecklist}
-              onItemChange={text => setCurrentChecklist({ ...currentChecklist, title: text })}
-              onFlightRouteChange={text => setCurrentChecklist({ ...currentChecklist, flightRoute: text })}
-              onTravelDateChange={date => setCurrentChecklist({ ...currentChecklist, travelDate: date })}
-              leftColumnItems={currentChecklist.items.slice(0, 10)}
-              rightColumnItems={currentChecklist.items.slice(10)}
-              onAddChecklistItem={item => {
-                const updatedItems = [...currentChecklist.items, item];
-                setCurrentChecklist({ ...currentChecklist, items: updatedItems });
-              }}
-              onRemoveChecklistItem={index => {
-                const items = [...currentChecklist.items];
-                items.splice(index, 1);
-                setCurrentChecklist({ ...currentChecklist, items });
-              }}
-              displayDatePicker={displayDatePicker}
-              handleConfirm={date => {
-                handleConfirm(date);
-                setCurrentChecklist({ ...currentChecklist, travelDate: date });
-              }}
-              hideDatePicker={hideDatePicker}
-              isDatePickerVisible={isDatePickerVisible}
-              newItemText={newItemText}
-              setNewItemText={setNewItemText}
-              onClose={() => setIsEditFormOpen(false)}
-              onUpdate={handleUpdateChecklist}
-            />
-          )}
-        </View>
-      </Modal>
-      {checklists.length > 0 ? (
-        checklists.map((checklist, index) => (
-          <View key={index} style={formStyles.box}>
-            <View style={styles.rowBox}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.headerDetails}>{checklist.title}</Text>
-              </View>
-              <View style={styles.icon}>
-                <TouchableOpacity onPress={() => handleEditChecklist(checklist)} style={{paddingRight:15}}>
-                  <FontAwesomeIcon icon={faEdit} size={16} color="grey" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDeleteChecklist(checklist._id)}>
-                  <FontAwesomeIcon icon={faTrash} size={16} color="red" />
-                </TouchableOpacity>
-              </View>
+    <ScrollView contentContainerStyle={styles.scrollViewContainer}>
+      <View style={styles.container}>
+        <Text style={styles.header}>Item Checklist</Text>
+        <TouchableOpacity style={styles.button} onPress={handleOpenForm}>
+          <FontAwesomeIcon icon={faPlus} size={32} color="#fff" />
+        </TouchableOpacity>
+        <Modal
+          visible={isFormOpen}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={handleCloseForm}
+        >
+          <View style={styles.modalContainer}>
+            {isFormOpen && (
+              <CreateItemChecklistForm
+                newItem={newItem}
+                onItemChange={handleItemChange}
+                flightRoute={flightRoute}
+                onFlightRouteChange={handleFlightRouteChange}
+                travelDate={travelDate}
+                onTravelDateChange={handleTravelDateChange}
+                showDatePicker={showDatePicker}
+                displayDatePicker={displayDatePicker}
+                hideDatePicker={hideDatePicker}
+                isDatePickerVisible={isDatePickerVisible}
+                setShowDatePicker={setShowDatePicker}
+                handleConfirm={handleConfirm}
+                newItemText={newItemText}
+                setNewItemText={setNewItemText}
+                onAddChecklistItem={handleAddChecklistItem}
+                onRemoveChecklistItem={handleRemoveChecklistItem}
+                leftColumnItems={leftColumnItems}
+                rightColumnItems={rightColumnItems}
+                isLimitReached={isLimitReached}
+                onClose={handleCloseForm}
+                onCreate={handleCreateChecklist}
+              />
+            )}
             </View>
-            <View>
+        </Modal>
+        <Modal
+          visible={isEditFormOpen}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsEditFormOpen(false)}
+        >
+          <View style={styles.modalContainer}>
+            {isEditFormOpen && (
+              <EditChecklistForm
+                checklist={currentChecklist}
+                onItemChange={text => setCurrentChecklist({ ...currentChecklist, title: text })}
+                onFlightRouteChange={text => setCurrentChecklist({ ...currentChecklist, flightRoute: text })}
+                onTravelDateChange={date => setCurrentChecklist({ ...currentChecklist, travelDate: date })}
+                leftColumnItems={currentChecklist.items.slice(0, 10)}
+                rightColumnItems={currentChecklist.items.slice(10)}
+                onAddChecklistItem={item => {
+                  const updatedItems = [...currentChecklist.items, item];
+                  setCurrentChecklist({ ...currentChecklist, items: updatedItems });
+                }}
+                onRemoveChecklistItem={index => {
+                  const items = [...currentChecklist.items];
+                  items.splice(index, 1);
+                  setCurrentChecklist({ ...currentChecklist, items });
+                }}
+                displayDatePicker={displayDatePicker}
+                handleConfirm={date => {
+                  handleConfirm(date);
+                  setCurrentChecklist({ ...currentChecklist, travelDate: date });
+                }}
+                hideDatePicker={hideDatePicker}
+                isDatePickerVisible={isDatePickerVisible}
+                newItemText={newItemText}
+                setNewItemText={setNewItemText}
+                onClose={() => setIsEditFormOpen(false)}
+                onUpdate={handleUpdateChecklist}
+              />
+            )}
+          </View>
+        </Modal>
+        {checklists.length > 0 ? (
+          checklists.map((checklist, index) => (
+            <View key={index} style={formStyles.box}>
               <View style={styles.rowBox}>
-                <View style={styles.columnBox}>
-                  <View>
-                    <Text style={styles.headerInfo}>Flight Route</Text>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.headerDetails}>{checklist.title}</Text>
+                </View>
+                <View style={styles.icon}>
+                  <TouchableOpacity onPress={() => handleEditChecklist(checklist)} style={{paddingRight:15}}>
+                    <FontAwesomeIcon icon={faEdit} size={16} color="grey" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDeleteChecklist(checklist._id)}>
+                    <FontAwesomeIcon icon={faTrash} size={16} color="red" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View>
+                <View style={styles.rowBox}>
+                  <View style={styles.columnBox}>
+                    <View>
+                      <Text style={styles.headerInfo}>Flight Route</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.headerDetails}>
+                        {checklist.flightRoute ? checklist.flightRoute : "-"}
+                      </Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={styles.headerDetails}>
-                      {checklist.flightRoute ? checklist.flightRoute : "-"}
-                    </Text>
+                  <View style={styles.columnBox}>
+                    <View>
+                      <Text style={styles.headerInfo}>Travel Date</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.headerDetails}>
+                        {checklist.travelDate ? moment(checklist.travelDate).format('DD MMM YYYY') : "-"}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-                <View style={styles.columnBox}>
-                  <View>
-                    <Text style={styles.headerInfo}>Travel Date</Text>
+              </View>
+              <View>
+                <Text style={formStyles.checklistTitle}>Item List</Text>
+                <View style={{ flexDirection: 'row' }}>
+                  <View style={{ flex: 1 }}>
+                    {checklist.items.slice(0, 10).map((item, itemIndex) => (
+                      <View key={itemIndex} style={formStyles.checklistItem}>
+                        <Text style={formStyles.checklistItemNumber}>{itemIndex + 1}.</Text>
+                        <Text style={formStyles.checklistItemText}>{item}</Text>
+                      </View>
+                    ))}
                   </View>
-                  <View>
-                    <Text style={styles.headerDetails}>
-                      {checklist.travelDate ? moment(checklist.travelDate).format('DD MMM YYYY') : "-"}
-                    </Text>
+                  <View style={{ flex: 1 }}>
+                    {checklist.items.slice(10).map((item, itemIndex) => (
+                      <View key={itemIndex + 10} style={formStyles.checklistItem}>
+                        <Text style={formStyles.checklistItemNumber}>{itemIndex + 11}.</Text>
+                        <Text style={formStyles.checklistItemText}>{item}</Text>
+                      </View>
+                    ))}
                   </View>
                 </View>
               </View>
             </View>
-            <View>
-              <Text style={formStyles.checklistTitle}>Item List</Text>
-              <View style={{ flexDirection: 'row' }}>
-                <View style={{ flex: 1 }}>
-                  {checklist.items.slice(0, 10).map((item, itemIndex) => (
-                    <View key={itemIndex} style={formStyles.checklistItem}>
-                      <Text style={formStyles.checklistItemNumber}>{itemIndex + 1}.</Text>
-                      <Text style={formStyles.checklistItemText}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View style={{ flex: 1 }}>
-                  {checklist.items.slice(10).map((item, itemIndex) => (
-                    <View key={itemIndex + 10} style={formStyles.checklistItem}>
-                      <Text style={formStyles.checklistItemNumber}>{itemIndex + 11}.</Text>
-                      <Text style={formStyles.checklistItemText}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          </View>
-        ))
-      ) : (
-        <Text>No checklists available.</Text>
-      )}
+          ))
+        ) : (
+          <Text>No checklists available.</Text>
+        )}
+      </View>
     </ScrollView>
   )
 }
@@ -584,6 +586,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative'
+  },
+  scrollViewContainer: {
+    flexGrow: 1,
   },
   header: {
     fontSize: 18,
