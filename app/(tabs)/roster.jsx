@@ -9,7 +9,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  ActivityIndicator // Import ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
@@ -340,7 +342,7 @@ const Roster = () => {
         Alert.alert('Error', 'Failed to save event. Please try again.')
       }
     } catch (error) {
-      console.error('Error saving event:', error)
+      // console.error('Error saving event:', error)
       Alert.alert('Error', 'Error saving event. Please try again.')
     } finally {
       setLoading(false) // Stop loading
@@ -547,177 +549,179 @@ const Roster = () => {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalView}>
-          <ScrollView contentContainerStyle={styles.scrollViewContent}>
-            <View style={styles.modalHeader}>
-              <Ionicons name={editMode ? 'pencil-outline' : 'add-circle'} size={24} color="#045D91" />
-              <Text style={styles.modalText}>{editMode ? 'Edit Roster Entry' : 'Add Roster Entry'}</Text>
-              {!editMode && (
-                <TouchableOpacity onPress={confirmClearInputs} style={styles.clearButton}>
-                  <Ionicons name="trash-outline" size={24} color="red" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.divider} />
-
-            <Text style={styles.label}>Duty Type</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="briefcase-outline" size={20} color="#045D91" style={styles.inputIcon} />
-              <RNPickerSelect
-                onValueChange={value => setNewEventTitle(value)}
-                items={DUTY_TYPES.map(duty => ({ label: duty.label, value: duty.value }))}
-                style={{
-                  ...pickerSelectStyles,
-                  inputIOS: {
-                    ...pickerSelectStyles.inputIOS,
-                    paddingRight: 30 // to ensure the text is never behind the icon
-                  },
-                  inputAndroid: {
-                    ...pickerSelectStyles.inputAndroid,
-                    paddingRight: 30 // to ensure the text is never behind the icon
-                  },
-                  placeholder: {
-                    ...pickerSelectStyles.placeholder,
-                    paddingLeft: 0 // Adjust to match the padding left of the input
-                  }
-                }}
-                value={newEventTitle}
-                placeholder={{ label: 'Select duty type', value: null }}
-                useNativeAndroidPickerStyle={false} // to use the custom styles on Android
-              />
-            </View>
-
-            <Text style={styles.label}>Origin</Text>
-            <AirportSearch
-              ref={originRef}
-              placeholder="Enter origin"
-              initialValue={newEventOrigin}
-              onSelect={handleSelectOrigin}
-            />
-            <Text style={styles.label}>Destination</Text>
-            <AirportSearch
-              ref={destinationRef}
-              placeholder="Enter destination"
-              initialValue={newEventDestination}
-              onSelect={handleSelectDestination}
-            />
-            <Text style={styles.label}>Departure Time (local time)</Text>
-            <TouchableOpacity
-              onPress={() => setDeparturePickerVisible(true)}
-              style={[styles.datePicker, !newEventOrigin || !newEventDestination ? styles.disabledButton : {}]}
-              disabled={!newEventOrigin || !newEventDestination}
-            >
-              <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
-              <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
-                {newEventDepartureTime || 'Select departure time'}
-              </Text>
-            </TouchableOpacity>
-            <DateTimePickerModal
-              isVisible={isDeparturePickerVisible}
-              mode="datetime"
-              onConfirm={handleConfirmDeparture}
-              onCancel={() => setDeparturePickerVisible(false)}
-            />
-
-            <Text style={styles.label}>Arrival Time (local time)</Text>
-            <TouchableOpacity
-              onPress={() => setArrivalPickerVisible(true)}
-              style={[styles.datePicker, !newEventOrigin || !newEventDestination ? styles.disabledButton : {}]}
-              disabled={!newEventOrigin || !newEventDestination}
-            >
-              <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
-              <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
-                {newEventArrivalTime || 'Select arrival time'}
-              </Text>
-            </TouchableOpacity>
-            <DateTimePickerModal
-              isVisible={isArrivalPickerVisible}
-              mode="datetime"
-              onConfirm={handleConfirmArrival}
-              onCancel={() => setArrivalPickerVisible(false)}
-            />
-
-            <Text style={styles.label}>Flight Number</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter flight number"
-                placeholderTextColor={'grey'}
-                value={newEventFlightNumber}
-                onChangeText={setNewEventFlightNumber}
-              />
-            </View>
-
-            <Text style={styles.label}>Aircraft Type (Optional)</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
-              <RNPickerSelect
-                onValueChange={value => {
-                  setNewEventAircraftType(value)
-                }}
-                items={aircraftTypeData}
-                style={{
-                  ...pickerSelectStyles,
-                  inputIOS: {
-                    ...pickerSelectStyles.inputIOS,
-                    paddingRight: 30 // to ensure the text is never behind the icon
-                  },
-                  inputAndroid: {
-                    ...pickerSelectStyles.inputAndroid,
-                    paddingRight: 30 // to ensure the text is never behind the icon
-                  },
-                  placeholder: {
-                    ...pickerSelectStyles.placeholder,
-                    paddingLeft: 0 // Adjust to match the padding left of the input
-                  }
-                }}
-                value={newEventAircraftType}
-                placeholder={{ label: 'Select aircraft type (Optional)', value: null }}
-                useNativeAndroidPickerStyle={false} // to use the custom styles on Android
-              />
-            </View>
-
-            <Text style={styles.label}>Notes (Optional)</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="clipboard-outline" size={20} color="#045D91" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Notes (Optional)"
-                placeholderTextColor={'grey'}
-                value={newEventNotes}
-                onChangeText={setNewEventNotes}
-              />
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => {
-                  clearInputs()
-                  clearOriginAndDestination()
-                  setModalVisible(false)
-                }}
-              >
-                <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.addButton]}
-                onPress={handleAddEvent}
-                disabled={loading} // Disable button when loading
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" /> // Show spinner when loading
-                ) : (
-                  <Text style={styles.buttonText}>{editMode ? 'Update' : 'Add'}</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.modalView}>
+            <ScrollView contentContainerStyle={styles.scrollViewContent}>
+              <View style={styles.modalHeader}>
+                <Ionicons name={editMode ? 'pencil-outline' : 'add-circle'} size={24} color="#045D91" />
+                <Text style={styles.modalText}>{editMode ? 'Edit Roster Entry' : 'Add Roster Entry'}</Text>
+                {!editMode && (
+                  <TouchableOpacity onPress={confirmClearInputs} style={styles.clearButton}>
+                    <Ionicons name="trash-outline" size={24} color="red" />
+                  </TouchableOpacity>
                 )}
+              </View>
+
+              <View style={styles.divider} />
+
+              <Text style={styles.label}>Duty Type</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="briefcase-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                <RNPickerSelect
+                  onValueChange={value => setNewEventTitle(value)}
+                  items={DUTY_TYPES.map(duty => ({ label: duty.label, value: duty.value }))}
+                  style={{
+                    ...pickerSelectStyles,
+                    inputIOS: {
+                      ...pickerSelectStyles.inputIOS,
+                      paddingRight: 30 // to ensure the text is never behind the icon
+                    },
+                    inputAndroid: {
+                      ...pickerSelectStyles.inputAndroid,
+                      paddingRight: 30 // to ensure the text is never behind the icon
+                    },
+                    placeholder: {
+                      ...pickerSelectStyles.placeholder,
+                      paddingLeft: 0 // Adjust to match the padding left of the input
+                    }
+                  }}
+                  value={newEventTitle}
+                  placeholder={{ label: 'Select duty type', value: null }}
+                  useNativeAndroidPickerStyle={false} // to use the custom styles on Android
+                />
+              </View>
+
+              <Text style={styles.label}>Origin</Text>
+              <AirportSearch
+                ref={originRef}
+                placeholder="Enter origin"
+                initialValue={newEventOrigin}
+                onSelect={handleSelectOrigin}
+              />
+              <Text style={styles.label}>Destination</Text>
+              <AirportSearch
+                ref={destinationRef}
+                placeholder="Enter destination"
+                initialValue={newEventDestination}
+                onSelect={handleSelectDestination}
+              />
+              <Text style={styles.label}>Departure Time (local time)</Text>
+              <TouchableOpacity
+                onPress={() => setDeparturePickerVisible(true)}
+                style={[styles.datePicker, !newEventOrigin || !newEventDestination ? styles.disabledButton : {}]}
+                disabled={!newEventOrigin || !newEventDestination}
+              >
+                <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
+                  {newEventDepartureTime || 'Select departure time'}
+                </Text>
               </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
+              <DateTimePickerModal
+                isVisible={isDeparturePickerVisible}
+                mode="datetime"
+                onConfirm={handleConfirmDeparture}
+                onCancel={() => setDeparturePickerVisible(false)}
+              />
+
+              <Text style={styles.label}>Arrival Time (local time)</Text>
+              <TouchableOpacity
+                onPress={() => setArrivalPickerVisible(true)}
+                style={[styles.datePicker, !newEventOrigin || !newEventDestination ? styles.disabledButton : {}]}
+                disabled={!newEventOrigin || !newEventDestination}
+              >
+                <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
+                  {newEventArrivalTime || 'Select arrival time'}
+                </Text>
+              </TouchableOpacity>
+              <DateTimePickerModal
+                isVisible={isArrivalPickerVisible}
+                mode="datetime"
+                onConfirm={handleConfirmArrival}
+                onCancel={() => setArrivalPickerVisible(false)}
+              />
+
+              <Text style={styles.label}>Flight Number</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter flight number"
+                  placeholderTextColor={'grey'}
+                  value={newEventFlightNumber}
+                  onChangeText={setNewEventFlightNumber}
+                />
+              </View>
+
+              <Text style={styles.label}>Aircraft Type (Optional)</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                <RNPickerSelect
+                  onValueChange={value => {
+                    setNewEventAircraftType(value)
+                  }}
+                  items={aircraftTypeData}
+                  style={{
+                    ...pickerSelectStyles,
+                    inputIOS: {
+                      ...pickerSelectStyles.inputIOS,
+                      paddingRight: 30 // to ensure the text is never behind the icon
+                    },
+                    inputAndroid: {
+                      ...pickerSelectStyles.inputAndroid,
+                      paddingRight: 30 // to ensure the text is never behind the icon
+                    },
+                    placeholder: {
+                      ...pickerSelectStyles.placeholder,
+                      paddingLeft: 0 // Adjust to match the padding left of the input
+                    }
+                  }}
+                  value={newEventAircraftType}
+                  placeholder={{ label: 'Select aircraft type (Optional)', value: null }}
+                  useNativeAndroidPickerStyle={false} // to use the custom styles on Android
+                />
+              </View>
+
+              <Text style={styles.label}>Notes (Optional)</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="clipboard-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Notes (Optional)"
+                  placeholderTextColor={'grey'}
+                  value={newEventNotes}
+                  onChangeText={setNewEventNotes}
+                />
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.button, styles.cancelButton]}
+                  onPress={() => {
+                    clearInputs()
+                    clearOriginAndDestination()
+                    setModalVisible(false)
+                  }}
+                >
+                  <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.addButton]}
+                  onPress={handleAddEvent}
+                  disabled={loading} // Disable button when loading
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFF" /> // Show spinner when loading
+                  ) : (
+                    <Text style={styles.buttonText}>{editMode ? 'Update' : 'Add'}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   )

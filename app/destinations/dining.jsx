@@ -11,7 +11,9 @@ import {
   Button,
   Linking,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native'
 import {
   fetchNearbyPlaces,
@@ -32,6 +34,7 @@ import { Formik } from 'formik'
 import * as Yup from 'yup'
 
 const PLACEHOLDER_IMAGE_URL = '../../assets/images/no-image.png'
+const NO_CREW_PICKS_IMAGE = require('../../assets/images/no-crew-picks.jpg')
 
 const diningOptions = [
   {
@@ -224,227 +227,208 @@ const Dining = () => {
   })
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollView}>
-        <View style={styles.header}>
-          <View style={styles.tabContainer}>
-            <TouchableOpacity onPress={() => setSelectedTab('Our Picks')}>
-              <Text style={[styles.tabText, selectedTab === 'Our Picks' && styles.activeTabText]}>Our Picks</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setSelectedTab('Crew Picks')}>
-              <Text style={[styles.tabText, selectedTab === 'Crew Picks' && styles.activeTabText]}>Crew Picks</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.iconContainer}>
-            <TouchableOpacity style={styles.icon} onPress={() => setFilterModalVisible(true)}>
-              <MaterialIcons name="filter-list" size={24} color="#4386AD" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.icon} onPress={() => setPostModalVisible(true)}>
-              <MaterialIcons name="post-add" size={24} color="#4386AD" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Filter Modal */}
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={isFilterModalVisible}
-          onRequestClose={() => setFilterModalVisible(false)}
-        >
-          <BlurView intensity={50} style={styles.blurView}>
-            <View style={styles.modalView}>
-              <View style={styles.dietaryButtonsContainer}>
-                {['Halal', 'Vegetarian', 'Vegan'].map(diet => (
-                  <TouchableOpacity
-                    key={diet}
-                    style={[styles.dietaryButton, selectedDietary === diet && styles.dietaryButtonSelected]}
-                    onPress={() => setSelectedDietary(diet)}
-                  >
-                    <Text
-                      style={[styles.dietaryButtonText, selectedDietary === diet && styles.dietaryButtonTextSelected]}
-                    >
-                      {diet}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Button title="Search" onPress={applyFilters} />
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollView}>
+          <View style={styles.header}>
+            <View style={styles.tabContainer}>
+              <TouchableOpacity onPress={() => setSelectedTab('Our Picks')}>
+                <Text style={[styles.tabText, selectedTab === 'Our Picks' && styles.activeTabText]}>Our Picks</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setSelectedTab('Crew Picks')}>
+                <Text style={[styles.tabText, selectedTab === 'Crew Picks' && styles.activeTabText]}>Crew Picks</Text>
+              </TouchableOpacity>
             </View>
-          </BlurView>
-        </Modal>
-
-        {/* Post Modal */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={isPostModalVisible}
-          onRequestClose={() => {
-            setPostModalVisible(false)
-            setImage(null)
-          }}
-        >
-          <BlurView intensity={50} style={styles.blurView}>
-            <View style={styles.postModalView}>
-              <Formik
-                initialValues={{
-                  restaurantName: '',
-                  location: '',
-                  review: '',
-                  rating: 0,
-                  tags: [],
-                  image: ''
-                }}
-                validationSchema={validationSchema}
-                onSubmit={(values, { resetForm }) => {
-                  handleSaveRecommendation(values, { resetForm })
-                }}
-              >
-                {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
-                  <ScrollView contentContainerStyle={[styles.formContainer, { paddingRight: 10 }]}>
-                    <View style={styles.modalHeader}>
-                      <Text style={styles.formTitle}>Recommend Dining Option</Text>
-                      <TouchableOpacity
-                        style={styles.closeButton}
-                        onPress={() => {
-                          setPostModalVisible(false)
-                          setImage(null)
-                        }}
-                      >
-                        <MaterialIcons name="close" size={24} color="black" />
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={styles.cityCountry}>
-                      {selectedAirport?.city}, {selectedAirport?.country}
-                    </Text>
-                    <Text style={styles.label}>Image</Text>
-                    <TouchableOpacity onPress={() => openImagePicker(setFieldValue)}>
-                      <View style={[styles.imagePicker]}>
-                        {image ? (
-                          <Image source={{ uri: image }} style={styles.imagePreview} />
-                        ) : (
-                          <Text style={styles.imagePlaceholder}>Select Image</Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                    {touched.image && errors.image && <Text style={styles.errorText}>{errors.image}</Text>}
-                    <Text style={styles.label}>Restaurant Name</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter restaurant name"
-                      placeholderTextColor="#aaa"
-                      onChangeText={handleChange('restaurantName')}
-                      onBlur={handleBlur('restaurantName')}
-                      value={values.restaurantName}
-                    />
-                    {touched.restaurantName && errors.restaurantName && (
-                      <Text style={styles.errorText}>{errors.restaurantName}</Text>
-                    )}
-                    <Text style={styles.label}>Location</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter location"
-                      placeholderTextColor="#aaa"
-                      onChangeText={handleChange('location')}
-                      onBlur={handleBlur('location')}
-                      value={values.location}
-                    />
-                    {touched.location && errors.location && <Text style={styles.errorText}>{errors.location}</Text>}
-                    <Text style={styles.label}>Review</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter review"
-                      placeholderTextColor="#aaa"
-                      onChangeText={handleChange('review')}
-                      onBlur={handleBlur('review')}
-                      value={values.review}
-                    />
-                    {touched.review && errors.review && <Text style={styles.errorText}>{errors.review}</Text>}
-                    <View style={{ marginBottom: 10 }}>
-                      <Text style={styles.label}>Rating</Text>
-                      <InteractableStarRating
-                        rating={values.rating}
-                        setRating={rating => setFieldValue('rating', rating)}
-                        starSize={35}
-                        starSpacing={10}
-                      />
-                    </View>
-                    {touched.rating && errors.rating && <Text style={styles.errorText}>{errors.rating}</Text>}
-                    <Text style={styles.label}>Tags (optional)</Text>
-                    <View style={styles.dietaryButtonsContainer}>
-                      {['Halal', 'Vegetarian', 'Vegan'].map(tag => (
-                        <TouchableOpacity
-                          key={tag}
-                          style={[styles.tagButtonModal, values.tags.includes(tag) && styles.tagButtonSelected]}
-                          onPress={() => {
-                            if (values.tags.includes(tag)) {
-                              setFieldValue(
-                                'tags',
-                                values.tags.filter(t => t !== tag)
-                              )
-                            } else {
-                              setFieldValue('tags', [...values.tags, tag])
-                            }
-                          }}
-                        >
-                          <Text
-                            style={[styles.tagButtonText, values.tags.includes(tag) && styles.tagButtonTextSelected]}
-                          >
-                            {tag}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    <View style={styles.buttonContainer}>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.cancelButton]}
-                        onPress={() => {
-                          setPostModalVisible(false)
-                          setImage(null)
-                        }}
-                      >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.saveButton]}
-                        onPress={handleSubmit}
-                        disabled={loading}
-                      >
-                        {loading ? (
-                          <ActivityIndicator size="small" color="#FFF" />
-                        ) : (
-                          <Text style={styles.saveButtonText}>Save</Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </ScrollView>
-                )}
-              </Formik>
+            <View style={styles.iconContainer}>
+              <TouchableOpacity style={styles.icon} onPress={() => setFilterModalVisible(true)}>
+                <MaterialIcons name="filter-list" size={24} color="#4386AD" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.icon} onPress={() => setPostModalVisible(true)}>
+                <MaterialIcons name="post-add" size={24} color="#4386AD" />
+              </TouchableOpacity>
             </View>
-          </BlurView>
-        </Modal>
+          </View>
 
-        {/* Image Modal */}
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={isImageModalVisible}
-          onRequestClose={() => setImageModalVisible(false)}
-        >
-          <TouchableOpacity
-            style={styles.imageModalContainer}
-            activeOpacity={1}
-            onPressOut={() => setImageModalVisible(false)}
+          {/* Filter Modal */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={isPostModalVisible}
+            onRequestClose={() => {
+              setPostModalVisible(false)
+              setImage(null)
+            }}
           >
-            <Image source={{ uri: selectedImage }} style={styles.expandedImage} />
-            <TouchableOpacity style={styles.imageModalCloseButton} onPress={() => setImageModalVisible(false)}>
-              <MaterialIcons name="close" size={24} color="white" />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Modal>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+              <BlurView intensity={50} style={styles.blurView}>
+                <View style={styles.postModalView}>
+                  <ScrollView contentContainerStyle={[styles.formContainer, { paddingRight: 10 }]}>
+                    <Formik
+                      initialValues={{
+                        restaurantName: '',
+                        location: '',
+                        review: '',
+                        rating: 0,
+                        tags: [],
+                        image: ''
+                      }}
+                      validationSchema={validationSchema}
+                      onSubmit={(values, { resetForm }) => {
+                        handleSaveRecommendation(values, { resetForm })
+                      }}
+                    >
+                      {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
+                        <>
+                          <View style={styles.modalHeader}>
+                            <Text style={styles.formTitle}>Recommend Dining Option</Text>
+                            <TouchableOpacity
+                              style={styles.closeButton}
+                              onPress={() => {
+                                setPostModalVisible(false)
+                                setImage(null)
+                              }}
+                            >
+                              <MaterialIcons name="close" size={24} color="black" />
+                            </TouchableOpacity>
+                          </View>
+                          <Text style={styles.cityCountry}>
+                            {selectedAirport?.city}, {selectedAirport?.country}
+                          </Text>
+                          <Text style={styles.label}>Image</Text>
+                          <TouchableOpacity onPress={() => openImagePicker(setFieldValue)}>
+                            <View style={[styles.imagePicker]}>
+                              {image ? (
+                                <Image source={{ uri: image }} style={styles.imagePreview} />
+                              ) : (
+                                <Text style={styles.imagePlaceholder}>Select Image</Text>
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                          {touched.image && errors.image && <Text style={styles.errorText}>{errors.image}</Text>}
+                          <Text style={styles.label}>Restaurant Name</Text>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Enter restaurant name"
+                            placeholderTextColor="#aaa"
+                            onChangeText={handleChange('restaurantName')}
+                            onBlur={handleBlur('restaurantName')}
+                            value={values.restaurantName}
+                          />
+                          {touched.restaurantName && errors.restaurantName && (
+                            <Text style={styles.errorText}>{errors.restaurantName}</Text>
+                          )}
+                          <Text style={styles.label}>Location</Text>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Enter location"
+                            placeholderTextColor="#aaa"
+                            onChangeText={handleChange('location')}
+                            onBlur={handleBlur('location')}
+                            value={values.location}
+                          />
+                          {touched.location && errors.location && (
+                            <Text style={styles.errorText}>{errors.location}</Text>
+                          )}
+                          <Text style={styles.label}>Review</Text>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Enter review"
+                            placeholderTextColor="#aaa"
+                            onChangeText={handleChange('review')}
+                            onBlur={handleBlur('review')}
+                            value={values.review}
+                          />
+                          {touched.review && errors.review && <Text style={styles.errorText}>{errors.review}</Text>}
+                          <View style={{ marginBottom: 10 }}>
+                            <Text style={styles.label}>Rating</Text>
+                            <InteractableStarRating
+                              rating={values.rating}
+                              setRating={rating => setFieldValue('rating', rating)}
+                              starSize={35}
+                              starSpacing={10}
+                            />
+                          </View>
+                          {touched.rating && errors.rating && <Text style={styles.errorText}>{errors.rating}</Text>}
+                          <Text style={styles.label}>Tags (optional)</Text>
+                          <View style={styles.dietaryButtonsContainer}>
+                            {['Halal', 'Vegetarian', 'Vegan'].map(tag => (
+                              <TouchableOpacity
+                                key={tag}
+                                style={[styles.tagButtonModal, values.tags.includes(tag) && styles.tagButtonSelected]}
+                                onPress={() => {
+                                  if (values.tags.includes(tag)) {
+                                    setFieldValue(
+                                      'tags',
+                                      values.tags.filter(t => t !== tag)
+                                    )
+                                  } else {
+                                    setFieldValue('tags', [...values.tags, tag])
+                                  }
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.tagButtonText,
+                                    values.tags.includes(tag) && styles.tagButtonTextSelected
+                                  ]}
+                                >
+                                  {tag}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                          <View style={styles.buttonContainer}>
+                            <TouchableOpacity
+                              style={[styles.modalButton, styles.cancelButton]}
+                              onPress={() => {
+                                setPostModalVisible(false)
+                                setImage(null)
+                              }}
+                            >
+                              <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.modalButton, styles.saveButton]}
+                              onPress={handleSubmit}
+                              disabled={loading}
+                            >
+                              {loading ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                              ) : (
+                                <Text style={styles.saveButtonText}>Save</Text>
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                        </>
+                      )}
+                    </Formik>
+                  </ScrollView>
+                </View>
+              </BlurView>
+            </KeyboardAvoidingView>
+          </Modal>
 
-        {selectedTab === 'Our Picks'
-          ? places.map(place => (
+          {/* Image Modal */}
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={isImageModalVisible}
+            onRequestClose={() => setImageModalVisible(false)}
+          >
+            <TouchableOpacity
+              style={styles.imageModalContainer}
+              activeOpacity={1}
+              onPressOut={() => setImageModalVisible(false)}
+            >
+              <Image source={{ uri: selectedImage }} style={styles.expandedImage} />
+              <TouchableOpacity style={styles.imageModalCloseButton} onPress={() => setImageModalVisible(false)}>
+                <MaterialIcons name="close" size={24} color="white" />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </Modal>
+
+          {selectedTab === 'Our Picks' ? (
+            places.map(place => (
               <View key={place.place_id} style={styles.card}>
                 <TouchableOpacity onPress={() => openImageModal(place.photoUrl || PLACEHOLDER_IMAGE_URL)}>
                   <Image source={{ uri: place.photoUrl || PLACEHOLDER_IMAGE_URL }} style={styles.image} />
@@ -477,7 +461,16 @@ const Dining = () => {
                 </View>
               </View>
             ))
-          : crewPicks.map(pick => (
+          ) : crewPicks.length === 0 ? (
+            <View style={styles.noCrewPicksContainer}>
+              <Image source={NO_CREW_PICKS_IMAGE} style={styles.noCrewPicksImage} />
+              <Text style={styles.noCrewPicksText}>No Crew Picks available</Text>
+              <TouchableOpacity style={styles.addDiningButton} onPress={() => setPostModalVisible(true)}>
+                <Text style={styles.addDiningButtonText}>Add Dining Option</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            crewPicks.map(pick => (
               <View key={pick._id} style={styles.card}>
                 <TouchableOpacity onPress={() => openImageModal(pick.imageUrl || PLACEHOLDER_IMAGE_URL)}>
                   <Image source={{ uri: pick.imageUrl || PLACEHOLDER_IMAGE_URL }} style={styles.image} />
@@ -523,9 +516,11 @@ const Dining = () => {
                   </View>
                 </View>
               </View>
-            ))}
-      </ScrollView>
-    </SafeAreaView>
+            ))
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   )
 }
 
@@ -534,7 +529,7 @@ export default Dining
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC'
+    backgroundColor: 'white'
   },
   scrollView: {
     padding: 10
@@ -544,7 +539,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 8,
-    backgroundColor: '#F8FAFC'
+    backgroundColor: 'white'
   },
   tabContainer: {
     flexDirection: 'row',
@@ -721,7 +716,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   },
   saveButton: {
-    backgroundColor: '#4386AD'
+    backgroundColor: '#045D91'
   },
   saveButtonText: {
     color: 'white',
@@ -883,5 +878,33 @@ const styles = StyleSheet.create({
   recommendedBy: {
     fontStyle: 'italic',
     textAlign: 'left'
+  },
+  noCrewPicksContainer: {
+    alignItems: 'center',
+    marginTop: 50,
+    paddingHorizontal: 20
+  },
+  noCrewPicksImage: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
+    marginBottom: 20
+  },
+  noCrewPicksText: {
+    fontSize: 18,
+    color: 'gray',
+    textAlign: 'center',
+    marginBottom: 20
+  },
+  addDiningButton: {
+    backgroundColor: '#4386AD',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5
+  },
+  addDiningButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold'
   }
 })
