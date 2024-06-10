@@ -1,22 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faUser, faBell, faUserGroup, faKey, faTrash, faChevronRight, faChevronLeft } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
+import {
+  faUser,
+  faBell,
+  faUserGroup,
+  faKey,
+  faTrash,
+  faChevronRight,
+  faChevronLeft
+} from '@fortawesome/free-solid-svg-icons'
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
+import React, { useState, useEffect } from 'react'
 import * as SecureStore from 'expo-secure-store'
+import axios from 'axios'
 
 const Settings = () => {
-  const [currentScreen, setCurrentScreen] = useState('Settings');
-  const [userDetails, setUserDetails] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [currentScreen, setCurrentScreen] = useState('Settings')
+  const [userDetails, setUserDetails] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   const renderSettings = () => (
     <View style={styles.container}>
       <View style={styles.header}></View>
-      <Image
-        style={styles.avatar}
-        source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }}
-      />
+      <Image style={styles.avatar} source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }} />
       <View style={styles.body}>
         <View style={styles.bodyContent}>
           <Text style={styles.name}>Name</Text>
@@ -62,30 +67,33 @@ const Settings = () => {
         </View>
       </View>
     </View>
-  );
+  )
 
   const fetchUserDetails = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const userId = await SecureStore.getItemAsync('userId');
-      console.log(userId);
-      const response = await axios.get(`https://5e21-183-171-24-71.ngrok-free.app/api/user/getUserDetails`, {
-        params: { 
-          userId 
+      const userId = await SecureStore.getItemAsync('userId')
+      console.log(userId)
+      const response = await axios.get(
+        `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/user/getUserDetails`,
+        {
+          params: {
+            userId
+          }
         }
-      });
-      setUserDetails(response.data);
-      console.log(response.data);
+      )
+      setUserDetails(response.data)
+      console.log(response.data)
     } catch (error) {
-        console.error('Error fetching user details:', error);
+      console.error('Error fetching user details:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchUserDetails();
-  }, []);
+    fetchUserDetails()
+  }, [])
 
   const renderUserProfile = () => (
     <ScrollView style={styles.container}>
@@ -94,10 +102,7 @@ const Settings = () => {
           <FontAwesomeIcon icon={faChevronLeft} size={24} color="white" />
         </TouchableOpacity>
       </View>
-      <Image
-        style={styles.avatar}
-        source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }}
-      />
+      <Image style={styles.avatar} source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }} />
       <View style={styles.bodyProfile}>
         <View style={styles.boxProfile}>
           <View style={styles.headerProfile}>
@@ -106,69 +111,69 @@ const Settings = () => {
           {loading ? (
             <ActivityIndicator size="large" color="#0000ff" />
           ) : (
-          <View style={styles.infoContainer}>
-            <View style={styles.infoItem}>
-              <View style={styles.infoColumn}>
-                <Text style={styles.infoTitle}>First Name</Text>
-                <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>{userDetails?.firstName || 'N/A'}</Text>
+            <View style={styles.infoContainer}>
+              <View style={styles.infoItem}>
+                <View style={styles.infoColumn}>
+                  <Text style={styles.infoTitle}>First Name</Text>
+                  <View style={styles.infoStyles}>
+                    <Text style={styles.infoValue}>{userDetails?.firstName || 'N/A'}</Text>
+                  </View>
+                </View>
+                <View style={styles.infoColumn}>
+                  <Text style={styles.infoTitle}>Last Name</Text>
+                  <View style={styles.infoStyles}>
+                    <Text style={styles.infoValue}>{userDetails?.lastName || 'N/A'}</Text>
+                  </View>
                 </View>
               </View>
-              <View style={styles.infoColumn}>
-                <Text style={styles.infoTitle}>Last Name</Text>
-                <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>{userDetails?.lastName || 'N/A'}</Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>E-mail Address</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>E-mail Address</Text>
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>{userDetails?.email || 'N/A'}</Text>
                 </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Rank</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Rank</Text>
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>Captain</Text>
                 </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Homebase</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Homebase</Text>
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>KBR - Kota Bharu</Text>
                 </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Airline</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Airline</Text>
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>Air Asia X</Text>
                 </View>
+              </View>
+              <View style={styles.buttonEdit}>
+                <TouchableOpacity style={styles.editButton}>
+                  <Text style={styles.editText}>Edit Profile</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.buttonEdit}>
-              <TouchableOpacity style={styles.editButton}>
-                <Text style={styles.editText}>Edit Profile</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
           )}
         </View>
       </View>
     </ScrollView>
-  );
+  )
 
   return (
     <>
       {currentScreen === 'Settings' && renderSettings()}
       {currentScreen === 'UserProfile' && renderUserProfile()}
     </>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   header: {
     backgroundColor: '#538FC7',
-    height: 150,
+    height: 150
   },
   box: {
     backgroundColor: '#F8FAFC',
@@ -191,13 +196,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignSelf: 'center',
     position: 'absolute',
-    marginTop: 70,
+    marginTop: 70
   },
   body: {
-    marginTop: 50,
+    marginTop: 50
   },
   bodyProfile: {
-    marginTop: 70,
+    marginTop: 70
   },
   bodyContent: {
     alignItems: 'center',
@@ -207,17 +212,17 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 18,
     color: '#000',
-    fontWeight: '600',
+    fontWeight: '600'
   },
   info: {
     fontSize: 12,
     color: '#000',
-    fontWeight: '600',
+    fontWeight: '600'
   },
   homebase: {
     fontSize: 12,
     color: '#555555',
-    textAlign: 'center',
+    textAlign: 'center'
   },
   button: {
     height: 50,
@@ -229,11 +234,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     width: 350,
     backgroundColor: '#045D91',
-    justifyContent: 'space-between', 
-    paddingHorizontal: 20, 
+    justifyContent: 'space-between',
+    paddingHorizontal: 20
   },
   buttonContainer: {
-    marginTop: 20,
+    marginTop: 20
   },
   buttonEdit: {
     flexDirection: 'row',
@@ -242,15 +247,15 @@ const styles = StyleSheet.create({
   },
   buttonContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   textButton: {
     fontSize: 16,
-    color: '#FFF',
+    color: '#FFF'
   },
   deleteButton: {
     fontSize: 16,
-    color: '#FF0000',
+    color: '#FF0000'
   },
   icon: {
     color: '#FFF',
@@ -267,16 +272,16 @@ const styles = StyleSheet.create({
     marginRight: 10
   },
   iconRight: {
-    marginLeft: 'auto', 
+    marginLeft: 'auto',
     color: '#FFF'
   },
   iconDeleteRight: {
-    marginLeft: 'auto', 
+    marginLeft: 'auto',
     color: '#FF0000'
   },
   backButton: {
     marginTop: 10,
-    marginLeft: 10,
+    marginLeft: 10
   },
   boxProfile: {
     backgroundColor: '#F8FAFC',
@@ -294,43 +299,42 @@ const styles = StyleSheet.create({
     padding: 10,
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   headerText: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: 'bold'
   },
   infoContainer: {
     margin: 20
   },
   infoItem: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 10
   },
   infoColumn: {
     flex: 1,
     paddingRight: 10
-  }, 
-  infoRow:{
+  },
+  infoRow: {
     flexDirection: 'column',
     paddingRight: 10,
     marginBottom: 10
   },
   infoTitle: {
-    fontWeight: 'bold',
+    fontWeight: 'bold'
   },
-  infoValue: {
-  },
+  infoValue: {},
   infoStyles: {
-    width: "100%",
+    width: '100%',
     height: 40,
     padding: 10,
     marginVertical: 5,
-    backgroundColor: "white",
-    color: "black",
+    backgroundColor: 'white',
+    color: 'black',
     borderRadius: 5,
-    borderColor: "#ADADAD",
+    borderColor: '#ADADAD',
     borderWidth: 1,
     elevation: 3
   },
