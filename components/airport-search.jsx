@@ -24,7 +24,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
   const fetchAirports = async searchQuery => {
     try {
       const response = await axios.get(
-        `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/airport/getAirport`,
+        `https://8799-103-18-0-20.ngrok-free.app/api/airport/getAirport`,
         {
           params: { query: searchQuery }
         }

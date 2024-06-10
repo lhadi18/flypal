@@ -88,7 +88,7 @@ const Checklists = () => {
       items: checklistItemOptions
     }
     try {
-      const response = await axios.post('https://57be-103-18-0-20.ngrok-free.app/api/checklist/createChecklist', checklistData)
+      const response = await axios.post('https://8799-103-18-0-20.ngrok-free.app/api/checklist/createChecklist', checklistData)
       console.log('Checklist created:', response.data)
       handleCloseForm()
       fetchChecklists()
@@ -102,7 +102,7 @@ const Checklists = () => {
     try {
         const userId = await SecureStore.getItemAsync('userId');
         console.log(userId)
-        const response = await axios.get(`https://57be-103-18-0-20.ngrok-free.app/api/checklist/getChecklist`, {
+        const response = await axios.get(`https://8799-103-18-0-20.ngrok-free.app/api/checklist/getChecklist`, {
           params: {
             userId
           }
@@ -130,7 +130,7 @@ useEffect(() => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://57be-103-18-0-20.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`)
+              await axios.delete(`https://8799-103-18-0-20.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`)
               await fetchChecklists();
             } catch (error) {
               console.error('Error deleting checklist:', error)
@@ -157,7 +157,7 @@ useEffect(() => {
       items: currentChecklist.items
     }
     try {
-      const response = await axios.put(`https://57be-103-18-0-20.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`, updatedChecklistData)
+      const response = await axios.put(`https://8799-103-18-0-20.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`, updatedChecklistData)
       console.log('Checklist updated:', response.data)
       setIsEditFormOpen(false)
       fetchChecklists()
@@ -165,6 +165,8 @@ useEffect(() => {
       console.error('Error updating checklist:', error)
     }
   }
+
+  
 
   return (
     <ScrollView contentContainerStyle={styles.scrollViewContainer}>

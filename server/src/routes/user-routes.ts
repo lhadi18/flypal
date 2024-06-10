@@ -15,7 +15,7 @@ router.post('/register', registerUser)
 router.post('/login', loginUser)
 router.post('/validateUserId', validateUserId)
 router.get('/getUserId', getUserDetails);
-router.put('/updateUserId', updateUserDetails)
+router.put('/updateUserId/:id', updateUserDetails)
 router.put('/updatePassword/:id', updateUserPassword);
 router.get('/getUsers', getUsers)
 router.delete('/deleteUser/:id', deleteUser)

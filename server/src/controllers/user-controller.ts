@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import User from '../models/user-model'
 import mongoose from 'mongoose'
-const bcrypt = require('bcryptjs');
+import bcrypt from 'bcrypt'
 
 export const registerUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, password, homebase, airline, role } = req.body
@@ -90,7 +90,7 @@ export const validateUserId = async (req: Request, res: Response) => {
 }
 
 export const getUserDetails = async (req: Request, res: Response) => {
-  const { userId } = req.params;
+  const { userId } = req.query;
   console.log('Received userId:', userId);
 
   if (typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
@@ -98,11 +98,13 @@ export const getUserDetails = async (req: Request, res: Response) => {
   }
 
   try {
-    const user = await User.findById(userId).select('-password'); // Exclude password
+    const user = await User.findById(userId)
+      .populate('homebase', 'IATA ICAO city') 
+      .populate('airline', 'ICAO Name') 
+      .select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
     res.status(200).json(user);
   } catch (error) {
     console.error('Error fetching user details:', error);
@@ -111,14 +113,15 @@ export const getUserDetails = async (req: Request, res: Response) => {
 };
 
 export const updateUserDetails = async (req: Request, res: Response) => {
-  const { id } = req.params
-  const { firstName, lastName, email, homebase, airline, role } = req.body
+  const { id } = req.params;
+  const { firstName, lastName, email, homebase, airline, role } = req.body;
+  console.log(id)
 
   try {
     const user = await User.findById(id)
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' })
+      return res.status(404).json({ message: 'User not found' });
     }
 
     user.firstName = firstName
@@ -128,7 +131,7 @@ export const updateUserDetails = async (req: Request, res: Response) => {
     user.airline = airline
     user.role = role
 
-    await user.save()
+    await user.save();
 
     res.status(200).json({
       _id: user._id,
