@@ -53,6 +53,8 @@ const Roster = () => {
   const navigation = useNavigation()
   const route = useRoute()
 
+  const DISPLAY_FORMAT = 'DD/MM/YYYY HH:mm [GMT]Z'
+
   useLayoutEffect(() => {
     if (route.params?.action) {
       if (route.params.action === 'pickDocument') {
@@ -277,10 +279,7 @@ const Roster = () => {
     setNewEventDepartureTime(formatTimeWithGMT(event.departureTime, event.origin.tz_database))
     setNewEventArrivalTime(formatTimeWithGMT(event.arrivalTime, event.destination.tz_database))
     setNewEventFlightNumber(event.flightNumber)
-    setNewEventAircraftType({
-      value: event.aircraftType,
-      label: `${event.aircraftType}`
-    })
+    setNewEventAircraftType(event.aircraftType ? event.aircraftType._id : '')
     setNewEventNotes(event.notes)
     setModalVisible(true)
   }
@@ -295,9 +294,12 @@ const Roster = () => {
 
     const userId = await SecureStore.getItemAsync('userId')
 
-    // Ensure date format is correct
-    const formattedDepartureTime = moment(newEventDepartureTime).toISOString()
-    const formattedArrivalTime = moment(newEventArrivalTime).toISOString()
+    const formattedDepartureTime = moment
+      .tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin.timezone)
+      .toISOString()
+    const formattedArrivalTime = moment
+      .tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination.timezone)
+      .toISOString()
 
     const newEvent = {
       userId,
@@ -307,22 +309,20 @@ const Roster = () => {
       departureTime: formattedDepartureTime,
       arrivalTime: formattedArrivalTime,
       flightNumber: newEventFlightNumber,
-      aircraftType: newEventAircraftType?.value || null, // Handle optional field
-      notes: newEventNotes || '' // Handle optional field
+      aircraftType: newEventAircraftType || null,
+      notes: newEventNotes || ''
     }
 
-    console.log('New Event Data:', newEvent) // Log the event data being sent to the backend
+    console.log(newEventAircraftType)
 
     try {
       let response
       if (editMode) {
-        // Update existing event
         response = await axios.put(
           `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
           newEvent
         )
       } else {
-        // Create new event
         response = await axios.post(
           'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/createRosterEntry',
           newEvent
@@ -334,9 +334,8 @@ const Roster = () => {
         clearOriginAndDestination()
         setModalVisible(false)
 
-        // Fetch roster entries again
         const today = getCurrentDate()
-        await fetchRosterEntries(today) // Fetch entries from 4 months ahead and 4 months behind
+        await fetchRosterEntries(today)
       } else {
         Alert.alert('Error', 'Failed to save event. Please try again.')
       }
@@ -405,20 +404,21 @@ const Roster = () => {
       return
     }
 
-    // Set picked time to the origin's timezone
     const originTimezone = newEventOrigin.timezone
-    const formattedDepartureDate = moment(date).tz(originTimezone).toISOString()
+    const displayDepartureDate = moment(date).format('YYYY-MM-DDTHH:mm:ss') // Preserve the original time
+    const convertedDepartureDate = moment.tz(displayDepartureDate, originTimezone).format(DISPLAY_FORMAT)
 
     if (newEventArrivalTime) {
-      const arrivalDateTime = moment(newEventArrivalTime).tz(newEventDestination.timezone)
+      const arrivalDateTime = moment.tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination.timezone)
+      const departureDateTime = moment.tz(convertedDepartureDate, DISPLAY_FORMAT, originTimezone)
 
-      if (moment(date).isAfter(arrivalDateTime)) {
+      if (departureDateTime.isAfter(arrivalDateTime)) {
         Alert.alert('Error', 'Departure time cannot be later than the arrival time.')
         return
       }
     }
 
-    setNewEventDepartureTime(formattedDepartureDate)
+    setNewEventDepartureTime(convertedDepartureDate)
     setDeparturePickerVisible(false)
   }
 
@@ -428,28 +428,26 @@ const Roster = () => {
       return
     }
 
-    // Set picked time to the destination's timezone
     const destinationTimezone = newEventDestination.timezone
-    const formattedArrivalDate = moment(date).tz(destinationTimezone).toISOString()
+    const displayArrivalDate = moment(date).format('YYYY-MM-DDTHH:mm:ss') // Preserve the original time
+    const convertedArrivalDate = moment.tz(displayArrivalDate, destinationTimezone).format(DISPLAY_FORMAT)
 
     if (newEventDepartureTime) {
-      const departureDateTime = moment(newEventDepartureTime).tz(newEventOrigin.timezone)
+      const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin.timezone)
+      const arrivalDateTime = moment.tz(convertedArrivalDate, DISPLAY_FORMAT, destinationTimezone)
 
-      if (moment(date).isBefore(departureDateTime)) {
+      if (arrivalDateTime.isBefore(departureDateTime)) {
         Alert.alert('Error', 'Arrival time cannot be earlier than the departure time.')
         return
       }
     }
 
-    setNewEventArrivalTime(formattedArrivalDate)
+    setNewEventArrivalTime(convertedArrivalDate)
     setArrivalPickerVisible(false)
   }
 
-  // Displaying the times with GMT offset
-  const formatTimeWithGMT = (timeString, timezone) => {
-    const localTime = moment.tz(timeString, timezone).format('DD/MM/YYYY HH:mm')
-    const gmtOffset = moment.tz(timeString, timezone).format('Z')
-    return `${localTime} GMT${gmtOffset}`
+  const formatTimeWithGMT = (time, timezone) => {
+    return moment(time).tz(timezone).format(DISPLAY_FORMAT)
   }
 
   const clearInputs = () => {
