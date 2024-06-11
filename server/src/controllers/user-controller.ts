@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import User from '../models/user-model'
+import Message from '../models/message-model';
 import mongoose from 'mongoose'
 import bcrypt from 'bcrypt'
 
@@ -148,38 +149,44 @@ export const updateUserDetails = async (req: Request, res: Response) => {
 }
 export const updateUserPassword = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { oldPassword, newPassword, confirmNewPassword } = req.body;
+  const { password } = req.body;
 
   try {
     const user = await User.findById(id);
-
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ error: 'User not found' });
     }
-
-    // Check if old password is correct
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Old password is incorrect' });
+    if (password) {
+      user.password = password;
+      const updatedPassword = await user.save();
+      res.json(updatedPassword)
+    } else {
+      res.json(user)
     }
-
-    // Check if new password and confirm new password match
-    if (newPassword !== confirmNewPassword) {
-      return res.status(400).json({ message: 'New password and confirm new password do not match' });
-    }
-
-    // Hash the new password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
-
-    await user.save();
-
-    res.status(200).json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ error: 'Failed to update password' });
   }
 };
+
+export const getAllUsers = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  console.log(req.params)
+
+  try {
+    const users = await User.find({ _id: { $ne: userId } })
+      .populate('homebase')
+      .populate('airline')
+      .populate('friendRequests')
+      .populate('friends')
+      .populate('sentFriendRequests');
+      
+    res.status(200).json(users);
+  } catch (err) {
+    console.error('Error retrieving users:', err);
+    res.status(500).json({ message: 'Error retrieving users' });
+  }
+}
 
 // For Admin Dashboard
 export const getUsers = async (req: Request, res: Response) => {
@@ -287,4 +294,37 @@ export const updateUser = async (req: Request, res: Response) => {
   }
 }
 
+
+export const getMessages = async (req: Request, res: Response) => {
+  const { userId, recipientId } = req.params;
+
+  try {
+    const messages = await Message.find({
+      $or: [
+        { sender: userId, recipient: recipientId },
+        { sender: recipientId, recipient: userId },
+      ],
+    }).sort({ timestamp: -1 });
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Error fetching messages' });
+  }
+};
+
+// Send a new message
+export const sendMessage = async (req: Request, res: Response) => {
+  const { sender, recipient, content } = req.body;
+
+  try {
+    const newMessage = new Message({ sender, recipient, content });
+    await newMessage.save();
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ message: 'Error sending message' });
+  }
+};
 

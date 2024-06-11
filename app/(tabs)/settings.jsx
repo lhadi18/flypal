@@ -26,7 +26,7 @@ const Settings = () => {
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
   const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  const [password, setPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter()
@@ -91,36 +91,25 @@ const Settings = () => {
     }
   };
 
-
   const handleChangePassword = async () => {
-    if (newPassword !== confirmNewPassword) {
-      setError('New password and confirm password do not match');
+    if (password !== confirmNewPassword) {
+      setError('Passwords do not match');
       return;
     }
   
-    setError('');
-    try {
-      await updateUserPassword(oldPassword, newPassword, confirmNewPassword);
-      setCurrentScreen('Settings');
-    } catch (error) {
-      console.error('Error updating password:', error);
-    }
-  };
-
-  const updateUserPassword = async (oldPassword, newPassword, confirmNewPassword) => {
     const userId = await SecureStore.getItemAsync('userId');
-  
     const data = {
-      oldPassword,
-      newPassword,
-      confirmNewPassword,
+      password,
     };
   
     try {
       const response = await axios.put(`https://8799-103-18-0-20.ngrok-free.app/api/users/updatePassword/${userId}`, data);
       console.log('Password updated:', response.data);
+      Alert.alert('Password updated successfully!');
+      setCurrentScreen('Settings');
     } catch (error) {
-      console.error('Error updating password:', error.response ? error.response.data : error.message);
+      setError('Failed to update password');
+      console.error(error);
     }
   };
 
@@ -147,6 +136,15 @@ const Settings = () => {
       ],
       { cancelable: true }
     )
+  };
+
+  const handleLogout = async () => {
+    try {
+      await SecureStore.deleteItemAsync('userId');
+      router.push('/sign-in');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const renderSettings = () => (
@@ -196,6 +194,14 @@ const Settings = () => {
                 <Text style={styles.deleteButton}>Delete Account</Text>
               </View>
               <FontAwesomeIcon icon={faChevronRight} style={styles.iconDeleteRight} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.logout}>
+            <TouchableOpacity style={styles.button} onPress={handleLogout}>
+              <View style={styles.buttonContent}>
+                <Text style={styles.textButton}>Logout</Text>
+              </View>
+              <FontAwesomeIcon icon={faChevronRight} style={styles.iconRight} />
             </TouchableOpacity>
           </View>
         </View>
@@ -375,32 +381,6 @@ const Settings = () => {
           ) : (
             <View style={styles.infoContainer}>
               <View style={styles.infoRow}>
-                <Text style={styles.infoTitle}>Old Password</Text>
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    style={[styles.passwordInput, { paddingRight: 40 }]}
-                    placeholder="Enter old password"
-                    placeholderTextColor="grey"
-                    secureTextEntry={!oldPasswordVisible}
-                    value={oldPassword}
-                    onChangeText={setOldPassword}
-                  />
-                  <TouchableOpacity
-                    style={styles.toggleButton}
-                    onPress={() => setOldPasswordVisible(!oldPasswordVisible)}
-                  >
-                    <Image
-                      source={
-                        oldPasswordVisible
-                          ? require('../../assets/icons/pass-show.png')
-                          : require('../../assets/icons/pass-hide.png')
-                      }
-                      style={styles.toggleButtonImage}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>New Password</Text>
                 <View style={styles.passwordContainer}>
                   <TextInput
@@ -408,8 +388,8 @@ const Settings = () => {
                     placeholder="Enter new password"
                     placeholderTextColor="grey"
                     secureTextEntry={!passwordVisible}
-                    value={newPassword}
-                    onChangeText={setNewPassword}
+                    value={password}
+                    onChangeText={setPassword}
                   />
                   <TouchableOpacity
                     style={styles.toggleButton}
@@ -509,6 +489,9 @@ const pickerSelectStyles = StyleSheet.create({
 })
 
 const styles = StyleSheet.create({
+  logout: {
+    marginTop: 30
+  },
   error: {
     color: 'red',
     marginBottom: 10,
