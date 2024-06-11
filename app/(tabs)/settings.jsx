@@ -150,10 +150,7 @@ const Settings = () => {
   const renderSettings = () => (
     <View style={styles.container}>
       <View style={styles.header}></View>
-      <Image
-        style={styles.avatar}
-        source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }}
-      />
+      <Image style={styles.avatar} source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }} />
       <View style={styles.body}>
         <View style={styles.bodyContent}>
           <Text style={styles.name}>{userDetails?.firstName} {userDetails?.lastName}</Text>
@@ -224,23 +221,23 @@ const Settings = () => {
           {loading ? (
             <ActivityIndicator size="large" color="#0000ff" />
           ) : (
-          <View style={styles.infoContainer}>
-            <View style={styles.infoItem}>
-              <View style={styles.infoColumn}>
-                <Text style={styles.infoTitle}>First Name</Text>
-                <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>{userDetails?.firstName || 'N/A'}</Text>
+            <View style={styles.infoContainer}>
+              <View style={styles.infoItem}>
+                <View style={styles.infoColumn}>
+                  <Text style={styles.infoTitle}>First Name</Text>
+                  <View style={styles.infoStyles}>
+                    <Text style={styles.infoValue}>{userDetails?.firstName || 'N/A'}</Text>
+                  </View>
+                </View>
+                <View style={styles.infoColumn}>
+                  <Text style={styles.infoTitle}>Last Name</Text>
+                  <View style={styles.infoStyles}>
+                    <Text style={styles.infoValue}>{userDetails?.lastName || 'N/A'}</Text>
+                  </View>
                 </View>
               </View>
-              <View style={styles.infoColumn}>
-                <Text style={styles.infoTitle}>Last Name</Text>
-                <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>{userDetails?.lastName || 'N/A'}</Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>E-mail Address</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>E-mail Address</Text>
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>{userDetails?.email || 'N/A'}</Text>
                 </View>
@@ -250,15 +247,15 @@ const Settings = () => {
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>{userDetails?.role || 'N/A'}</Text>
                 </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Homebase</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Homebase</Text>
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>{userDetails.homebase ? `${userDetails.homebase?.IATA}/${userDetails.homebase?.ICAO} - ${userDetails.homebase?.city}`  : 'N/A'}</Text>
                 </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Airline</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Airline</Text>
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>{userDetails.airline ? `${userDetails.airline.ICAO} - ${userDetails.airline.Name}` : 'N/A'}</Text>
                 </View>
@@ -526,7 +523,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#538FC7',
-    height: 150,
+    height: 150
   },
   box: {
     backgroundColor: '#F8FAFC',
@@ -549,13 +546,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignSelf: 'center',
     position: 'absolute',
-    marginTop: 70,
+    marginTop: 70
   },
   body: {
-    marginTop: 50,
+    marginTop: 50
   },
   bodyProfile: {
-    marginTop: 70,
+    marginTop: 70
   },
   bodyContent: {
     alignItems: 'center',
@@ -565,17 +562,17 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 18,
     color: '#000',
-    fontWeight: '600',
+    fontWeight: '600'
   },
   info: {
     fontSize: 12,
     color: '#000',
-    fontWeight: '600',
+    fontWeight: '600'
   },
   homebase: {
     fontSize: 12,
     color: '#555555',
-    textAlign: 'center',
+    textAlign: 'center'
   },
   button: {
     height: 50,
@@ -587,11 +584,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     width: 350,
     backgroundColor: '#045D91',
-    justifyContent: 'space-between', 
-    paddingHorizontal: 20, 
+    justifyContent: 'space-between',
+    paddingHorizontal: 20
   },
   buttonContainer: {
-    marginTop: 20,
+    marginTop: 20
   },
   buttonEdit: {
     flexDirection: 'row',
@@ -600,15 +597,15 @@ const styles = StyleSheet.create({
   },
   buttonContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   textButton: {
     fontSize: 16,
-    color: '#FFF',
+    color: '#FFF'
   },
   deleteButton: {
     fontSize: 16,
-    color: '#FF0000',
+    color: '#FF0000'
   },
   icon: {
     color: '#FFF',
@@ -625,16 +622,16 @@ const styles = StyleSheet.create({
     marginRight: 10
   },
   iconRight: {
-    marginLeft: 'auto', 
+    marginLeft: 'auto',
     color: '#FFF'
   },
   iconDeleteRight: {
-    marginLeft: 'auto', 
+    marginLeft: 'auto',
     color: '#FF0000'
   },
   backButton: {
     marginTop: 10,
-    marginLeft: 10,
+    marginLeft: 10
   },
   boxProfile: {
     backgroundColor: '#F8FAFC',
@@ -652,25 +649,25 @@ const styles = StyleSheet.create({
     padding: 10,
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   headerText: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: 'bold'
   },
   infoContainer: {
     margin: 20
   },
   infoItem: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 10
   },
   infoColumn: {
     flex: 1,
     paddingRight: 10
-  }, 
-  infoRow:{
+  },
+  infoRow: {
     flexDirection: 'column',
     paddingRight: 10,
     marginBottom: 10
@@ -680,14 +677,14 @@ const styles = StyleSheet.create({
     marginBottom: 5
   },
   infoStyles: {
-    width: "100%",
+    width: '100%',
     height: 40,
     padding: 10,
     marginVertical: 5,
-    backgroundColor: "white",
-    color: "black",
+    backgroundColor: 'white',
+    color: 'black',
     borderRadius: 5,
-    borderColor: "#ADADAD",
+    borderColor: '#ADADAD',
     borderWidth: 1,
   },
   editButton: {

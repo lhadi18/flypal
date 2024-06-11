@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, Image, TouchableOpacity } from 'react-native'
+import { useFocusEffect } from '@react-navigation/native'
 import AirportSearch from '@/components/airport-search'
 import { useGlobalStore } from '../../store/store'
 import React, { useState, useEffect } from 'react'
@@ -19,36 +20,42 @@ const Destination = () => {
     }
   }
 
-  useEffect(() => {
-    const fetchRoster = async () => {
-      try {
-        const userId = await SecureStore.getItemAsync('userId')
-        if (!userId) {
-          console.error('User ID not found')
-          return
-        }
-
-        const response = await axios.get(
-          'https://8799-103-18-0-20.ngrok-free.app/api/roster/getNext30DaysRoster',
-          {
-            params: { userId }
-          }
-        )
-        setRoster(response.data)
-      } catch (error) {
-        console.error(error)
+  const fetchRoster = async () => {
+    try {
+      const userId = await SecureStore.getItemAsync('userId')
+      if (!userId) {
+        console.error('User ID not found')
+        return
       }
-    }
 
+      const response = await axios.get(
+        'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/getNext30DaysRoster',
+        {
+          params: { userId }
+        }
+      )
+      setRoster(response.data)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  useEffect(() => {
     fetchRoster()
   }, [])
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchRoster()
+    }, [])
+  )
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
         <AirportSearch placeholder="Search for Airports" onSelect={handleSelectAirport} />
         <Text style={styles.journeyHeader}>Journey Ahead: Your next stops</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('my-bookmarks')}>
+        <TouchableOpacity style={styles.button} onPress={() => null}>
           <View style={styles.buttonTextContainer}>
             <AntDesign name="book" size={16} color="#4386AD" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>My Bookmarks</Text>

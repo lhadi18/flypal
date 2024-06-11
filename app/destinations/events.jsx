@@ -162,7 +162,8 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333'
+    color: '#333',
+    paddingRight: 10
   },
   eventTime: {
     fontSize: 14,

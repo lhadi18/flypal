@@ -175,7 +175,7 @@ const Weather = () => {
             weather.forecast.map((day, index) => (
               <TouchableOpacity key={index} style={styles.forecastItem} onPress={() => showDetails(day)}>
                 <Text style={styles.forecastDay}>
-                  {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                  {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
                 </Text>
                 <Image source={{ uri: `https:${day.day.condition.icon}` }} style={styles.forecastIcon} />
                 <Text style={styles.forecastTempMax}>
@@ -251,7 +251,7 @@ export default Weather
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white'
+    backgroundColor: '#FFFFFF' // white background
   },
   scrollContent: {
     alignItems: 'center',
@@ -261,12 +261,14 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    backgroundColor: '#EFFAFF' // light blue background
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    backgroundColor: '#FFD700' // gold background for error
   },
   header: {
     justifyContent: 'center',
@@ -279,7 +281,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
-    color: '#333'
+    color: '#333' // dark text
   },
   weatherIcon: {
     width: 100,
@@ -342,11 +344,12 @@ const styles = StyleSheet.create({
   forecastItem: {
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#4386AD',
     padding: 10,
     borderRadius: 5,
     margin: 5,
-    width: 100
+    width: 100,
+    backgroundColor: '#EFFAFF' // light blue background for forecast items
   },
   forecastDay: {
     fontSize: 16,
@@ -370,9 +373,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     padding: 10,
     width: '100%',
-    backgroundColor: '#EFFAFF',
+    backgroundColor: '#EFFAFF', // light blue background for METAR/TAF container
     borderWidth: 1,
-    borderColor: '#4386AD',
+    borderColor: '#4386AD', // blue border
     borderRadius: 5
   },
   sectionTitle: {
@@ -422,7 +425,7 @@ const styles = StyleSheet.create({
   closeButton: {
     marginTop: 20,
     padding: 10,
-    backgroundColor: '#4386AD',
+    backgroundColor: '#4386AD', // blue background
     borderRadius: 5
   },
   closeButtonText: {
