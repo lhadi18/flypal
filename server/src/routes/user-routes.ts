@@ -1,7 +1,10 @@
 import {
   registerUser,
   loginUser,
-  validateUserId, getUserDetails, updateUserDetails, updateUserPassword,
+  validateUserId, 
+  getUserDetails, 
+  updateUserDetails, 
+  updateUserPassword,
   getUsers,
   deleteUser,
   createUser,

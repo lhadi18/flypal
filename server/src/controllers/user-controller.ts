@@ -2,7 +2,6 @@ import { Request, Response } from 'express'
 import User from '../models/user-model'
 import Message from '../models/message-model';
 import mongoose from 'mongoose'
-import bcrypt from 'bcrypt'
 
 export const registerUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, password, homebase, airline, role } = req.body

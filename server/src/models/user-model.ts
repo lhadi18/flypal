@@ -13,6 +13,7 @@ export interface User extends Document {
   friends: mongoose.Schema.Types.ObjectId,
   sentFriendRequests: mongoose.Schema.Types.ObjectId,
   matchPassword(enteredPassword: string): Promise<boolean>
+  
 }
 
 const userSchema: Schema<User> = new mongoose.Schema({
@@ -26,6 +27,7 @@ const userSchema: Schema<User> = new mongoose.Schema({
   friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   sentFriendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
 })
 
 userSchema.pre<User>('save', async function (next) {

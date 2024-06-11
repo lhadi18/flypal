@@ -6,15 +6,26 @@ import { MenuProvider, Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-
 import * as SecureStore from 'expo-secure-store'
 import axios from 'axios';
 
-const Connection = ({ onSelectRecipient }) => {
+const Connection = () => {
+  const [isOpen, setIsOpen] = useState(false);
   const [users, setUsers] = useState([]);
+
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleOptionClick = (option) => {
+    console.log(option);
+    setIsOpen(false);
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
       const userId = await SecureStore.getItemAsync('userId');
       try {
-        const response = await axios.get(`https://8799-103-18-0-20.ngrok-free.app/api/users/getAllUsers/${userId}`);
-        setUsers(response.data);
+        const response = await axios.get(`https://8799-103-18-0-20.ngrok-free.app/api/users/getAllUsers/${userId}`)
+        setUsers(response.data)
+
       } catch (error) {
         console.log("error retrieving users", error);
       }
@@ -32,123 +43,123 @@ const Connection = ({ onSelectRecipient }) => {
       />
       <ScrollView>
         {users.map((user) => (
-          <TouchableOpacity key={user._id} onPress={() => onSelectRecipient(user._id)} style={styles.cardContainer}>
+          <View key={user._id} style={styles.cardContainer}>
             <View style={styles.profileContainer}>
               <View style={styles.profilePicture} />
               <View style={styles.profileInfo}>
                 <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
                 <Text style={styles.role}>{user.role}</Text>
-                <TouchableOpacity onPress={() => onSelectRecipient(user._id)} style={styles.messageButton}>
+                <TouchableOpacity style={styles.messageButton}>
                   <MaterialIcons name="message" size={12} color="white" />
                   <Text style={styles.buttonText}>Message</Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </TouchableOpacity>
+            <View style={{ flexDirection: 'row' }}>
+              <TouchableOpacity onPress={toggleMenu}>
+                <MaterialIcons name="more-vert" size={24} color="black" />
+              </TouchableOpacity>
+              {isOpen && (
+                <View style={styles.menuOptions}>
+                  <TouchableOpacity onPress={() => handleOptionClick('View Profile')}>
+                    <Text style={{ padding: 10, color: 'black' }}>View Profile</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleOptionClick('Remove Friend')}>
+                    <Text style={{ padding: 10, color: 'red' }}>Remove Friend</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
         ))}
       </ScrollView>
     </View>
   );
 };
 
-const MessageInput = ({ userId, recipientId, onSendMessage }) => {
-  const [newMessage, setNewMessage] = useState('');
+// const MessageInput = ({ userId, recipientId, onSendMessage }) => {
+//   const [newMessage, setNewMessage] = useState('');
 
-  const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+//   const sendMessage = async () => {
+//     if (!newMessage.trim()) return;
 
-    try {
-      const response = await axios.post(`https://8799-103-18-0-20.ngrok-free.app/api/users/messages`, {
-        sender: userId,
-        recipient: recipientId,
-        content: newMessage,
-      });
+//     try {
+//       const response = await axios.post(`https://8799-103-18-0-20.ngrok-free.app/api/users/messages`, {
+//         sender: userId,
+//         recipient: recipientId,
+//         content: newMessage,
+//       });
 
-      onSendMessage(response.data);
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
-  };
+//       onSendMessage(response.data);
+//       setNewMessage('');
+//     } catch (error) {
+//       console.error('Error sending message:', error);
+//     }
+//   };
 
-  return (
-    <View style={styles.inputContainer}>
-      <TextInput
-        style={styles.input}
-        value={newMessage}
-        onChangeText={setNewMessage}
-        placeholder="Type a message..."
-      />
-      <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
-        <MaterialIcons name="send" size={24} color="white" />
-      </TouchableOpacity>
-    </View>
-  );
-};
+//   return (
+//     <View style={styles.inputContainer}>
+//       <TextInput
+//         style={styles.input}
+//         value={newMessage}
+//         onChangeText={setNewMessage}
+//         placeholder="Type a message..."
+//       />
+//       <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
+//         <MaterialIcons name="send" size={24} color="white" />
+//       </TouchableOpacity>
+//     </View>
+//   );
+// };
 
 const Message = () => {
-  const [userId, setUserId] = useState(null);
-  const [recipientId, setRecipientId] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [error, setError] = useState(null);
+  // const [userId, setUserId] = useState(null);
+  // const [recipientId, setRecipientId] = useState(null);
+  // const [messages, setMessages] = useState([]);
+  // const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchUserId = async () => {
-      const userId = await SecureStore.getItemAsync('userId');
-      setUserId(userId);
-    };
+  // useEffect(() => {
+  //   const fetchUserId = async () => {
+  //     const userId = await SecureStore.getItemAsync('userId');
+  //     setUserId(userId);
+  //   };
 
-    fetchUserId();
-  }, []);
+  //   fetchUserId();
+  // }, []);
 
-  useEffect(() => {
-    if (userId && recipientId) {
-      const fetchMessages = async () => {
-        try {
-          const response = await axios.get(`https://8799-103-18-0-20.ngrok-free.app/api/users/messages/${userId}/${recipientId}`);
-          setMessages(response.data);
-        } catch (error) {
-          console.error('Error fetching messages:', error);
-          setError('Failed to load messages');
-        }
-      };
+  // useEffect(() => {
+  //   if (userId && recipientId) {
+  //     const fetchMessages = async () => {
+  //       try {
+  //         const response = await axios.get(`https://8799-103-18-0-20.ngrok-free.app/api/users/messages/${userId}/${recipientId}`);
+  //         setMessages(response.data);
+  //       } catch (error) {
+  //         console.error('Error fetching messages:', error);
+  //         setError('Failed to load messages');
+  //       }
+  //     };
 
-      fetchMessages();
-    }
-  }, [userId, recipientId]);
+  //     fetchMessages();
+  //   }
+  // }, [userId, recipientId]);
 
-  const handleSelectRecipient = (id) => {
-    setRecipientId(id);
-    setMessages([]); // Clear messages when a new recipient is selected
-  };
+  // const handleSelectRecipient = (id) => {
+  //   setRecipientId(id);
+  //   setMessages([]); // Clear messages when a new recipient is selected
+  // };
 
-  const handleSendMessage = (newMessage) => {
-    setMessages([newMessage, ...messages]);
-  };
+  // const handleSendMessage = (newMessage) => {
+  //   setMessages([newMessage, ...messages]);
+  // };
 
-  const renderMessageItem = ({ item }) => (
-    <View style={styles.messageContainer}>
-      <Text style={item.sender === userId ? styles.myMessage : styles.theirMessage}>{item.content}</Text>
-    </View>
-  );
+  // const renderMessageItem = ({ item }) => (
+  //   <View style={styles.messageContainer}>
+  //     <Text style={item.sender === userId ? styles.myMessage : styles.theirMessage}>{item.content}</Text>
+  //   </View>
+  // );
 
   return (
     <View style={styles.container}>
-      {!recipientId ? (
-        <Connection onSelectRecipient={handleSelectRecipient} />
-      ) : (
-        <>
-          <FlatList
-            data={messages}
-            renderItem={renderMessageItem}
-            keyExtractor={(item) => item._id}
-            style={styles.messageList}
-            inverted
-          />
-          <MessageInput userId={userId} recipientId={recipientId} onSendMessage={handleSendMessage} />
-          {error && <Text style={styles.errorText}>{error}</Text>}
-        </>
-      )}
     </View>
   );
 };
