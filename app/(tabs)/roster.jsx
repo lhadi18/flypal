@@ -287,9 +287,39 @@ const Roster = () => {
   }
 
   const handleAddEvent = async () => {
+    // Form validation
     if (!newEventTitle) {
-      Alert.alert('Error', 'Event title is required')
+      Alert.alert('Validation Error', 'Duty type is required')
       return
+    }
+    if (!newEventOrigin) {
+      Alert.alert('Validation Error', 'Origin is required')
+      return
+    }
+    if (!newEventDestination) {
+      Alert.alert('Validation Error', 'Destination is required')
+      return
+    }
+    if (!newEventDepartureTime) {
+      Alert.alert('Validation Error', 'Departure time is required')
+      return
+    }
+    if (!newEventArrivalTime) {
+      Alert.alert('Validation Error', 'Arrival time is required')
+      return
+    }
+    if (!newEventFlightNumber) {
+      Alert.alert('Validation Error', 'Flight number is required')
+      return
+    }
+    if (newEventDepartureTime && newEventArrivalTime) {
+      const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin.timezone)
+      const arrivalDateTime = moment.tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination.timezone)
+
+      if (departureDateTime.isAfter(arrivalDateTime)) {
+        Alert.alert('Validation Error', 'Departure time cannot be later than arrival time')
+        return
+      }
     }
 
     setLoading(true) // Start loading
@@ -314,8 +344,6 @@ const Roster = () => {
       aircraftType: newEventAircraftType || null,
       notes: newEventNotes || ''
     }
-
-    console.log(newEventAircraftType)
 
     try {
       let response
