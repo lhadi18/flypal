@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, Modal, Alert, ScrollView } from 'react-native'
+import { faPlus, faTrash, faEdit } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
-import { faPlus, faTrash, faEdit } from '@fortawesome/free-solid-svg-icons'
 import React, { useState, useEffect } from 'react'
 import * as SecureStore from 'expo-secure-store'
 import { Ionicons } from '@expo/vector-icons/'
@@ -18,7 +18,7 @@ const Checklists = () => {
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false)
   const [newItemText, setNewItemText] = useState('')
   const [checklistItemOptions, setChecklistItemOptions] = useState([])
-  const [checklists, setChecklists] = useState([]);
+  const [checklists, setChecklists] = useState([])
   const [currentChecklist, setCurrentChecklist] = useState(null)
 
   const handleOpenForm = () => {
@@ -88,7 +88,10 @@ const Checklists = () => {
       items: checklistItemOptions
     }
     try {
-      const response = await axios.post('https://5e21-183-171-24-71.ngrok-free.app/api/checklist/createChecklist', checklistData)
+      const response = await axios.post(
+        'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/checklist/createChecklist',
+        checklistData
+      )
       console.log('Checklist created:', response.data)
       handleCloseForm()
     } catch (error) {
@@ -99,22 +102,25 @@ const Checklists = () => {
 
   const fetchChecklists = async () => {
     try {
-        const userId = await SecureStore.getItemAsync('userId');
-        console.log(userId)
-        const response = await axios.get(`https://5e21-183-171-24-71.ngrok-free.app/api/checklist/getChecklist`, {
+      const userId = await SecureStore.getItemAsync('userId')
+      console.log(userId)
+      const response = await axios.get(
+        `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/checklist/getChecklist`,
+        {
           params: {
             userId
           }
-        });
-        setChecklists(response.data);
+        }
+      )
+      setChecklists(response.data)
     } catch (error) {
-        console.error('Error fetching checklists:', error);
+      console.error('Error fetching checklists:', error)
     }
-};
+  }
 
-useEffect(() => {
-  fetchChecklists();
-}, []);
+  useEffect(() => {
+    fetchChecklists()
+  }, [])
 
   const handleDeleteChecklist = checklistId => {
     Alert.alert(
@@ -129,8 +135,10 @@ useEffect(() => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://5e21-183-171-24-71.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`)
-              await fetchChecklists();
+              await axios.delete(
+                `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
+              )
+              await fetchChecklists()
             } catch (error) {
               console.error('Error deleting checklist:', error)
             }
@@ -139,7 +147,7 @@ useEffect(() => {
       ],
       { cancelable: true }
     )
-  };
+  }
 
   const handleEditChecklist = checklist => {
     setCurrentChecklist(checklist)
@@ -156,7 +164,10 @@ useEffect(() => {
       items: currentChecklist.items
     }
     try {
-      const response = await axios.put(`https://5e21-183-171-24-71.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`, updatedChecklistData)
+      const response = await axios.put(
+        `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
+        updatedChecklistData
+      )
       console.log('Checklist updated:', response.data)
       setIsEditFormOpen(false)
       fetchChecklists()
@@ -172,12 +183,7 @@ useEffect(() => {
         <TouchableOpacity style={styles.button} onPress={handleOpenForm}>
           <FontAwesomeIcon icon={faPlus} size={32} color="#fff" />
         </TouchableOpacity>
-        <Modal
-          visible={isFormOpen}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={handleCloseForm}
-        >
+        <Modal visible={isFormOpen} animationType="slide" transparent={true} onRequestClose={handleCloseForm}>
           <View style={styles.modalContainer}>
             {isFormOpen && (
               <CreateItemChecklistForm
@@ -204,7 +210,7 @@ useEffect(() => {
                 onCreate={handleCreateChecklist}
               />
             )}
-            </View>
+          </View>
         </Modal>
         <Modal
           visible={isEditFormOpen}
@@ -222,18 +228,18 @@ useEffect(() => {
                 leftColumnItems={currentChecklist.items.slice(0, 10)}
                 rightColumnItems={currentChecklist.items.slice(10)}
                 onAddChecklistItem={item => {
-                  const updatedItems = [...currentChecklist.items, item];
-                  setCurrentChecklist({ ...currentChecklist, items: updatedItems });
+                  const updatedItems = [...currentChecklist.items, item]
+                  setCurrentChecklist({ ...currentChecklist, items: updatedItems })
                 }}
                 onRemoveChecklistItem={index => {
-                  const items = [...currentChecklist.items];
-                  items.splice(index, 1);
-                  setCurrentChecklist({ ...currentChecklist, items });
+                  const items = [...currentChecklist.items]
+                  items.splice(index, 1)
+                  setCurrentChecklist({ ...currentChecklist, items })
                 }}
                 displayDatePicker={displayDatePicker}
                 handleConfirm={date => {
-                  handleConfirm(date);
-                  setCurrentChecklist({ ...currentChecklist, travelDate: date });
+                  handleConfirm(date)
+                  setCurrentChecklist({ ...currentChecklist, travelDate: date })
                 }}
                 hideDatePicker={hideDatePicker}
                 isDatePickerVisible={isDatePickerVisible}
@@ -253,7 +259,7 @@ useEffect(() => {
                   <Text style={styles.headerDetails}>{checklist.title}</Text>
                 </View>
                 <View style={styles.icon}>
-                  <TouchableOpacity onPress={() => handleEditChecklist(checklist)} style={{paddingRight:15}}>
+                  <TouchableOpacity onPress={() => handleEditChecklist(checklist)} style={{ paddingRight: 15 }}>
                     <FontAwesomeIcon icon={faEdit} size={16} color="grey" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDeleteChecklist(checklist._id)}>
@@ -268,9 +274,7 @@ useEffect(() => {
                       <Text style={styles.headerInfo}>Flight Route</Text>
                     </View>
                     <View>
-                      <Text style={styles.headerDetails}>
-                        {checklist.flightRoute ? checklist.flightRoute : "-"}
-                      </Text>
+                      <Text style={styles.headerDetails}>{checklist.flightRoute ? checklist.flightRoute : '-'}</Text>
                     </View>
                   </View>
                   <View style={styles.columnBox}>
@@ -279,7 +283,7 @@ useEffect(() => {
                     </View>
                     <View>
                       <Text style={styles.headerDetails}>
-                        {checklist.travelDate ? moment(checklist.travelDate).format('DD MMM YYYY') : "-"}
+                        {checklist.travelDate ? moment(checklist.travelDate).format('DD MMM YYYY') : '-'}
                       </Text>
                     </View>
                   </View>
@@ -588,7 +592,7 @@ const styles = StyleSheet.create({
     position: 'relative'
   },
   scrollViewContainer: {
-    flexGrow: 1,
+    flexGrow: 1
   },
   header: {
     fontSize: 18,
@@ -611,11 +615,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)'
   },
   itemInfo: {
     borderBottomWidth: 1,
-    borderBottomColor: '#5F5F5F',
+    borderBottomColor: '#5F5F5F'
   },
   rowBox: {
     flexDirection: 'row',
@@ -623,11 +627,11 @@ const styles = StyleSheet.create({
   },
   columnBox: {
     flex: 1,
-    flexDirection: 'column',
+    flexDirection: 'column'
   },
   headerInfo: {
     color: '#2F80ED',
-    fontSize: 12,
+    fontSize: 12
   },
   headerDetails: {
     fontWeight: 600
@@ -635,7 +639,7 @@ const styles = StyleSheet.create({
   icon: {
     marginLeft: 'auto',
     flexDirection: 'row'
-  },
+  }
 })
 
 const formStyles = StyleSheet.create({
