@@ -94,6 +94,7 @@ const Checklists = () => {
       )
       console.log('Checklist created:', response.data)
       handleCloseForm()
+      fetchChecklists()
     } catch (error) {
       console.error('Error saving event:', error)
       console.log(checklistData)
@@ -175,6 +176,8 @@ const Checklists = () => {
       console.error('Error updating checklist:', error)
     }
   }
+
+  
 
   return (
     <ScrollView contentContainerStyle={styles.scrollViewContainer}>

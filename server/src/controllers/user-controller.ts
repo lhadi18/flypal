@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import User from '../models/user-model'
+import Message from '../models/message-model';
 import mongoose from 'mongoose'
 
 export const registerUser = async (req: Request, res: Response) => {
@@ -97,11 +98,13 @@ export const getUserDetails = async (req: Request, res: Response) => {
   }
 
   try {
-    const user = await User.findById(userId).select('-password'); // Exclude password
+    const user = await User.findById(userId)
+      .populate('homebase', 'IATA ICAO city') 
+      .populate('airline', 'ICAO Name') 
+      .select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
     res.status(200).json(user);
   } catch (error) {
     console.error('Error fetching user details:', error);
@@ -109,6 +112,80 @@ export const getUserDetails = async (req: Request, res: Response) => {
   }
 };
 
+export const updateUserDetails = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { firstName, lastName, email, homebase, airline, role } = req.body;
+  console.log(id)
+
+  try {
+    const user = await User.findById(id)
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.firstName = firstName
+    user.lastName = lastName
+    user.email = email
+    user.homebase = homebase
+    user.airline = airline
+    user.role = role
+
+    await user.save();
+
+    res.status(200).json({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      homebase: user.homebase,
+      airline: user.airline,
+      role: user.role
+    })
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+export const updateUserPassword = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { password } = req.body;
+
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (password) {
+      user.password = password;
+      const updatedPassword = await user.save();
+      res.json(updatedPassword)
+    } else {
+      res.json(user)
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update password' });
+  }
+};
+
+export const getAllUsers = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  console.log(req.params)
+
+  try {
+    const users = await User.find({ _id: { $ne: userId } })
+      .populate('homebase')
+      .populate('airline')
+      .populate('friendRequests')
+      .populate('friends')
+      .populate('sentFriendRequests');
+      
+    res.status(200).json(users);
+  } catch (err) {
+    console.error('Error retrieving users:', err);
+    res.status(500).json({ message: 'Error retrieving users' });
+  }
+}
 
 // For Admin Dashboard
 export const getUsers = async (req: Request, res: Response) => {
@@ -215,3 +292,38 @@ export const updateUser = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' })
   }
 }
+
+
+export const getMessages = async (req: Request, res: Response) => {
+  const { userId, recipientId } = req.params;
+
+  try {
+    const messages = await Message.find({
+      $or: [
+        { sender: userId, recipient: recipientId },
+        { sender: recipientId, recipient: userId },
+      ],
+    }).sort({ timestamp: -1 });
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Error fetching messages' });
+  }
+};
+
+// Send a new message
+export const sendMessage = async (req: Request, res: Response) => {
+  const { sender, recipient, content } = req.body;
+
+  try {
+    const newMessage = new Message({ sender, recipient, content });
+    await newMessage.save();
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ message: 'Error sending message' });
+  }
+};
+
