@@ -36,39 +36,17 @@ import * as Yup from 'yup'
 const PLACEHOLDER_IMAGE_URL = '../../assets/images/no-image.png'
 const NO_CREW_PICKS_IMAGE = require('../../assets/images/no-crew-picks.jpg')
 
-const diningOptions = [
-  {
-    id: 1,
-    name: 'Restaurant A',
-    address: '123 Main St',
-    rating: 4.5,
-    totalRatings: 120,
-    status: 'Open',
-    imageUrl: 'https://via.placeholder.com/150',
-    dietary: 'Halal',
-    bookmarked: false
-  },
-  {
-    id: 2,
-    name: 'Restaurant B',
-    address: '456 Elm St',
-    rating: 4.0,
-    totalRatings: 90,
-    status: 'Closed',
-    imageUrl: 'https://via.placeholder.com/150',
-    dietary: 'Vegetarian',
-    bookmarked: false
-  }
-]
-
 const Dining = () => {
   const [selectedDietary, setSelectedDietary] = useState('')
-  const [filteredOptions, setFilteredOptions] = useState(diningOptions)
   const [isFilterModalVisible, setFilterModalVisible] = useState(false)
-  const [isPostModalVisible, setPostModalVisible] = useState(false)
+  const [loadingCrewPicks, setLoadingCrewPicks] = useState(false)
   const [selectedTab, setSelectedTab] = useState('Our Picks')
   const [places, setPlaces] = useState([])
   const [crewPicks, setCrewPicks] = useState([])
+  const [bookmarks, setBookmarks] = useState([])
+  const [hasFetchedPlaces, setHasFetchedPlaces] = useState(false)
+  const [hasFetchedCrewPicks, setHasFetchedCrewPicks] = useState(false)
+  const [postModalVisible, setPostModalVisible] = useState(false)
   const [image, setImage] = useState(null)
   const [isImageModalVisible, setImageModalVisible] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
@@ -76,36 +54,85 @@ const Dining = () => {
 
   const selectedAirport = useGlobalStore(state => state.selectedAirport)
 
+  // Fetch bookmarks once on component mount
   useEffect(() => {
-    const fetchData = async () => {
-      if (selectedTab === 'Our Picks' && selectedAirport) {
-        const nearbyPlaces = await fetchNearbyPlaces(selectedAirport.city_latitude, selectedAirport.city_longitude)
-        setPlaces(nearbyPlaces)
-      } else {
-        setFilteredOptions(diningOptions)
+    const fetchBookmarks = async () => {
+      try {
+        const userId = await SecureStore.getItemAsync('userId')
+        const response = await fetch(
+          `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}`
+        )
+        if (response.ok) {
+          const userBookmarks = await response.json()
+          const bookmarkedIds = userBookmarks.map(b => b.diningId)
+          setBookmarks(bookmarkedIds)
+        }
+      } catch (error) {
+        console.error('Failed to fetch bookmarks:', error)
       }
     }
-    fetchData()
-  }, [selectedTab, selectedAirport])
+    fetchBookmarks()
+  }, [])
 
+  // Fetch dining data based on the selected tab, only once per tab
   useEffect(() => {
-    const getCrewPicks = async () => {
-      if (selectedAirport) {
+    const fetchDiningData = async () => {
+      if (selectedTab === 'Our Picks' && selectedAirport && !hasFetchedPlaces) {
         try {
-          const data = await fetchCrewPicks(selectedAirport.id)
-          setCrewPicks(data)
+          const nearbyPlaces = await fetchNearbyPlaces(selectedAirport.city_latitude, selectedAirport.city_longitude)
+          const updatedPlaces = nearbyPlaces.map(place => ({
+            ...place,
+            bookmarked: bookmarks.includes(place.place_id)
+          }))
+          setPlaces(updatedPlaces)
+          setHasFetchedPlaces(true)
+        } catch (error) {
+          console.error('Failed to fetch places:', error)
+        }
+      } else if (selectedTab === 'Crew Picks' && selectedAirport && !hasFetchedCrewPicks) {
+        try {
+          const crewData = await fetchCrewPicks(selectedAirport.id)
+          const updatedCrewPicks = crewData.map(pick => ({
+            ...pick,
+            bookmarked: bookmarks.includes(pick._id)
+          }))
+          setCrewPicks(updatedCrewPicks)
+          setHasFetchedCrewPicks(true)
         } catch (error) {
           console.error('Failed to fetch crew picks:', error)
         }
       }
     }
-    getCrewPicks()
-  }, [selectedAirport])
+    fetchDiningData()
+  }, [selectedTab, selectedAirport, hasFetchedPlaces, hasFetchedCrewPicks, bookmarks])
 
-  const applyFilters = () => {
-    let filtered = diningOptions.filter(option => selectedDietary === '' || option.dietary === selectedDietary)
-    setFilteredOptions(filtered)
-    setFilterModalVisible(false)
+  const toggleBookmark = async (id, sourceType, restaurantName, location) => {
+    try {
+      const userId = await SecureStore.getItemAsync('userId')
+      const isBookmarked = bookmarks.includes(id)
+      const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
+
+      await fetch(`https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId, diningId: id, sourceType, restaurantName, location })
+      })
+
+      const updatedBookmarks = isBookmarked ? bookmarks.filter(bid => bid !== id) : [...bookmarks, id]
+      setBookmarks(updatedBookmarks)
+
+      const updatedPlaces = places.map(place =>
+        place.place_id === id ? { ...place, bookmarked: !isBookmarked } : place
+      )
+      const updatedCrewPicks = crewPicks.map(pick => (pick._id === id ? { ...pick, bookmarked: !isBookmarked } : pick))
+
+      setPlaces(updatedPlaces)
+      setCrewPicks(updatedCrewPicks)
+    } catch (error) {
+      console.error('Failed to update bookmark:', error)
+    }
   }
 
   const openImagePicker = async setFieldValue => {
@@ -184,25 +211,6 @@ const Dining = () => {
     }
   }
 
-  const openInGoogleMaps = (latitude, longitude) => {
-    const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
-    Linking.openURL(url)
-  }
-
-  const toggleBookmark = id => {
-    // Check in places
-    const updatedPlaces = places.map(place =>
-      place.place_id === id ? { ...place, bookmarked: !place.bookmarked } : place
-    )
-
-    // Check in crewPicks
-    const updatedCrewPicks = crewPicks.map(pick => (pick._id === id ? { ...pick, bookmarked: !pick.bookmarked } : pick))
-
-    // Update state
-    setPlaces(updatedPlaces)
-    setCrewPicks(updatedCrewPicks)
-  }
-
   const openImageModal = imageUri => {
     setSelectedImage(imageUri)
     setImageModalVisible(true)
@@ -216,6 +224,11 @@ const Dining = () => {
     } catch (error) {
       console.error('Failed to update likes:', error)
     }
+  }
+
+  const openInGoogleMaps = (latitude, longitude) => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+    Linking.openURL(url)
   }
 
   const validationSchema = Yup.object().shape({
@@ -253,7 +266,7 @@ const Dining = () => {
           <Modal
             animationType="slide"
             transparent={true}
-            visible={isPostModalVisible}
+            visible={postModalVisible}
             onRequestClose={() => {
               setPostModalVisible(false)
               setImage(null)
@@ -430,11 +443,15 @@ const Dining = () => {
           {selectedTab === 'Our Picks' ? (
             places.map(place => (
               <View key={place.place_id} style={styles.card}>
+                {/* Place Card Details */}
                 <TouchableOpacity onPress={() => openImageModal(place.photoUrl || PLACEHOLDER_IMAGE_URL)}>
                   <Image source={{ uri: place.photoUrl || PLACEHOLDER_IMAGE_URL }} style={styles.image} />
                 </TouchableOpacity>
                 <View style={styles.cardContent}>
-                  <TouchableOpacity style={styles.bookmarkButton} onPress={() => toggleBookmark(place.place_id)}>
+                  <TouchableOpacity
+                    style={styles.bookmarkButton}
+                    onPress={() => toggleBookmark(place.place_id, 'API', place.name, place.vicinity)}
+                  >
                     <Image
                       source={place.bookmarked ? icons.bookmarkFilled : icons.bookmarkOutline}
                       style={styles.bookmarkIcon}
@@ -472,11 +489,15 @@ const Dining = () => {
           ) : (
             crewPicks.map(pick => (
               <View key={pick._id} style={styles.card}>
+                {/* Crew Pick Card Details */}
                 <TouchableOpacity onPress={() => openImageModal(pick.imageUrl || PLACEHOLDER_IMAGE_URL)}>
                   <Image source={{ uri: pick.imageUrl || PLACEHOLDER_IMAGE_URL }} style={styles.image} />
                 </TouchableOpacity>
                 <View style={styles.cardContent}>
-                  <TouchableOpacity style={styles.bookmarkButton} onPress={() => toggleBookmark(pick._id)}>
+                  <TouchableOpacity
+                    style={styles.bookmarkButton}
+                    onPress={() => toggleBookmark(pick._id, 'UserPost', pick.restaurantName, pick.location)}
+                  >
                     <Image
                       source={pick.bookmarked ? icons.bookmarkFilled : icons.bookmarkOutline}
                       style={styles.bookmarkIcon}
@@ -518,6 +539,16 @@ const Dining = () => {
               </View>
             ))
           )}
+
+          {/* Modal for Adding Dining Option */}
+          <Modal transparent={true} visible={postModalVisible} onRequestClose={() => setPostModalVisible(false)}>
+            <View style={styles.modalView}>
+              <Text style={styles.formTitle}>Add Dining Option</Text>
+              <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.cancelButton}>
+                <Text style={styles.cancelButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </Modal>
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -729,12 +760,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 20,
     overflow: 'hidden',
-    padding: 10 // Added padding to the card
+    padding: 10
   },
   image: {
     width: '100%',
     height: 250,
-    borderRadius: 10 // Unified border radius for better appearance
+    borderRadius: 10
   },
   cardContent: {
     padding: 10,
@@ -854,6 +885,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginVertical: 5
+  },
+  tagButton: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderColor: '#4386AD',
+    borderWidth: 1,
+    marginHorizontal: 5,
+    marginBottom: 5
+  },
+  tagButtonSelected: {
+    backgroundColor: '#4386AD'
+  },
+  tagButtonText: {
+    color: '#4386AD',
+    fontWeight: 'bold'
+  },
+  tagButtonTextSelected: {
+    color: '#FFF'
   },
   cardFooter: {
     flexDirection: 'row',
