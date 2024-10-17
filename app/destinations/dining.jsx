@@ -106,18 +106,30 @@ const Dining = () => {
     fetchDiningData()
   }, [selectedTab, selectedAirport, hasFetchedPlaces, hasFetchedCrewPicks, bookmarks])
 
-  const toggleBookmark = async (id, sourceType, restaurantName, location) => {
+  const toggleBookmark = async (id, sourceType, restaurantName, location, imageUrl, rating, totalReviews) => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const isBookmarked = bookmarks.includes(id)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
+
+      // Construct the request body
+      const requestBody = {
+        userId,
+        diningId: id,
+        sourceType,
+        name: restaurantName, // Ensure name is correctly mapped here
+        location,
+        imageUrl,
+        rating,
+        totalReviews
+      }
 
       await fetch(`https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ userId, diningId: id, sourceType, restaurantName, location })
+        body: JSON.stringify(requestBody)
       })
 
       const updatedBookmarks = isBookmarked ? bookmarks.filter(bid => bid !== id) : [...bookmarks, id]
@@ -126,10 +138,7 @@ const Dining = () => {
       const updatedPlaces = places.map(place =>
         place.place_id === id ? { ...place, bookmarked: !isBookmarked } : place
       )
-      const updatedCrewPicks = crewPicks.map(pick => (pick._id === id ? { ...pick, bookmarked: !isBookmarked } : pick))
-
       setPlaces(updatedPlaces)
-      setCrewPicks(updatedCrewPicks)
     } catch (error) {
       console.error('Failed to update bookmark:', error)
     }
@@ -450,7 +459,17 @@ const Dining = () => {
                 <View style={styles.cardContent}>
                   <TouchableOpacity
                     style={styles.bookmarkButton}
-                    onPress={() => toggleBookmark(place.place_id, 'API', place.name, place.vicinity)}
+                    onPress={() =>
+                      toggleBookmark(
+                        place.place_id,
+                        'API',
+                        place.name,
+                        place.vicinity,
+                        place.photoUrl || PLACEHOLDER_IMAGE_URL,
+                        place.rating,
+                        place.user_ratings_total
+                      )
+                    }
                   >
                     <Image
                       source={place.bookmarked ? icons.bookmarkFilled : icons.bookmarkOutline}
@@ -496,7 +515,17 @@ const Dining = () => {
                 <View style={styles.cardContent}>
                   <TouchableOpacity
                     style={styles.bookmarkButton}
-                    onPress={() => toggleBookmark(pick._id, 'UserPost', pick.restaurantName, pick.location)}
+                    onPress={() =>
+                      toggleBookmark(
+                        pick._id,
+                        'UserPost', // Source type is UserPost for crew picks
+                        pick.restaurantName,
+                        pick.location,
+                        pick.imageUrl || PLACEHOLDER_IMAGE_URL,
+                        pick.rating,
+                        pick.totalReviews || 0
+                      )
+                    }
                   >
                     <Image
                       source={pick.bookmarked ? icons.bookmarkFilled : icons.bookmarkOutline}

@@ -4,28 +4,22 @@ import Bookmark from '../models/bookmark-model'
 import { Request, Response } from 'express'
 
 export const bookmarkDining = async (req: Request, res: Response) => {
-  const { userId, restaurantName, location, sourceType, diningId } = req.body
-
+  const { userId, diningId, sourceType, name, location, imageUrl, rating, totalReviews } = req.body
   try {
-    // Generate a diningId for API-based dining options if not provided
-    let generatedDiningId = diningId
-    if (sourceType === 'API' && !diningId) {
-      generatedDiningId = generateDiningId(restaurantName, location)
-    }
-
-    // Check if the bookmark already exists
-    const existingBookmark = await Bookmark.findOne({ userId, diningId: generatedDiningId })
-    if (existingBookmark) {
-      return res.status(400).json({ message: 'Already bookmarked' })
-    }
-
-    // Create a new bookmark
-    const bookmark = new Bookmark({ userId, diningId: generatedDiningId, sourceType })
-    await bookmark.save()
-
-    res.status(201).json({ message: 'Bookmarked successfully' })
+    const newBookmark = new Bookmark({
+      userId,
+      diningId,
+      sourceType,
+      name,
+      location,
+      imageUrl,
+      rating,
+      totalReviews
+    })
+    const savedBookmark = await newBookmark.save()
+    res.status(201).json(savedBookmark)
   } catch (error) {
-    res.status(500).json({ error: 'Failed to bookmark' })
+    res.status(500).json({ error: 'Failed to bookmark dining option.' })
   }
 }
 

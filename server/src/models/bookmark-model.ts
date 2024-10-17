@@ -19,6 +19,23 @@ const bookmarkSchema = new mongoose.Schema(
     bookmarkDate: {
       type: Date,
       default: Date.now
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    location: {
+      type: String,
+      required: true
+    },
+    imageUrl: {
+      type: String
+    },
+    rating: {
+      type: Number
+    },
+    totalReviews: {
+      type: Number
     }
   },
   {
