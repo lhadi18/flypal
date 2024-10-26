@@ -8,17 +8,20 @@ const bookmarkSchema = new mongoose.Schema(
       ref: 'User'
     },
     diningId: {
-      type: String, // This can hold either a generated ID or an ObjectId as a string
-      required: true
+      type: String // For dining bookmarks
+    },
+    eventId: {
+      type: String // For event bookmarks
+    },
+    airportId: {
+      type: mongoose.Schema.Types.ObjectId, // Reference to Airport model
+      required: true,
+      ref: 'Airport'
     },
     sourceType: {
       type: String,
       required: true,
-      enum: ['API', 'UserPost']
-    },
-    bookmarkDate: {
-      type: Date,
-      default: Date.now
+      enum: ['DINING_API', 'DINING_USER_POST', 'EVENT_API']
     },
     name: {
       type: String,
@@ -36,6 +39,18 @@ const bookmarkSchema = new mongoose.Schema(
     },
     totalReviews: {
       type: Number
+    },
+    externalAddress: {
+      type: String
+    },
+    eventLocationMap: {
+      type: String
+    },
+    eventTime: {
+      type: String
+    },
+    eventDescription: {
+      type: String
     }
   },
   {
