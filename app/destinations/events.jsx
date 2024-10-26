@@ -2,19 +2,35 @@ import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Linking, Act
 import { useGlobalStore } from '../../store/store'
 import React, { useState, useEffect } from 'react'
 import { FontAwesome } from '@expo/vector-icons'
+import * as SecureStore from 'expo-secure-store'
 import icons from '@/constants/icons'
+import { v5 as uuidv5 } from 'uuid'
 import axios from 'axios'
 
 const Events = () => {
   const selectedAirport = useGlobalStore(state => state.selectedAirport)
   const [events, setEvents] = useState([])
+  const [bookmarks, setBookmarks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Fetch bookmarks and events on component mount
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchBookmarksAndEvents = async () => {
       try {
-        const response = await axios.get(
+        const userId = await SecureStore.getItemAsync('userId')
+
+        // Fetch Bookmarks
+        const bookmarksResponse = await axios.get(
+          `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}`
+        )
+        const userBookmarks = bookmarksResponse.data
+        const bookmarkedEventKeys = userBookmarks
+          .filter(b => b.sourceType === 'EVENT_API')
+          .map(b => `${b.name}-${b.eventTime}`)
+
+        // Fetch Events
+        const eventsResponse = await axios.get(
           'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/events/getEvents',
           {
             params: {
@@ -23,7 +39,15 @@ const Events = () => {
             }
           }
         )
-        setEvents(response.data.events)
+        const fetchedEvents = eventsResponse.data.events.map(event => ({
+          ...event,
+          uniqueId: generateEventId(event),
+          bookmarked: bookmarkedEventKeys.includes(generateEventId(event))
+        }))
+
+        // Update state
+        setBookmarks(bookmarkedEventKeys)
+        setEvents(fetchedEvents)
         setLoading(false)
       } catch (err) {
         setError(err)
@@ -31,20 +55,56 @@ const Events = () => {
       }
     }
 
-    fetchEvents()
+    fetchBookmarksAndEvents()
   }, [selectedAirport])
 
-  const toggleBookmark = id => {
-    setEvents(events.map(event => (event.title === id ? { ...event, bookmarked: !event.bookmarked } : event)))
+  const toggleBookmark = async (id, eventDetails) => {
+    try {
+      const userId = await SecureStore.getItemAsync('userId')
+      const bookmarkKey = generateEventId(eventDetails)
+      const isBookmarked = bookmarks.includes(bookmarkKey)
+      const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
+
+      await axios.post(
+        `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/${endpoint}`,
+        {
+          userId,
+          eventId: id,
+          airportId: selectedAirport.id,
+          sourceType: 'EVENT_API',
+          name: eventDetails.title,
+          location: eventDetails.address.join(', '),
+          imageUrl: eventDetails.thumbnail,
+          externalAddress: eventDetails.link,
+          eventLocationMap: eventDetails.event_location_map.link,
+          eventTime: eventDetails.date.when,
+          eventDescription: eventDetails.description
+        }
+      )
+
+      // Update the bookmark state locally
+      setEvents(prevEvents =>
+        prevEvents.map(event => (event.uniqueId === bookmarkKey ? { ...event, bookmarked: !isBookmarked } : event))
+      )
+      setBookmarks(prevBookmarks =>
+        isBookmarked ? prevBookmarks.filter(key => key !== bookmarkKey) : [...prevBookmarks, bookmarkKey]
+      )
+    } catch (error) {
+      console.error('Failed to update bookmark:', error)
+    }
   }
 
   const openMaps = link => {
     Linking.openURL(link)
   }
 
+  const generateEventId = event => {
+    return `${event.title}-${event.date.when}`
+  }
+
   const renderEventItem = ({ item }) => (
     <View style={styles.eventCard}>
-      <TouchableOpacity onPress={() => toggleBookmark(item.title)} style={styles.bookmarkButton}>
+      <TouchableOpacity onPress={() => toggleBookmark(item.uniqueId, item)} style={styles.bookmarkButton}>
         <Image source={item.bookmarked ? icons.bookmarkFilled : icons.bookmarkOutline} style={styles.bookmarkIcon} />
       </TouchableOpacity>
       <View style={styles.eventHeader}>
@@ -97,11 +157,13 @@ const Events = () => {
         )}
         data={events}
         renderItem={renderEventItem}
-        keyExtractor={item => `${item.title}-${item.date.when}`} // Ensuring unique keys
+        keyExtractor={item => item.uniqueId} // Updated key to `uniqueId`
       />
     </View>
   )
 }
+
+export default Events
 
 const styles = StyleSheet.create({
   container: {
@@ -230,5 +292,3 @@ const styles = StyleSheet.create({
     height: 24
   }
 })
-
-export default Events

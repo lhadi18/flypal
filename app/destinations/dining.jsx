@@ -112,16 +112,16 @@ const Dining = () => {
       const isBookmarked = bookmarks.includes(id)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
 
-      // Construct the request body
       const requestBody = {
         userId,
         diningId: id,
         sourceType,
-        name: restaurantName, // Ensure name is correctly mapped here
+        name: restaurantName,
         location,
         imageUrl,
         rating,
-        totalReviews
+        totalReviews,
+        airportId: selectedAirport.id
       }
 
       await fetch(`https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/${endpoint}`, {
@@ -135,10 +135,14 @@ const Dining = () => {
       const updatedBookmarks = isBookmarked ? bookmarks.filter(bid => bid !== id) : [...bookmarks, id]
       setBookmarks(updatedBookmarks)
 
-      const updatedPlaces = places.map(place =>
-        place.place_id === id ? { ...place, bookmarked: !isBookmarked } : place
+      // Update places and crewPicks arrays to reflect bookmark change
+      setPlaces(prevPlaces =>
+        prevPlaces.map(place => (place.place_id === id ? { ...place, bookmarked: !isBookmarked } : place))
       )
-      setPlaces(updatedPlaces)
+
+      setCrewPicks(prevCrewPicks =>
+        prevCrewPicks.map(pick => (pick._id === id ? { ...pick, bookmarked: !isBookmarked } : pick))
+      )
     } catch (error) {
       console.error('Failed to update bookmark:', error)
     }
@@ -462,7 +466,7 @@ const Dining = () => {
                     onPress={() =>
                       toggleBookmark(
                         place.place_id,
-                        'API',
+                        'DINING_API',
                         place.name,
                         place.vicinity,
                         place.photoUrl || PLACEHOLDER_IMAGE_URL,
@@ -518,7 +522,7 @@ const Dining = () => {
                     onPress={() =>
                       toggleBookmark(
                         pick._id,
-                        'UserPost', // Source type is UserPost for crew picks
+                        'DINING_USER_POST', // Source type is UserPost for crew picks
                         pick.restaurantName,
                         pick.location,
                         pick.imageUrl || PLACEHOLDER_IMAGE_URL,
