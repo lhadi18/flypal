@@ -7,12 +7,19 @@ import icons from '@/constants/icons'
 import { v5 as uuidv5 } from 'uuid'
 import axios from 'axios'
 
+const NAMESPACE_UUID = '8dacbeb2-5058-4442-bd68-89bd7fd3e33a'
+
 const Events = () => {
   const selectedAirport = useGlobalStore(state => state.selectedAirport)
   const [events, setEvents] = useState([])
   const [bookmarks, setBookmarks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Function to generate a unique event ID based on title and date
+  const generateEventId = (title, dateWhen) => {
+    return uuidv5(`${title}-${dateWhen}`, NAMESPACE_UUID)
+  }
 
   // Fetch bookmarks and events on component mount
   useEffect(() => {
@@ -27,7 +34,7 @@ const Events = () => {
         const userBookmarks = bookmarksResponse.data
         const bookmarkedEventKeys = userBookmarks
           .filter(b => b.sourceType === 'EVENT_API')
-          .map(b => `${b.name}-${b.eventTime}`)
+          .map(b => generateEventId(b.name, b.eventTime)) // generate IDs for comparison
 
         // Fetch Events
         const eventsResponse = await axios.get(
@@ -41,8 +48,8 @@ const Events = () => {
         )
         const fetchedEvents = eventsResponse.data.events.map(event => ({
           ...event,
-          uniqueId: generateEventId(event),
-          bookmarked: bookmarkedEventKeys.includes(generateEventId(event))
+          uniqueId: generateEventId(event.title, event.date.when),
+          bookmarked: bookmarkedEventKeys.includes(generateEventId(event.title, event.date.when))
         }))
 
         // Update state
@@ -61,7 +68,7 @@ const Events = () => {
   const toggleBookmark = async (id, eventDetails) => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
-      const bookmarkKey = generateEventId(eventDetails)
+      const bookmarkKey = generateEventId(eventDetails.title, eventDetails.date.when)
       const isBookmarked = bookmarks.includes(bookmarkKey)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
 
@@ -96,10 +103,6 @@ const Events = () => {
 
   const openMaps = link => {
     Linking.openURL(link)
-  }
-
-  const generateEventId = event => {
-    return `${event.title}-${event.date.when}`
   }
 
   const renderEventItem = ({ item }) => (
@@ -157,7 +160,7 @@ const Events = () => {
         )}
         data={events}
         renderItem={renderEventItem}
-        keyExtractor={item => item.uniqueId} // Updated key to `uniqueId`
+        keyExtractor={item => item.uniqueId}
       />
     </View>
   )

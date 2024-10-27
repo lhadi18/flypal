@@ -1,4 +1,3 @@
-import { StyleSheet } from 'react-native'
 import { Stack } from 'expo-router'
 import React from 'react'
 
@@ -32,10 +31,20 @@ const RootLayout = () => {
           }
         }}
       ></Stack.Screen>
+      <Stack.Screen
+        name="bookmarks"
+        options={{
+          headerTitle: 'My Bookmarks',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: 'white',
+          headerStyle: {
+            backgroundColor: '#045D91'
+          }
+        }}
+      ></Stack.Screen>
     </Stack>
   )
 }
 
 export default RootLayout
-
-const styles = StyleSheet.create({})

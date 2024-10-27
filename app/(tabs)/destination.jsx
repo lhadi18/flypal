@@ -1,8 +1,8 @@
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, Image, TouchableOpacity } from 'react-native'
 import { useFocusEffect } from '@react-navigation/native'
 import AirportSearch from '@/components/airport-search'
+import React, { useState, useCallback } from 'react'
 import { useGlobalStore } from '../../store/store'
-import React, { useState, useEffect } from 'react'
 import * as SecureStore from 'expo-secure-store'
 import { AntDesign } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -29,7 +29,7 @@ const Destination = () => {
       }
 
       const response = await axios.get(
-        'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/roster/getNext30DaysRoster',
+        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getNext30DaysRoster',
         {
           params: { userId }
         }
@@ -40,12 +40,9 @@ const Destination = () => {
     }
   }
 
-  useEffect(() => {
-    fetchRoster()
-  }, [])
-
+  // Fetch the roster every time the screen is focused
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       fetchRoster()
     }, [])
   )
@@ -55,7 +52,7 @@ const Destination = () => {
       <ScrollView contentContainerStyle={styles.container}>
         <AirportSearch placeholder="Search for Airports" onSelect={handleSelectAirport} />
         <Text style={styles.journeyHeader}>Journey Ahead: Your next stops</Text>
-        <TouchableOpacity style={styles.button} onPress={() => null}>
+        <TouchableOpacity style={styles.button} onPress={() => router.push('bookmarks/dining-bookmark')}>
           <View style={styles.buttonTextContainer}>
             <AntDesign name="book" size={16} color="#4386AD" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>My Bookmarks</Text>
@@ -113,22 +110,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20
   },
-  linkText: {
-    fontSize: 18,
-    color: '#007AFF',
-    marginBottom: 20
-  },
-  airportList: {
-    marginTop: 20
-  },
-  airportItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc'
-  },
-  airportText: {
-    fontSize: 16
-  },
   journeyHeader: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -141,14 +122,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     padding: 10,
-    shadowColor: '#000', // Add shadow color
-    shadowOffset: { width: 0, height: 2 }, // Add shadow offset
-    shadowOpacity: 0.2, // Add shadow opacity
-    shadowRadius: 4, // Add shadow radius
-    elevation: 3 // Add elevation for Android shadow
-  },
-  rosterList: {
-    marginTop: 20
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3
   },
   rosterItem: {
     flexDirection: 'row',
@@ -163,15 +141,15 @@ const styles = StyleSheet.create({
     paddingBottom: 15
   },
   lastRosterItem: {
-    borderBottomWidth: 0 // Remove the line for the last item
+    borderBottomWidth: 0
   },
   rosterTextContainer: {
     flex: 1,
-    marginRight: 10 // Ensure some space between text and arrow
+    marginRight: 10
   },
   rosterText: {
     fontSize: 16,
-    flexWrap: 'wrap' // Ensure text wraps within the container
+    flexWrap: 'wrap'
   },
   rosterSubText: {
     fontSize: 14,
@@ -203,21 +181,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 15,
     paddingHorizontal: 10,
-    marginTop: 20, // Reduced margin to decrease distance between buttons
-    shadowColor: '#000', // Add shadow color
-    shadowOffset: { width: 0, height: 2 }, // Add shadow offset
-    shadowOpacity: 0.2, // Add shadow opacity
-    shadowRadius: 4, // Add shadow radius
-    elevation: 3 // Add elevation for Android shadow
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3
   },
   buttonTextContainer: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center', // Align text and icon
-    marginRight: 10 // Ensure some space between text and arrow
+    alignItems: 'center',
+    marginRight: 10
   },
   buttonIcon: {
-    marginRight: 10 // Space between icon and text
+    marginRight: 10
   },
   buttonText: {
     fontSize: 16,
