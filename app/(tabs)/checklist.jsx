@@ -89,7 +89,7 @@ const Checklists = () => {
     }
     try {
       const response = await axios.post(
-        'https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/checklist/createChecklist',
+        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/checklist/createChecklist',
         checklistData
       )
       console.log('Checklist created:', response.data)
@@ -106,7 +106,7 @@ const Checklists = () => {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
       const response = await axios.get(
-        `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/checklist/getChecklist`,
+        `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/checklist/getChecklist`,
         {
           params: {
             userId
@@ -137,7 +137,7 @@ const Checklists = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
+                `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
               )
               await fetchChecklists()
             } catch (error) {
@@ -166,7 +166,7 @@ const Checklists = () => {
     }
     try {
       const response = await axios.put(
-        `https://cfff-2402-1980-8288-81b8-9dfc-3344-2fa3-9857.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
+        `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
         updatedChecklistData
       )
       console.log('Checklist updated:', response.data)
@@ -176,8 +176,6 @@ const Checklists = () => {
       console.error('Error updating checklist:', error)
     }
   }
-
-  
 
   return (
     <ScrollView contentContainerStyle={styles.scrollViewContainer}>

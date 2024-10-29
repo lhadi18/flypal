@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   Linking,
   ActivityIndicator,
-  TextInput
+  TextInput,
+  Alert // Import Alert from React Native
 } from 'react-native'
 import React, { useEffect, useState, useCallback } from 'react'
 import Ionicons from 'react-native-vector-icons/Ionicons'
@@ -21,7 +22,7 @@ const EventsBookmark = () => {
   const [bookmarks, setBookmarks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -31,26 +32,32 @@ const EventsBookmark = () => {
       setLoading(true)
       try {
         const userId = await SecureStore.getItemAsync('userId')
+        const source = axios.CancelToken.source()
+
         const response = await axios.get(
           `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
           {
-            params: { page, limit: 10, search: query }
+            params: { page, limit: 10, search: query },
+            cancelToken: source.token
           }
         )
-        const sortedBookmarks = response.data
 
-        console.log(sortedBookmarks)
-
-        if (sortedBookmarks.length === 0) {
+        if (response.data.length === 0) {
           setHasMore(false)
         } else {
-          setBookmarks(prevBookmarks => (page === 1 ? sortedBookmarks : [...prevBookmarks, ...sortedBookmarks]))
+          setBookmarks(prevBookmarks => (page === 1 ? response.data : [...prevBookmarks, ...response.data]))
         }
       } catch (err) {
-        setError(err)
+        if (axios.isCancel(err)) {
+          console.log('Request canceled', err.message)
+        } else {
+          setError(err)
+        }
       } finally {
         setLoading(false)
       }
+
+      return () => source.cancel()
     }, 300),
     []
   )
@@ -76,10 +83,45 @@ const EventsBookmark = () => {
 
   const clearSearch = () => {
     setSearchQuery('')
-    setPage(1)
+    setPage(0)
     setBookmarks([])
     setHasMore(true)
     fetchBookmarks(1, '') // Fetch initial bookmarks with an empty query
+  }
+
+  // Function to confirm before removing a bookmark
+  const confirmRemoveBookmark = item => {
+    Alert.alert(
+      'Remove Bookmark',
+      'Are you sure you want to remove this bookmark?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => removeBookmark(item)
+        }
+      ],
+      { cancelable: true }
+    )
+  }
+
+  // Function to remove a bookmark
+  const removeBookmark = async item => {
+    try {
+      // API call to remove bookmark (replace with your API endpoint)
+      const userId = await SecureStore.getItemAsync('userId')
+      await axios.delete(
+        `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}/events/${item._id}`
+      )
+      // Update bookmarks list
+      setBookmarks(prevBookmarks => prevBookmarks.filter(bookmark => bookmark._id !== item._id))
+    } catch (error) {
+      setError(error)
+    }
   }
 
   // Render each bookmark item
@@ -114,7 +156,7 @@ const EventsBookmark = () => {
 
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
+      {/* Static Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#4386AD" style={styles.icon} />
         <TextInput
@@ -131,19 +173,18 @@ const EventsBookmark = () => {
         )}
       </View>
 
-      <FlatList
-        ListHeaderComponent={() => (
-          <View style={styles.header}>
-            <Text style={styles.title}>Your Bookmarked Events</Text>
-          </View>
-        )}
-        data={bookmarks}
-        renderItem={renderBookmarkItem}
-        keyExtractor={item => item._id}
-        onEndReached={loadMoreBookmarks}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={hasMore && <ActivityIndicator size="small" color="#4386AD" />}
-      />
+      {/* Scrollable List of Bookmarked Events */}
+      <View style={styles.listContainer}>
+        <FlatList
+          ListHeaderComponent={() => <View style={styles.header}></View>}
+          data={bookmarks}
+          renderItem={renderBookmarkItem}
+          keyExtractor={item => item._id}
+          onEndReached={loadMoreBookmarks}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={hasMore && <ActivityIndicator size="small" color="#4386AD" />}
+        />
+      </View>
     </View>
   )
 }
@@ -162,7 +203,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 10,
-    marginBottom: 20,
+    marginBottom: 10,
     backgroundColor: 'white',
     borderColor: '#045D91',
     shadowColor: '#000',
@@ -170,6 +211,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5
+  },
+  listContainer: {
+    flex: 1
   },
   input: {
     height: 40,
@@ -205,7 +249,8 @@ const styles = StyleSheet.create({
   },
   eventHeader: {
     flexDirection: 'row',
-    marginBottom: 10
+    marginBottom: 10,
+    marginRight: 20
   },
   thumbnail: {
     width: 80,

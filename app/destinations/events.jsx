@@ -212,7 +212,8 @@ const styles = StyleSheet.create({
   },
   eventHeader: {
     flexDirection: 'row',
-    marginBottom: 10
+    marginBottom: 10,
+    marginRight: 20
   },
   thumbnail: {
     width: 80,

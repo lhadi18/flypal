@@ -8,6 +8,7 @@ import rosterRoutes from './routes/roster-routes'
 import placesRoutes from './routes/places-routes'
 import eventRoutes from './routes/event-routes'
 import userRoutes from './routes/user-routes'
+import roleRoutes from './routes/role-routes'
 import pdfRoutes from './routes/pdf-routes'
 import connectDB from './config'
 import express from 'express'
@@ -33,6 +34,7 @@ app.use('/api/airline', airlineRoutes)
 app.use('/api/pdf', pdfRoutes)
 app.use('/api/checklist', checklistRoutes)
 app.use('/api/bookmarks', bookmarkRoutes)
+app.use('/api/roles', roleRoutes)
 
 const PORT = process.env.PORT || 9000
 

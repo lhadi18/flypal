@@ -111,7 +111,7 @@ const Roster = () => {
 
     try {
       const response = await axios.get(
-        'https://8799-103-18-0-20.ngrok-free.app/api/roster/getRosterEntries',
+        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getRosterEntries',
         {
           params: {
             userId,
@@ -193,7 +193,7 @@ const Roster = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `https://8799-103-18-0-20.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`
+                `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`
               )
               const today = getCurrentDate()
               await fetchRosterEntries(today) // Refresh the entries
@@ -349,12 +349,12 @@ const Roster = () => {
       let response
       if (editMode) {
         response = await axios.put(
-          `https://8799-103-18-0-20.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
+          `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
           newEvent
         )
       } else {
         response = await axios.post(
-          'https://8799-103-18-0-20.ngrok-free.app/api/roster/createRosterEntry',
+          'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
           newEvent
         )
       }
@@ -397,6 +397,19 @@ const Roster = () => {
     }
   }
 
+  const fetchAirportByCode = async code => {
+    try {
+      const response = await axios.get(
+        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/airport/getAirportByCode',
+        { params: { code } }
+      )
+      return response.data._id
+    } catch (error) {
+      console.error(`Error fetching airport for code ${code}:`, error)
+      return null
+    }
+  }
+
   const uploadFile = async file => {
     setLoading(true)
 
@@ -409,7 +422,7 @@ const Roster = () => {
       })
 
       const response = await axios.post(
-        'https://8799-103-18-0-20.ngrok-free.app/api/pdf/upload',
+        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/pdf/upload',
         formData,
         {
           headers: {
@@ -418,8 +431,52 @@ const Roster = () => {
         }
       )
 
-      console.log('File uploaded successfully:', response.data)
-      Alert.alert('Success', 'File uploaded successfully')
+      const parsedData = response.data
+      console.log(response.data)
+
+      // Check if parsedData has a 'data' property that is an array
+      if (false) {
+        // if (parsedData && Array.isArray(parsedData.data)) {
+        const userId = await SecureStore.getItemAsync('userId')
+
+        for (const entry of parsedData.data) {
+          if (entry.standby) continue
+
+          const originId = await fetchAirportByCode(entry.departureAirport)
+          const destinationId = await fetchAirportByCode(entry.arrivalAirport)
+
+          if (!originId || !destinationId) {
+            console.warn(`Skipping entry due to missing airport information: ${entry.flightNumber}`)
+            continue
+          }
+
+          const formattedDepartureTime = moment(entry.departureTime, 'HH:mm').toISOString()
+          const formattedArrivalTime = moment(entry.arrivalTime, 'HH:mm').toISOString()
+
+          const newEvent = {
+            userId,
+            type: 'FLIGHT',
+            origin: originId,
+            destination: destinationId,
+            departureTime: formattedDepartureTime,
+            arrivalTime: formattedArrivalTime,
+            flightNumber: entry.flightNumber,
+            aircraftType: null,
+            notes: ''
+          }
+
+          await axios.post(
+            'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
+            newEvent
+          )
+        }
+
+        Alert.alert('Success', 'All entries uploaded successfully')
+        const today = getCurrentDate()
+        await fetchRosterEntries(today)
+      } else {
+        Alert.alert('Error', 'Invalid file format')
+      }
     } catch (error) {
       console.error('Error uploading file:', error)
       Alert.alert('Error', 'Error uploading file')
