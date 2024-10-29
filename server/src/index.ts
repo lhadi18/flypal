@@ -1,13 +1,15 @@
 import diningRoutes from './routes/dining-recommendation-routes'
+import checklistRoutes from './routes/checklist-routes'
 import aircraftRoutes from './routes/aircraft-routes'
+import bookmarkRoutes from './routes/bookmark-routes'
 import airportRoutes from './routes/airport-routes'
 import airlineRoutes from './routes/airline-routes'
 import rosterRoutes from './routes/roster-routes'
 import placesRoutes from './routes/places-routes'
 import eventRoutes from './routes/event-routes'
 import userRoutes from './routes/user-routes'
+import roleRoutes from './routes/role-routes'
 import pdfRoutes from './routes/pdf-routes'
-import checklistRoutes from './routes/checklist-routes'
 import connectDB from './config'
 import express from 'express'
 import dotenv from 'dotenv'
@@ -31,6 +33,8 @@ app.use('/api/dining', diningRoutes)
 app.use('/api/airline', airlineRoutes)
 app.use('/api/pdf', pdfRoutes)
 app.use('/api/checklist', checklistRoutes)
+app.use('/api/bookmarks', bookmarkRoutes)
+app.use('/api/roles', roleRoutes)
 
 const PORT = process.env.PORT || 9000
 

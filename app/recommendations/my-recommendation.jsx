@@ -198,8 +198,8 @@ const MyRecommendations = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#045D91" />
       </SafeAreaView>
     )
   }
@@ -406,6 +406,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white'
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   scrollView: {
     padding: 10
