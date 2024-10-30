@@ -8,6 +8,7 @@ import {
   ImageBackground,
   StyleSheet
 } from 'react-native'
+import { initializeDatabase } from '../services/utils/database'
 import { validateUserId } from '../services/user-api'
 import * as SecureStore from 'expo-secure-store'
 import { useRouter, Link } from 'expo-router'
@@ -17,6 +18,8 @@ const App = () => {
   const router = useRouter()
 
   useEffect(() => {
+    initializeDatabase()
+
     const reAuthenticate = async () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
