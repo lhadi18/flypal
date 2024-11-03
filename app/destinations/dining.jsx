@@ -91,7 +91,7 @@ const Dining = () => {
         }
       } else if (selectedTab === 'Crew Picks' && selectedAirport && !hasFetchedCrewPicks) {
         try {
-          const crewData = await fetchCrewPicks(selectedAirport.id)
+          const crewData = await fetchCrewPicks(selectedAirport.objectId || selectedAirport.id)
           const updatedCrewPicks = crewData.map(pick => ({
             ...pick,
             bookmarked: bookmarks.includes(pick._id)
@@ -121,7 +121,7 @@ const Dining = () => {
         imageUrl,
         rating,
         totalReviews,
-        airportId: selectedAirport.id
+        airportId: selectedAirport.objectId || selectedAirport.id
       }
 
       await fetch(`https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/${endpoint}`, {
@@ -206,14 +206,14 @@ const Dining = () => {
       review: values.review,
       rating: values.rating,
       tags: values.tags,
-      airportId: selectedAirport.id,
+      airportId: selectedAirport.objectId || selectedAirport.id,
       image: values.image
     }
 
     try {
       await saveRecommendation(data)
       console.log('Dining recommendation added successfully')
-      fetchCrewPicks(selectedAirport.id).then(data => setCrewPicks(data)) // Refresh Crew Picks
+      fetchCrewPicks(selectedAirport.objectId || selectedAirport.id).then(data => setCrewPicks(data)) // Refresh Crew Picks
     } catch (error) {
       console.error('Error:', error)
     } finally {

@@ -195,16 +195,19 @@ export const addRosterEntry = async entry => {
 }
 
 // Fetch all roster entries from the database
+// Fetch all roster entries from the database
 export const getAllRosterEntries = async () => {
   try {
     const rows = await db.getAllAsync(`
       SELECT roster_entries.*, 
-             airports1.objectId as originObjectId, airports1.IATA as originIATA, airports1.ICAO as originICAO, airports1.name as originName, airports1.city as originCity, airports1.country as originCountry, airports1.tz_database as originTz,
-             airports2.objectId as destinationObjectId, airports2.IATA as destinationIATA, airports2.ICAO as destinationICAO, airports2.name as destinationName, airports2.city as destinationCity, airports2.country as destinationCountry, airports2.tz_database as destinationTz
+             airports1.objectId as originObjectId, airports1.IATA as originIATA, airports1.ICAO as originICAO, airports1.name as originName, airports1.city as originCity, airports1.country as originCountry, airports1.tz_database as originTz, 
+             airports1.latitude as originLatitude, airports1.longitude as originLongitude, 
+             airports2.objectId as destinationObjectId, airports2.IATA as destinationIATA, airports2.ICAO as destinationICAO, airports2.name as destinationName, airports2.city as destinationCity, airports2.country as destinationCountry, airports2.tz_database as destinationTz,
+             airports2.latitude as destinationLatitude, airports2.longitude as destinationLongitude
       FROM roster_entries
       LEFT JOIN airports AS airports1 ON roster_entries.origin = airports1.objectId
       LEFT JOIN airports AS airports2 ON roster_entries.destination = airports2.objectId
-      WHERE pendingDeletion = 0;  
+      WHERE pendingDeletion = 0;
     `)
 
     const data = (rows || []).map(row => ({
@@ -216,7 +219,9 @@ export const getAllRosterEntries = async () => {
         name: row.originName,
         city: row.originCity,
         country: row.originCountry,
-        tz_database: row.originTz
+        tz_database: row.originTz,
+        city_latitude: row.originLatitude,
+        city_longitude: row.originLongitude
       },
       destination: {
         objectId: row.destinationObjectId,
@@ -225,7 +230,9 @@ export const getAllRosterEntries = async () => {
         name: row.destinationName,
         city: row.destinationCity,
         country: row.destinationCountry,
-        tz_database: row.destinationTz
+        tz_database: row.destinationTz,
+        city_latitude: row.destinationLatitude,
+        city_longitude: row.destinationLongitude
       }
     }))
 

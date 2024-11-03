@@ -302,14 +302,13 @@ const Roster = () => {
     setEditMode(true)
     setEditEventId(event._id || event.id)
     setNewEventTitle(event.type)
-    console.log(event.origin)
-    console.log(event.destination)
+
     setNewEventOrigin({
       value: event.origin._id || event.origin.objectId,
       label: `(${event.origin.IATA}/${event.origin.ICAO}) - ${event.origin.name}`,
       timezone: event.origin.tz_database
     })
-    //test
+
     setNewEventDestination({
       value: event.destination._id || event.destination.objectId,
       label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.destination.name}`,
@@ -418,12 +417,12 @@ const Roster = () => {
       clearInputs()
       clearOriginAndDestination()
       setModalVisible(false)
-      await fetchRosterEntries(getCurrentDate())
     } catch (error) {
       console.error('Error saving event:', error)
       Alert.alert('Error', 'Could not save the event. Please try again.')
     } finally {
       setLoading(false)
+      await fetchRosterEntries(getCurrentDate())
     }
   }
 
