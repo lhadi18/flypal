@@ -13,6 +13,12 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native'
+import {
+  addRosterEntry,
+  getAllRosterEntries,
+  updateRosterEntry,
+  deleteRosterEntry
+} from '../../services/utils/database'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { useNavigation, useRoute } from '@react-navigation/native'
@@ -20,10 +26,12 @@ import { fetchAircraftTypes } from '../../services/aircraft-api'
 import AirportSearch from '@/components/airport-search'
 import RNPickerSelect from 'react-native-picker-select'
 import * as DocumentPicker from 'expo-document-picker'
+import NetInfo from '@react-native-community/netinfo'
 import { CalendarList } from 'react-native-calendars'
 import { DUTY_TYPES } from '../../constants/duties'
 import * as SecureStore from 'expo-secure-store'
 import { Ionicons } from '@expo/vector-icons'
+import uuid from 'react-native-uuid'
 import moment from 'moment-timezone'
 import axios from 'axios'
 
@@ -47,10 +55,11 @@ const Roster = () => {
   const [editMode, setEditMode] = useState(false)
   const [editEventId, setEditEventId] = useState(null)
   const [markedDates, setMarkedDates] = useState({})
-  const [loading, setLoading] = useState(false) // Add loading state
+  const [loading, setLoading] = useState(false)
 
   const originRef = useRef(null)
   const destinationRef = useRef(null)
+  // const netInfoListener = useRef(null)
 
   const navigation = useNavigation()
   const route = useRoute()
@@ -67,14 +76,14 @@ const Roster = () => {
         clearInputs()
         clearOriginAndDestination()
       }
-      navigation.setParams({ action: null }) // Reset action
+      navigation.setParams({ action: null })
     }
   }, [route.params])
 
   useEffect(() => {
     const today = getCurrentDate()
     setSelectedDate(today)
-    fetchRosterEntries(today) // Fetch entries from 4 months ahead and 4 months behind
+    fetchRosterEntries(today)
   }, [])
 
   useEffect(() => {
@@ -93,7 +102,7 @@ const Roster = () => {
       Object.keys(rosterEntries).forEach(date => {
         dates[date] = {
           marked: true,
-          dotColor: '#50cebb', // Customize this color as needed
+          dotColor: '#50cebb',
           activeOpacity: 0
         }
       })
@@ -105,37 +114,52 @@ const Roster = () => {
   }, [rosterEntries])
 
   const fetchRosterEntries = async startDate => {
+    // const isConnected = await NetInfo.fetch().then(state => state.isConnected)
+    const isConnected = false
     const userId = await SecureStore.getItemAsync('userId')
     const start = moment(startDate).subtract(4, 'months').startOf('day')
     const end = moment(startDate).add(4, 'months').endOf('day')
 
-    try {
-      const response = await axios.get(
-        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getRosterEntries',
-        {
-          params: {
-            userId,
-            startDate: start.toISOString(),
-            endDate: end.toISOString()
+    if (isConnected) {
+      try {
+        const response = await axios.get(
+          'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getRosterEntries',
+          {
+            params: {
+              userId,
+              startDate: start.toISOString(),
+              endDate: end.toISOString()
+            }
           }
-        }
-      )
-      const rosterEntries = response.data.reduce((acc, entry) => {
-        const date = moment(entry.departureTime).format('YYYY-MM-DD')
-        if (!acc[date]) acc[date] = []
-        acc[date].push(entry)
-        return acc
-      }, {})
+        )
 
-      setRosterEntries(rosterEntries)
-      if (startDate in rosterEntries) {
-        setEvents(rosterEntries[startDate])
-      } else {
-        setEvents([])
+        const rosterEntries = processEntries(response.data)
+        setRosterEntries(rosterEntries)
+        setEvents(rosterEntries[startDate] || [])
+      } catch (error) {
+        console.error('Error fetching roster entries:', error)
       }
-    } catch (error) {
-      console.error('Error fetching roster entries:', error)
+    } else {
+      // Offline mode: fetch from SQLite
+      try {
+        const offlineEntries = await getAllRosterEntries()
+        const processedOfflineEntries = processEntries(offlineEntries)
+
+        setRosterEntries(processedOfflineEntries)
+        setEvents(processedOfflineEntries[startDate] || [])
+      } catch (error) {
+        console.error('Error fetching offline roster entries:', error)
+      }
     }
+  }
+
+  const processEntries = entries => {
+    return entries.reduce((acc, entry) => {
+      const date = moment(entry.departureTime).format('YYYY-MM-DD')
+      if (!acc[date]) acc[date] = []
+      acc[date].push(entry)
+      return acc
+    }, {})
   }
 
   const handleDayPress = day => {
@@ -192,11 +216,21 @@ const Roster = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(
-                `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`
-              )
+              const isConnected = false
+
+              if (isConnected) {
+                // Online mode: delete from server
+                // await axios.delete(
+                //   `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`
+                // )
+              }
+
+              // Offline mode or after server delete, delete from local SQLite
+              await deleteRosterEntry(rosterId, isConnected)
+
+              // Refresh the roster entries after deletion/marking for deletion
               const today = getCurrentDate()
-              await fetchRosterEntries(today) // Refresh the entries
+              await fetchRosterEntries(today)
             } catch (error) {
               console.error('Error deleting event:', error)
             }
@@ -218,7 +252,7 @@ const Roster = () => {
           <TouchableOpacity style={styles.editButton} onPress={() => handleEditEvent(item)}>
             <Ionicons name="pencil-outline" size={20} color="#045D91" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteEvent(item._id)}>
+          <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteEvent(item.id)}>
             <Ionicons name="trash-outline" size={20} color="red" />
           </TouchableOpacity>
         </View>
@@ -266,15 +300,18 @@ const Roster = () => {
 
   const handleEditEvent = event => {
     setEditMode(true)
-    setEditEventId(event._id)
+    setEditEventId(event._id || event.id)
     setNewEventTitle(event.type)
+    console.log(event.origin)
+    console.log(event.destination)
     setNewEventOrigin({
-      value: event.origin._id,
+      value: event.origin._id || event.origin.objectId,
       label: `(${event.origin.IATA}/${event.origin.ICAO}) - ${event.origin.name}`,
       timezone: event.origin.tz_database
     })
+    //test
     setNewEventDestination({
-      value: event.destination._id,
+      value: event.destination._id || event.destination.objectId,
       label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.destination.name}`,
       timezone: event.destination.tz_database
     })
@@ -287,7 +324,6 @@ const Roster = () => {
   }
 
   const handleAddEvent = async () => {
-    // Form validation
     if (!newEventTitle) {
       Alert.alert('Validation Error', 'Duty type is required')
       return
@@ -312,28 +348,22 @@ const Roster = () => {
       Alert.alert('Validation Error', 'Flight number is required')
       return
     }
-    if (newEventDepartureTime && newEventArrivalTime) {
-      const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin.timezone)
-      const arrivalDateTime = moment.tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination.timezone)
 
-      if (departureDateTime.isAfter(arrivalDateTime)) {
-        Alert.alert('Validation Error', 'Departure time cannot be later than arrival time')
-        return
-      }
+    const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin.timezone)
+    const arrivalDateTime = moment.tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination.timezone)
+
+    if (departureDateTime.isAfter(arrivalDateTime)) {
+      Alert.alert('Validation Error', 'Departure time cannot be later than arrival time')
+      return
     }
 
-    setLoading(true) // Start loading
+    setLoading(true)
 
     const userId = await SecureStore.getItemAsync('userId')
+    const formattedDepartureTime = departureDateTime.toISOString()
+    const formattedArrivalTime = arrivalDateTime.toISOString()
 
-    const formattedDepartureTime = moment
-      .tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin.timezone)
-      .toISOString()
-    const formattedArrivalTime = moment
-      .tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination.timezone)
-      .toISOString()
-
-    const newEvent = {
+    const eventEntry = {
       userId,
       type: newEventTitle,
       origin: newEventOrigin?.value,
@@ -342,38 +372,58 @@ const Roster = () => {
       arrivalTime: formattedArrivalTime,
       flightNumber: newEventFlightNumber,
       aircraftType: newEventAircraftType || null,
-      notes: newEventNotes || ''
+      notes: newEventNotes || '',
+      synced: 0,
+      id: uuid.v4()
     }
 
+    // const isConnected = await NetInfo.fetch().then(state => state.isConnected)
+    const isConnected = false
+
     try {
-      let response
       if (editMode) {
-        response = await axios.put(
-          `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
-          newEvent
-        )
+        if (isConnected) {
+          // Online: Send update to server, then update SQLite and mark as synced
+          // const response = await axios.put(
+          //   `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
+          //   eventEntry
+          // )
+          // if (response.status === 200) {
+          //   eventEntry.synced = 1
+          // }
+          // Update entry in SQLite, whether synced or not
+          // await updateRosterEntry(editEventId, eventEntry)
+        } else {
+          // Offline: Update in SQLite with synced status 0
+          await updateRosterEntry(editEventId, eventEntry)
+          // Alert.alert('Offline', 'Event update saved locally and will sync when online.')
+        }
       } else {
-        response = await axios.post(
-          'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
-          newEvent
-        )
+        // Add Mode: Insert new event
+        if (isConnected) {
+          // const response = await axios.post(
+          //   'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
+          //   eventEntry
+          // )
+          // if (response.status === 201) {
+          //   eventEntry.synced = 1
+          // }
+          // await addRosterEntry(eventEntry)
+        } else {
+          await addRosterEntry(eventEntry)
+          // Alert.alert('Offline', 'Event saved locally and will sync when online.')
+        }
       }
 
-      if (response.status === 200 || response.status === 201) {
-        clearInputs()
-        clearOriginAndDestination()
-        setModalVisible(false)
-
-        const today = getCurrentDate()
-        await fetchRosterEntries(today)
-      } else {
-        Alert.alert('Error', 'Failed to save event. Please try again.')
-      }
+      clearInputs()
+      clearOriginAndDestination()
+      setModalVisible(false)
+      await fetchRosterEntries(getCurrentDate())
     } catch (error) {
-      // console.error('Error saving event:', error)
-      Alert.alert('Error', 'Error saving event. Please try again.')
+      console.error('Error saving event:', error)
+      Alert.alert('Error', 'Could not save the event. Please try again.')
     } finally {
-      setLoading(false) // Stop loading
+      setLoading(false)
     }
   }
 
@@ -397,18 +447,18 @@ const Roster = () => {
     }
   }
 
-  const fetchAirportByCode = async code => {
-    try {
-      const response = await axios.get(
-        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/airport/getAirportByCode',
-        { params: { code } }
-      )
-      return response.data._id
-    } catch (error) {
-      console.error(`Error fetching airport for code ${code}:`, error)
-      return null
-    }
-  }
+  // const fetchAirportByCode = async code => {
+  //   try {
+  //     const response = await axios.get(
+  //       'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/airport/getAirportByCode',
+  //       { params: { code } }
+  //     )
+  //     return response.data._id
+  //   } catch (error) {
+  //     console.error(`Error fetching airport for code ${code}:`, error)
+  //     return null
+  //   }
+  // }
 
   const uploadFile = async file => {
     setLoading(true)
@@ -659,20 +709,20 @@ const Roster = () => {
                     ...pickerSelectStyles,
                     inputIOS: {
                       ...pickerSelectStyles.inputIOS,
-                      paddingRight: 30 // to ensure the text is never behind the icon
+                      paddingRight: 30
                     },
                     inputAndroid: {
                       ...pickerSelectStyles.inputAndroid,
-                      paddingRight: 30 // to ensure the text is never behind the icon
+                      paddingRight: 30
                     },
                     placeholder: {
                       ...pickerSelectStyles.placeholder,
-                      paddingLeft: 0 // Adjust to match the padding left of the input
+                      paddingLeft: 0
                     }
                   }}
                   value={newEventTitle}
                   placeholder={{ label: 'Select duty type', value: null }}
-                  useNativeAndroidPickerStyle={false} // to use the custom styles on Android
+                  useNativeAndroidPickerStyle={false}
                 />
               </View>
 
@@ -750,20 +800,20 @@ const Roster = () => {
                     ...pickerSelectStyles,
                     inputIOS: {
                       ...pickerSelectStyles.inputIOS,
-                      paddingRight: 30 // to ensure the text is never behind the icon
+                      paddingRight: 30
                     },
                     inputAndroid: {
                       ...pickerSelectStyles.inputAndroid,
-                      paddingRight: 30 // to ensure the text is never behind the icon
+                      paddingRight: 30
                     },
                     placeholder: {
                       ...pickerSelectStyles.placeholder,
-                      paddingLeft: 0 // Adjust to match the padding left of the input
+                      paddingLeft: 0
                     }
                   }}
                   value={newEventAircraftType}
                   placeholder={{ label: 'Select aircraft type (Optional)', value: null }}
-                  useNativeAndroidPickerStyle={false} // to use the custom styles on Android
+                  useNativeAndroidPickerStyle={false}
                 />
               </View>
 
@@ -792,13 +842,9 @@ const Roster = () => {
                 >
                   <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.addButton]}
-                  onPress={handleAddEvent}
-                  disabled={loading} // Disable button when loading
-                >
+                <TouchableOpacity style={[styles.button, styles.addButton]} onPress={handleAddEvent} disabled={loading}>
                   {loading ? (
-                    <ActivityIndicator size="small" color="#FFF" /> // Show spinner when loading
+                    <ActivityIndicator size="small" color="#FFF" />
                   ) : (
                     <Text style={styles.buttonText}>{editMode ? 'Update' : 'Add'}</Text>
                   )}
@@ -872,7 +918,7 @@ const styles = StyleSheet.create({
     marginBottom: 10
   },
   eventFlightNumber: {
-    fontSize: 22, // Larger text size
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#045D91'
   },
@@ -892,7 +938,7 @@ const styles = StyleSheet.create({
   eventText: {
     marginLeft: 10,
     color: '#333',
-    fontSize: 18, // Larger text size
+    fontSize: 18,
     lineHeight: 24
   },
   importantText: {

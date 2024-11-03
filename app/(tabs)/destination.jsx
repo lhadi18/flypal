@@ -68,27 +68,31 @@ const Destination = () => {
         </TouchableOpacity>
         {roster.length > 0 ? (
           <View style={styles.rosterContainer}>
-            {roster.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.rosterItem,
-                  index === 0 && styles.firstRosterItem,
-                  index === roster.length - 1 && styles.lastRosterItem
-                ]}
-                onPress={() => handleSelectAirport(item.destination)}
-              >
-                <View style={styles.rosterTextContainer}>
-                  <Text style={styles.rosterText}>
-                    ({item.destination.IATA}/{item.destination.ICAO}) {item.destination.name}
-                  </Text>
-                  <Text style={styles.rosterSubText}>
-                    {item.destination.city}, {item.destination.country}
-                  </Text>
-                </View>
-                <AntDesign name="right" size={16} color="#4386AD" style={styles.arrowIcon} />
-              </TouchableOpacity>
-            ))}
+            {console.log('Roster array:', roster)} {/* Log roster */}
+            {roster.map((item, index) => {
+              console.log('Current item:', item) // Log each item in the map
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.rosterItem,
+                    index === 0 && styles.firstRosterItem,
+                    index === roster.length - 1 && styles.lastRosterItem
+                  ]}
+                  onPress={() => handleSelectAirport(item.destination)}
+                >
+                  <View style={styles.rosterTextContainer}>
+                    <Text style={styles.rosterText}>
+                      ({item.destination.IATA}/{item.destination.ICAO}) {item.destination.name}
+                    </Text>
+                    <Text style={styles.rosterSubText}>
+                      {item.destination.city}, {item.destination.country}
+                    </Text>
+                  </View>
+                  <AntDesign name="right" size={16} color="#4386AD" style={styles.arrowIcon} />
+                </TouchableOpacity>
+              )
+            })}
           </View>
         ) : (
           <View style={styles.noDestinationsContainer}>
