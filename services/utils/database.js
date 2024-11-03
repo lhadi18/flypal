@@ -1,6 +1,7 @@
 import aircraftData from '../../assets/database-files/aircrafts.json'
 import airportData from '../../assets/database-files/airports.json' // Import JSON directly
 import * as SQLite from 'expo-sqlite'
+import moment from 'moment-timezone'
 
 // Initialize the database connection
 let db
@@ -50,7 +51,7 @@ export const initializeDatabase = async () => {
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS roster_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
       type TEXT,
       origin TEXT,
@@ -61,6 +62,7 @@ export const initializeDatabase = async () => {
       aircraftType TEXT,
       notes TEXT,
       synced INTEGER DEFAULT 0,
+      pendingDeletion INTEGER DEFAULT 0,
       createdAt TEXT,
       updatedAt TEXT,
       FOREIGN KEY (origin) REFERENCES airports(objectId),
@@ -148,12 +150,42 @@ export const loadAircraftsData = async () => {
 
 // Insert a new roster entry into the database
 export const addRosterEntry = async entry => {
-  const { userId, type, origin, destination, departureTime, arrivalTime, flightNumber, aircraftType, notes } = entry
+  const {
+    userId,
+    type,
+    origin,
+    destination,
+    departureTime,
+    arrivalTime,
+    flightNumber,
+    aircraftType,
+    notes,
+    synced = 0
+  } = entry
+
+  const id = entry.id || uuid.v4()
+  const createdAt = moment().toISOString()
+  const updatedAt = createdAt
+
   try {
     const result = await db.runAsync(
-      `INSERT INTO roster_entries (userId, type, origin, destination, departureTime, arrivalTime, flightNumber, aircraftType, notes, synced)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0);`,
-      [userId, type, origin, destination, departureTime, arrivalTime, flightNumber, aircraftType, notes]
+      `INSERT INTO roster_entries (id, userId, type, origin, destination, departureTime, arrivalTime, flightNumber, aircraftType, notes, synced, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [
+        id,
+        userId,
+        type,
+        origin,
+        destination,
+        departureTime,
+        arrivalTime,
+        flightNumber,
+        aircraftType,
+        notes,
+        synced,
+        createdAt,
+        updatedAt
+      ]
     )
     return result.lastInsertRowId
   } catch (error) {
@@ -165,11 +197,42 @@ export const addRosterEntry = async entry => {
 // Fetch all roster entries from the database
 export const getAllRosterEntries = async () => {
   try {
-    const rows = await db.getAllAsync('SELECT * FROM roster_entries;')
-    return rows
+    const rows = await db.getAllAsync(`
+      SELECT roster_entries.*, 
+             airports1.objectId as originObjectId, airports1.IATA as originIATA, airports1.ICAO as originICAO, airports1.name as originName, airports1.city as originCity, airports1.country as originCountry, airports1.tz_database as originTz,
+             airports2.objectId as destinationObjectId, airports2.IATA as destinationIATA, airports2.ICAO as destinationICAO, airports2.name as destinationName, airports2.city as destinationCity, airports2.country as destinationCountry, airports2.tz_database as destinationTz
+      FROM roster_entries
+      LEFT JOIN airports AS airports1 ON roster_entries.origin = airports1.objectId
+      LEFT JOIN airports AS airports2 ON roster_entries.destination = airports2.objectId
+      WHERE pendingDeletion = 0;  
+    `)
+
+    const data = (rows || []).map(row => ({
+      ...row,
+      origin: {
+        objectId: row.originObjectId,
+        IATA: row.originIATA,
+        ICAO: row.originICAO,
+        name: row.originName,
+        city: row.originCity,
+        country: row.originCountry,
+        tz_database: row.originTz
+      },
+      destination: {
+        objectId: row.destinationObjectId,
+        IATA: row.destinationIATA,
+        ICAO: row.destinationICAO,
+        name: row.destinationName,
+        city: row.destinationCity,
+        country: row.destinationCountry,
+        tz_database: row.destinationTz
+      }
+    }))
+
+    return data
   } catch (error) {
-    console.error('Error fetching roster entries:', error)
-    throw error
+    console.error('Error fetching roster entries from SQLite:', error)
+    return []
   }
 }
 
@@ -184,13 +247,58 @@ export const markEntryAsSynced = async id => {
   }
 }
 
-// Delete a roster entry by ID
-export const deleteRosterEntry = async id => {
+export const updateRosterEntry = async (id, updatedData) => {
+  const updatedAt = moment().toISOString() // Set the current timestamp for updatedAt
+
   try {
-    await db.runAsync(`DELETE FROM roster_entries WHERE id = ?;`, [id])
-    console.log(`Entry ${id} deleted.`)
+    console.log(`Updating roster entry with ID: ${id}`, updatedData)
+    await db.runAsync(
+      `UPDATE roster_entries 
+       SET type = ?, origin = ?, destination = ?, departureTime = ?, arrivalTime = ?, flightNumber = ?, aircraftType = ?, notes = ?, synced = ?, updatedAt = ?
+       WHERE id = ?;`,
+      [
+        updatedData.type,
+        updatedData.origin,
+        updatedData.destination,
+        updatedData.departureTime,
+        updatedData.arrivalTime,
+        updatedData.flightNumber,
+        updatedData.aircraftType,
+        updatedData.notes,
+        updatedData.synced,
+        updatedAt,
+        id
+      ]
+    )
+    console.log('Roster entry updated successfully offline')
   } catch (error) {
-    console.error('Error deleting roster entry:', error)
+    console.error('Error updating roster entry offline:', error)
+    throw error
+  }
+}
+
+// Delete a roster entry by ID
+// Modify deleteRosterEntry to only handle local SQLite logic
+export const deleteRosterEntry = async rosterId => {
+  try {
+    await db.runAsync('DELETE FROM roster_entries WHERE id = ?', [rosterId])
+    console.log(`Roster entry with ID: ${rosterId} deleted offline`)
+  } catch (error) {
+    console.error('Error deleting roster entry offline:', error)
+    throw error
+  }
+}
+
+export const getAirportsFromDatabase = async () => {
+  try {
+    const rows = await db.getAllAsync('SELECT * FROM airports;')
+    return rows.map(row => ({
+      value: row.objectId,
+      label: `(${row.IATA}/${row.ICAO}) - ${row.name}`,
+      timezone: row.tz_database
+    }))
+  } catch (error) {
+    console.error('Error fetching airports from SQLite:', error)
     throw error
   }
 }
