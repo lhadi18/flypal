@@ -75,7 +75,7 @@ const Events = () => {
       await axios.post(`https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/${endpoint}`, {
         userId,
         eventId: id,
-        airportId: selectedAirport.id,
+        airportId: selectedAirport.id || selectedAirport.objectId || selectedAirport.value,
         sourceType: 'EVENT_API',
         name: eventDetails.title,
         location: eventDetails.address.join(', '),
