@@ -43,6 +43,18 @@ const RootLayout = () => {
           }
         }}
       ></Stack.Screen>
+      <Stack.Screen
+        name="reminder"
+        options={{
+          headerTitle: 'Reminders',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: 'white',
+          headerStyle: {
+            backgroundColor: '#045D91'
+          }
+        }}
+      ></Stack.Screen>
     </Stack>
   )
 }

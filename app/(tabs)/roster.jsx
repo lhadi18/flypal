@@ -20,6 +20,7 @@ import {
   deleteRosterEntry
 } from '../../services/utils/database'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { fetchAircraftTypes } from '../../services/aircraft-api'
@@ -29,11 +30,18 @@ import * as DocumentPicker from 'expo-document-picker'
 import NetInfo from '@react-native-community/netinfo'
 import { CalendarList } from 'react-native-calendars'
 import { DUTY_TYPES } from '../../constants/duties'
+import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
 import { Ionicons } from '@expo/vector-icons'
 import uuid from 'react-native-uuid'
 import moment from 'moment-timezone'
 import axios from 'axios'
+
+// Constants for keys used to store settings
+const NOTIFICATIONS_ENABLED_KEY = 'notificationsEnabled'
+const CUSTOM_REMINDER_HOUR_KEY = 'customReminderHour'
+const REST_REMINDER_ENABLED_KEY = 'restReminderEnabled'
+const RED_EYE_REMINDER_TIME_KEY = 'redEyeReminderTime'
 
 const Roster = () => {
   const [selectedDate, setSelectedDate] = useState('')
@@ -57,14 +65,42 @@ const Roster = () => {
   const [markedDates, setMarkedDates] = useState({})
   const [loading, setLoading] = useState(false)
 
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [customReminderHour, setCustomReminderHour] = useState(2) // Default to 2 hours before the event
+  const [restReminderEnabled, setRestReminderEnabled] = useState(false) // For rest reminders
+  const [redEyeReminderTime, setRedEyeReminderTime] = useState(18) // Default red-eye reminder time (6 PM)
+
   const originRef = useRef(null)
   const destinationRef = useRef(null)
-  // const netInfoListener = useRef(null)
-
   const navigation = useNavigation()
   const route = useRoute()
 
   const DISPLAY_FORMAT = 'DD/MM/YYYY HH:mm [GMT]Z'
+
+  // Load saved settings from AsyncStorage
+  const loadSettings = async () => {
+    try {
+      const savedNotificationsEnabled = await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)
+      const savedCustomReminderHour = await AsyncStorage.getItem(CUSTOM_REMINDER_HOUR_KEY)
+      const savedRestReminderEnabled = await AsyncStorage.getItem(REST_REMINDER_ENABLED_KEY)
+      const savedRedEyeReminderTime = await AsyncStorage.getItem(RED_EYE_REMINDER_TIME_KEY)
+
+      if (savedNotificationsEnabled !== null) {
+        setNotificationsEnabled(JSON.parse(savedNotificationsEnabled))
+      }
+      if (savedCustomReminderHour !== null) {
+        setCustomReminderHour(JSON.parse(savedCustomReminderHour))
+      }
+      if (savedRestReminderEnabled !== null) {
+        setRestReminderEnabled(JSON.parse(savedRestReminderEnabled))
+      }
+      if (savedRedEyeReminderTime !== null) {
+        setRedEyeReminderTime(JSON.parse(savedRedEyeReminderTime))
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error)
+    }
+  }
 
   useLayoutEffect(() => {
     if (route.params?.action) {
@@ -81,6 +117,8 @@ const Roster = () => {
   }, [route.params])
 
   useEffect(() => {
+    loadSettings() // Load settings when the component mounts
+
     const today = getCurrentDate()
     setSelectedDate(today)
     fetchRosterEntries(today)
@@ -113,8 +151,36 @@ const Roster = () => {
     setMarkedDates(markedDates)
   }, [rosterEntries])
 
+  useEffect(() => {
+    const scheduleAllNotifications = async () => {
+      await cancelAllNotifications()
+
+      events.forEach(event => {
+        if (notificationsEnabled) {
+          scheduleNotification(event, customReminderHour)
+
+          const eventTime = moment.tz(event.departureTime, event.origin.tz_database)
+          const departureHour = eventTime.hour()
+
+          if (departureHour >= 0 && departureHour <= 7) {
+            scheduleRedEyeReminder(event, redEyeReminderTime)
+          }
+        }
+      })
+    }
+
+    scheduleAllNotifications()
+  }, [notificationsEnabled, customReminderHour, restReminderEnabled, redEyeReminderTime, events])
+
+  const cancelAllNotifications = async () => {
+    await Notifications.cancelAllScheduledNotificationsAsync()
+  }
+
+  const requestNotificationPermission = async () => {
+    return (await Notifications.requestPermissionsAsync()).status === 'granted'
+  }
+
   const fetchRosterEntries = async startDate => {
-    // const isConnected = await NetInfo.fetch().then(state => state.isConnected)
     const isConnected = false
     const userId = await SecureStore.getItemAsync('userId')
     const start = moment(startDate).subtract(4, 'months').startOf('day')
@@ -140,7 +206,6 @@ const Roster = () => {
         console.error('Error fetching roster entries:', error)
       }
     } else {
-      // Offline mode: fetch from SQLite
       try {
         const offlineEntries = await getAllRosterEntries()
         const processedOfflineEntries = processEntries(offlineEntries)
@@ -219,16 +284,10 @@ const Roster = () => {
               const isConnected = false
 
               if (isConnected) {
-                // Online mode: delete from server
-                // await axios.delete(
-                //   `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/deleteRosterEntry/${rosterId}`
-                // )
               }
 
-              // Offline mode or after server delete, delete from local SQLite
               await deleteRosterEntry(rosterId, isConnected)
 
-              // Refresh the roster entries after deletion/marking for deletion
               const today = getCurrentDate()
               await fetchRosterEntries(today)
             } catch (error) {
@@ -239,6 +298,59 @@ const Roster = () => {
       ],
       { cancelable: true }
     )
+  }
+
+  const scheduleNotification = async (event, reminderHoursBefore) => {
+    const permissionGranted = await requestNotificationPermission()
+    if (!permissionGranted) return
+
+    const eventTime = moment.tz(event.departureTime, event.origin.tz_database)
+    const reminderTime = eventTime.subtract(reminderHoursBefore, 'hours')
+
+    if (reminderTime.isAfter(moment())) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `Upcoming Flight: ${event.flightNumber}`,
+          body: `Flight from ${event.origin.IATA} to ${event.destination.IATA} is departing in ${reminderHoursBefore} hours!`,
+          sound: 'default',
+          badge: 1
+        },
+        trigger: {
+          date: new Date(reminderTime)
+        }
+      })
+    }
+  }
+
+  const scheduleRedEyeReminder = async (event, redEyeReminderTime) => {
+    const permissionGranted = await requestNotificationPermission()
+    if (!permissionGranted) return
+
+    const eventTime = moment.tz(event.departureTime, event.origin.tz_database)
+    const departureHour = eventTime.hour()
+
+    if (departureHour >= 0 && departureHour <= 7) {
+      // Set the reminder for the day before at the given redEyeReminderTime
+      const reminderDayBefore = eventTime.clone().subtract(1, 'day').set('hour', redEyeReminderTime).set('minute', 0)
+
+      if (reminderDayBefore.isAfter(moment())) {
+        // Format the departure time with local time and GMT offset
+        const formattedDepartureTime = eventTime.format('DD/MM/YYYY HH:mm [GMT]Z')
+
+        // Schedule the notification with the formatted departure time
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Red-Eye Flight Reminder: ${event.flightNumber}`,
+            body: `You have a red-eye flight tomorrow from ${event.origin.IATA} to ${event.destination.IATA} departing at ${formattedDepartureTime}.`,
+            sound: 'default',
+            badge: 1
+          },
+          trigger: {
+            date: new Date(reminderDayBefore)
+          }
+        })
+      }
+    }
   }
 
   const renderEventItem = ({ item, index }) => (
@@ -376,7 +488,6 @@ const Roster = () => {
       id: uuid.v4()
     }
 
-    // const isConnected = await NetInfo.fetch().then(state => state.isConnected)
     const isConnected = false
 
     try {
@@ -393,12 +504,9 @@ const Roster = () => {
           // Update entry in SQLite, whether synced or not
           // await updateRosterEntry(editEventId, eventEntry)
         } else {
-          // Offline: Update in SQLite with synced status 0
           await updateRosterEntry(editEventId, eventEntry)
-          // Alert.alert('Offline', 'Event update saved locally and will sync when online.')
         }
       } else {
-        // Add Mode: Insert new event
         if (isConnected) {
           // const response = await axios.post(
           //   'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
@@ -410,7 +518,6 @@ const Roster = () => {
           // await addRosterEntry(eventEntry)
         } else {
           await addRosterEntry(eventEntry)
-          // Alert.alert('Offline', 'Event saved locally and will sync when online.')
         }
       }
 
@@ -483,9 +590,7 @@ const Roster = () => {
       const parsedData = response.data
       console.log(response.data)
 
-      // Check if parsedData has a 'data' property that is an array
       if (false) {
-        // if (parsedData && Array.isArray(parsedData.data)) {
         const userId = await SecureStore.getItemAsync('userId')
 
         for (const entry of parsedData.data) {
@@ -541,7 +646,7 @@ const Roster = () => {
     }
 
     const originTimezone = newEventOrigin.timezone
-    const displayDepartureDate = moment(date).format('YYYY-MM-DDTHH:mm:ss') // Preserve the original time
+    const displayDepartureDate = moment(date).format('YYYY-MM-DDTHH:mm:ss')
     const convertedDepartureDate = moment.tz(displayDepartureDate, originTimezone).format(DISPLAY_FORMAT)
 
     if (newEventArrivalTime) {
@@ -565,7 +670,7 @@ const Roster = () => {
     }
 
     const destinationTimezone = newEventDestination.timezone
-    const displayArrivalDate = moment(date).format('YYYY-MM-DDTHH:mm:ss') // Preserve the original time
+    const displayArrivalDate = moment(date).format('YYYY-MM-DDTHH:mm:ss')
     const convertedArrivalDate = moment.tz(displayArrivalDate, destinationTimezone).format(DISPLAY_FORMAT)
 
     if (newEventDepartureTime) {
@@ -862,26 +967,24 @@ const pickerSelectStyles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 18,
     paddingHorizontal: 0,
-    borderWidth: 0, // No border for the inner input
+    borderWidth: 0,
     color: 'black',
     flex: 1,
-    height: '100%', // Ensure it matches the height of the input wrapper
-    justifyContent: 'center' // Vertically center the text
-    // paddingLeft: 0 // Adjust to match the icon
+    height: '100%',
+    justifyContent: 'center'
   },
   inputAndroid: {
     fontSize: 16,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    borderWidth: 0, // No border for the inner input
+    borderWidth: 0,
     color: 'black',
     flex: 1,
-    height: '100%', // Ensure it matches the height of the input wrapper
-    justifyContent: 'center' // Vertically center the text
+    height: '100%',
+    justifyContent: 'center'
   },
   placeholder: {
-    color: 'grey' // Align the placeholder text with the input text
-    // paddingLeft: 0 // Ensure the placeholder text aligns with the input text
+    color: 'grey'
   }
 })
 

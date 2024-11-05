@@ -45,12 +45,10 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
       // }
     } else {
       try {
-        const offlineResults = await getAirportsFromDatabase()
-        const filteredResults = offlineResults.filter(airport =>
-          airport.label.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        setResults(filteredResults)
-        setNoResults(filteredResults.length === 0)
+        const offlineResults = await getAirportsFromDatabase(searchQuery)
+
+        setResults(offlineResults)
+        setNoResults(offlineResults.length === 0)
       } catch (error) {
         console.error('Error fetching airports offline:', error)
         setNoResults(true)
