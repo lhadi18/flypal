@@ -121,7 +121,7 @@ const Dining = () => {
         imageUrl,
         rating,
         totalReviews,
-        airportId: selectedAirport.objectId || selectedAirport.id
+        airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value
       }
 
       await fetch(`https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/${endpoint}`, {

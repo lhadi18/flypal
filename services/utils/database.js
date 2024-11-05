@@ -296,13 +296,32 @@ export const deleteRosterEntry = async rosterId => {
   }
 }
 
-export const getAirportsFromDatabase = async () => {
+// Modify the function to accept a search query parameter
+export const getAirportsFromDatabase = async (searchQuery = '') => {
   try {
-    const rows = await db.getAllAsync('SELECT * FROM airports;')
+    const params = []
+    let query = 'SELECT * FROM airports WHERE '
+
+    if (searchQuery) {
+      const searchTerms = [`%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`]
+      params.push(...searchTerms)
+      query += '(city LIKE ? OR country LIKE ? OR IATA LIKE ? OR ICAO LIKE ?)'
+    }
+
+    query += ';'
+
+    const rows = await db.getAllAsync(query, params)
+
     return rows.map(row => ({
       value: row.objectId,
       label: `(${row.IATA}/${row.ICAO}) - ${row.name}`,
-      timezone: row.tz_database
+      timezone: row.tz_database,
+      city_latitude: row.latitude,
+      city_longitude: row.longitude,
+      city: row.city,
+      country: row.country,
+      ICAO: row.ICAO,
+      IATA: row.IATA
     }))
   } catch (error) {
     console.error('Error fetching airports from SQLite:', error)
