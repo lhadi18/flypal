@@ -35,7 +35,7 @@ const EventsBookmark = () => {
         const source = axios.CancelToken.source()
 
         const response = await axios.get(
-          `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
+          `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
           {
             params: { page, limit: 10, search: query },
             cancelToken: source.token
@@ -115,7 +115,7 @@ const EventsBookmark = () => {
       // API call to remove bookmark (replace with your API endpoint)
       const userId = await SecureStore.getItemAsync('userId')
       await axios.delete(
-        `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}/events/${item._id}`
+        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}/events/${item._id}`
       )
       // Update bookmarks list
       setBookmarks(prevBookmarks => prevBookmarks.filter(bookmark => bookmark._id !== item._id))

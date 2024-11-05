@@ -29,7 +29,7 @@ const Events = () => {
 
         // Fetch Bookmarks
         const bookmarksResponse = await axios.get(
-          `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}`
+          `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}`
         )
         const userBookmarks = bookmarksResponse.data
         const bookmarkedEventKeys = userBookmarks
@@ -38,7 +38,7 @@ const Events = () => {
 
         // Fetch Events
         const eventsResponse = await axios.get(
-          'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/events/getEvents',
+          'https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/events/getEvents',
           {
             params: {
               city: selectedAirport.city,
@@ -72,22 +72,19 @@ const Events = () => {
       const isBookmarked = bookmarks.includes(bookmarkKey)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
 
-      await axios.post(
-        `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/${endpoint}`,
-        {
-          userId,
-          eventId: id,
-          airportId: selectedAirport.id,
-          sourceType: 'EVENT_API',
-          name: eventDetails.title,
-          location: eventDetails.address.join(', '),
-          imageUrl: eventDetails.thumbnail,
-          externalAddress: eventDetails.link,
-          eventLocationMap: eventDetails.event_location_map.link,
-          eventTime: eventDetails.date.when,
-          eventDescription: eventDetails.description
-        }
-      )
+      await axios.post(`https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/${endpoint}`, {
+        userId,
+        eventId: id,
+        airportId: selectedAirport.id,
+        sourceType: 'EVENT_API',
+        name: eventDetails.title,
+        location: eventDetails.address.join(', '),
+        imageUrl: eventDetails.thumbnail,
+        externalAddress: eventDetails.link,
+        eventLocationMap: eventDetails.event_location_map.link,
+        eventTime: eventDetails.date.when,
+        eventDescription: eventDetails.description
+      })
 
       // Update the bookmark state locally
       setEvents(prevEvents =>
