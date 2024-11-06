@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
+  TouchableWithoutFeedback,
   Animated
 } from 'react-native'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
@@ -198,48 +199,52 @@ const Weather = () => {
       </ScrollView>
       {selectedForecast && (
         <Modal transparent={true} visible={modalVisible} onRequestClose={hideDetails}>
-          <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Weather Details</Text>
-              <View style={styles.modalDetailRow}>
-                <Icon name="thermometer-high" size={24} color="#4386AD" />
-                <Text style={styles.modalDetailText}>
-                  Max Temp:{' '}
-                  {unit === 'C'
-                    ? `${selectedForecast.day.maxtemp_c}°C`
-                    : `${convertTemp(selectedForecast.day.maxtemp_c, 'F')}°F`}
-                </Text>
-              </View>
-              <View style={styles.modalDetailRow}>
-                <Icon name="thermometer-low" size={24} color="#4386AD" />
-                <Text style={styles.modalDetailText}>
-                  Min Temp:{' '}
-                  {unit === 'C'
-                    ? `${selectedForecast.day.mintemp_c}°C`
-                    : `${convertTemp(selectedForecast.day.mintemp_c, 'F')}°F`}
-                </Text>
-              </View>
-              <View style={styles.modalDetailRow}>
-                <Icon name="weather-partly-cloudy" size={24} color="#4386AD" />
-                <Text style={styles.modalDetailText}>Condition: {selectedForecast.day.condition.text}</Text>
-              </View>
-              <View style={styles.modalDetailRow}>
-                <Icon name="weather-windy" size={24} color="#4386AD" />
-                <Text style={styles.modalDetailText}>Wind Speed: {selectedForecast.day.maxwind_kph} km/h</Text>
-              </View>
-              <View style={styles.modalDetailRow}>
-                <Icon name="water-percent" size={24} color="#4386AD" />
-                <Text style={styles.modalDetailText}>Humidity: {selectedForecast.day.avghumidity}%</Text>
-              </View>
-              <View style={styles.modalDetailRow}>
-                <Icon name="weather-sunny-alert" size={24} color="#4386AD" />
-                <Text style={styles.modalDetailText}>UV Index: {selectedForecast.day.uv}</Text>
-              </View>
-              <TouchableOpacity onPress={hideDetails} style={styles.closeButton}>
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
+          <TouchableWithoutFeedback onPress={hideDetails}>
+            <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Weather Details</Text>
+                  <View style={styles.modalDetailRow}>
+                    <Icon name="thermometer-high" size={24} color="#4386AD" />
+                    <Text style={styles.modalDetailText}>
+                      Max Temp:{' '}
+                      {unit === 'C'
+                        ? `${selectedForecast.day.maxtemp_c}°C`
+                        : `${convertTemp(selectedForecast.day.maxtemp_c, 'F')}°F`}
+                    </Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Icon name="thermometer-low" size={24} color="#4386AD" />
+                    <Text style={styles.modalDetailText}>
+                      Min Temp:{' '}
+                      {unit === 'C'
+                        ? `${selectedForecast.day.mintemp_c}°C`
+                        : `${convertTemp(selectedForecast.day.mintemp_c, 'F')}°F`}
+                    </Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Icon name="weather-partly-cloudy" size={24} color="#4386AD" />
+                    <Text style={styles.modalDetailText}>Condition: {selectedForecast.day.condition.text}</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Icon name="weather-windy" size={24} color="#4386AD" />
+                    <Text style={styles.modalDetailText}>Wind Speed: {selectedForecast.day.maxwind_kph} km/h</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Icon name="water-percent" size={24} color="#4386AD" />
+                    <Text style={styles.modalDetailText}>Humidity: {selectedForecast.day.avghumidity}%</Text>
+                  </View>
+                  <View style={styles.modalDetailRow}>
+                    <Icon name="weather-sunny-alert" size={24} color="#4386AD" />
+                    <Text style={styles.modalDetailText}>UV Index: {selectedForecast.day.uv}</Text>
+                  </View>
+                  <TouchableOpacity onPress={hideDetails} style={styles.closeButton}>
+                    <Text style={styles.closeButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </Animated.View>
+          </TouchableWithoutFeedback>
         </Modal>
       )}
     </SafeAreaView>

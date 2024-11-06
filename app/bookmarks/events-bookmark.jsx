@@ -112,12 +112,13 @@ const EventsBookmark = () => {
   // Function to remove a bookmark
   const removeBookmark = async item => {
     try {
-      // API call to remove bookmark (replace with your API endpoint)
       const userId = await SecureStore.getItemAsync('userId')
-      await axios.delete(
-        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}/events/${item._id}`
-      )
-      // Update bookmarks list
+      await axios.post('https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/unbookmark', {
+        userId,
+        sourceType: 'EVENT_API',
+        eventId: item._id,
+        airportId: item.airportId._id
+      })
       setBookmarks(prevBookmarks => prevBookmarks.filter(bookmark => bookmark._id !== item._id))
     } catch (error) {
       setError(error)
