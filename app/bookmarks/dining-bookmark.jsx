@@ -1,21 +1,19 @@
+// DiningBookmark.js
 import {
+  SafeAreaView,
   View,
   Text,
-  SafeAreaView,
   FlatList,
   Image,
-  Modal,
   TouchableOpacity,
   ActivityIndicator,
-  StyleSheet,
-  Alert,
-  TextInput
+  StyleSheet
 } from 'react-native'
 import NonInteractableStarRating from '@/components/noninteractable-star-rating'
 import React, { useEffect, useState, useCallback } from 'react'
-import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useGlobalStore } from '../../store/store'
 import * as SecureStore from 'expo-secure-store'
+import SearchBar from '@/components/search-bar'
 import icons from '../../constants/icons'
 import * as Linking from 'expo-linking'
 import axios from 'axios'
@@ -26,29 +24,29 @@ const PLACEHOLDER_IMAGE_URL = '../../assets/images/no-image.png'
 const DiningBookmark = () => {
   const [bookmarks, setBookmarks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [isImageModalVisible, setImageModalVisible] = useState(false)
-  const [selectedImage, setSelectedImage] = useState(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const selectedAirport = useGlobalStore(state => state.selectedAirport)
 
-  // Fetching bookmarks with search and pagination
   const fetchUserDiningBookmarks = useCallback(
     _.debounce(async (page, query = '') => {
+      setLoading(true)
       try {
-        setLoading(true)
         const userId = await SecureStore.getItemAsync('userId')
         const response = await axios.get(
           `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
           { params: { page, limit: 10, search: query } }
         )
+
         const newBookmarks = response.data
 
         if (newBookmarks.length === 0) {
           setHasMore(false)
+          if (page === 1) setBookmarks([])
         } else {
           setBookmarks(prevBookmarks => (page === 1 ? newBookmarks : [...prevBookmarks, ...newBookmarks]))
+          setHasMore(true)
         }
       } catch (error) {
         console.error('Error fetching dining bookmarks:', error)
@@ -60,6 +58,9 @@ const DiningBookmark = () => {
   )
 
   useEffect(() => {
+    setBookmarks([])
+    setLoading(true)
+    setHasMore(true)
     fetchUserDiningBookmarks(1, searchQuery)
   }, [searchQuery])
 
@@ -81,66 +82,8 @@ const DiningBookmark = () => {
     setSearchQuery('')
     setPage(1)
     setBookmarks([])
+    setHasMore(true)
     fetchUserDiningBookmarks(1, '')
-  }
-
-  const unbookmark = async (diningId, sourceType, airportId) => {
-    try {
-      const userId = await SecureStore.getItemAsync('userId')
-      const isBookmarked = bookmarks.some(bookmark => bookmark.diningId === diningId)
-
-      const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
-      const requestBody = { diningId, userId, sourceType, airportId }
-
-      await axios.post(
-        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/${endpoint}`,
-        requestBody,
-        { headers: { 'Content-Type': 'application/json' } }
-      )
-
-      setBookmarks(prevBookmarks =>
-        isBookmarked
-          ? prevBookmarks.filter(bookmark => bookmark.diningId !== diningId)
-          : [...prevBookmarks, { diningId, bookmarked: true }]
-      )
-    } catch (error) {
-      console.error('Failed to update bookmark:', error)
-    }
-  }
-
-  const handleUnbookmarkPress = (diningId, sourceType, airportId) => {
-    Alert.alert(
-      'Remove Bookmark',
-      'Are you sure you want to remove this bookmark?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', onPress: () => unbookmark(diningId, sourceType, airportId), style: 'destructive' }
-      ],
-      { cancelable: true }
-    )
-  }
-
-  const handleAddressPress = location => {
-    Alert.alert(
-      'Open Maps',
-      'Do you want to open this location in your maps app?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open',
-          onPress: () => {
-            const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
-            Linking.openURL(url)
-          }
-        }
-      ],
-      { cancelable: true }
-    )
-  }
-
-  const openImageModal = imageUri => {
-    setSelectedImage(imageUri)
-    setImageModalVisible(true)
   }
 
   const renderBookmark = ({ item: bookmark }) => (
@@ -179,70 +122,37 @@ const DiningBookmark = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#4386AD" style={styles.icon} />
-        <TextInput
+      <View style={styles.innerContainer}>
+        <SearchBar
           placeholder="Search by name, city, or country"
-          placeholderTextColor="grey"
-          style={styles.input}
           value={searchQuery}
           onChangeText={handleSearchInput}
+          onClear={clearSearch}
         />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color="grey" />
-          </TouchableOpacity>
+
+        {loading && page === 1 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4386AD" />
+          </View>
+        ) : (
+          <FlatList
+            contentContainerStyle={styles.flatListContainer}
+            data={bookmarks}
+            renderItem={renderBookmark}
+            keyExtractor={item => item.diningId || item._id}
+            onEndReached={loadMoreBookmarks}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={hasMore && <ActivityIndicator size="small" color="#4386AD" />}
+            ListEmptyComponent={
+              !loading && searchQuery ? (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>No results for "{searchQuery}"</Text>
+                </View>
+              ) : null
+            }
+          />
         )}
       </View>
-
-      {loading && page === 1 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4386AD" />
-        </View>
-      ) : (
-        <FlatList
-          data={bookmarks}
-          renderItem={renderBookmark}
-          keyExtractor={item => item.diningId || item._id}
-          onEndReached={loadMoreBookmarks}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            hasMore && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#4386AD" />
-              </View>
-            )
-          }
-          // Add ListEmptyComponent to handle both no bookmarks and no search results
-          ListEmptyComponent={
-            !loading && (
-              <View style={styles.noResultsContainer}>
-                <Text style={styles.noResultsText}>
-                  {searchQuery ? `No results for "${searchQuery}"` : "You don't have any bookmarks yet."}
-                </Text>
-              </View>
-            )
-          }
-        />
-      )}
-
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isImageModalVisible}
-        onRequestClose={() => setImageModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.imageModalContainer}
-          activeOpacity={1}
-          onPressOut={() => setImageModalVisible(false)}
-        >
-          <Image source={{ uri: selectedImage }} style={styles.expandedImage} />
-          <TouchableOpacity style={styles.imageModalCloseButton} onPress={() => setImageModalVisible(false)}>
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   )
 }
@@ -254,36 +164,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white'
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-    backgroundColor: 'white',
-    borderColor: '#045D91'
+  flatListContainer: {
+    paddingBottom: 20
   },
-  input: {
-    height: 40,
+  innerContainer: {
     flex: 1,
-    fontSize: 16,
-    color: 'black'
-  },
-  icon: {
-    marginRight: 10
-  },
-  clearButton: {
-    marginLeft: 10
+    paddingTop: 15,
+    paddingHorizontal: 10
   },
   card: {
     backgroundColor: '#F8FAFC',
     borderColor: '#4386AD',
     borderWidth: 1,
     borderRadius: 10,
-    marginBottom: 20,
-    overflow: 'hidden',
-    padding: 10
+    marginBottom: 15,
+    padding: 15,
+    overflow: 'hidden'
   },
   image: {
     width: '100%',
@@ -332,28 +228,6 @@ const styles = StyleSheet.create({
   bookmarkIcon: {
     width: 24,
     height: 24
-  },
-  imageModalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  expandedImage: {
-    width: '90%',
-    height: '70%',
-    resizeMode: 'contain'
-  },
-  imageModalCloseButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    padding: 10,
-    zIndex: 1
-  },
-  closeButtonText: {
-    color: 'white',
-    fontSize: 16
   },
   loadingContainer: {
     flex: 1,
