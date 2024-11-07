@@ -3,16 +3,21 @@ import axios from 'axios'
 
 const API_URL = 'https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app'
 
-export const fetchNearbyPlaces = async (latitude, longitude) => {
+export const fetchNearbyPlaces = async (latitude, longitude, city, dietaryOption = '') => {
   try {
+    const query = dietaryOption ? `${dietaryOption} restaurants` : 'restaurants'
+
     const response = await axios.get(`${API_URL}/api/places/fetchNearbyPlaces`, {
       params: {
         latitude,
         longitude,
+        city,
         radius: 7500,
-        type: 'cafe'
+        type: 'restaurant',
+        query
       }
     })
+    console.log(response.data)
     return response.data
   } catch (error) {
     console.error('Failed to fetch nearby places:', error)
