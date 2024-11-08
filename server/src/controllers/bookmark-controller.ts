@@ -5,8 +5,20 @@ import mongoose from 'mongoose'
 
 // Generalized function for bookmarking both dining and events
 export const bookmarkItem = async (req: Request, res: Response) => {
-  const { userId, sourceType, name, location, imageUrl, rating, totalReviews, airportId, eventTime, eventDescription } =
-    req.body
+  const {
+    userId,
+    sourceType,
+    name,
+    location,
+    imageUrl,
+    rating,
+    totalReviews,
+    airportId,
+    eventTime,
+    eventDescription,
+    latitude,
+    longitude
+  } = req.body
   const itemId = sourceType === 'EVENT_API' ? req.body.eventId : req.body.diningId
   const externalAddress = req.body.externalAddress || null
   const eventLocationMap = req.body.eventLocationMap || null
@@ -25,7 +37,9 @@ export const bookmarkItem = async (req: Request, res: Response) => {
       externalAddress,
       eventLocationMap,
       eventTime,
-      eventDescription
+      eventDescription,
+      latitude,
+      longitude
     })
     const savedBookmark = await newBookmark.save()
     res.status(201).json(savedBookmark)

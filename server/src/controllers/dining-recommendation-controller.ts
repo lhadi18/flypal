@@ -68,10 +68,19 @@ export const addDiningRecommendation = async (req: CustomRequest, res: Response)
   }
 }
 
+// Add dietary filtering to `getCrewPicks`
 export const getCrewPicks = async (req: Request, res: Response) => {
   const { airportId } = req.params
+  const { dietaryOption } = req.query
+
   try {
-    const crewPicks = await DiningRecommendation.find({ airport: airportId }).populate('user', 'firstName lastName')
+    const filter: { airport: string; tags?: string } = { airport: airportId }
+
+    if (dietaryOption) {
+      filter.tags = dietaryOption as string
+    }
+
+    const crewPicks = await DiningRecommendation.find(filter).populate('user', 'firstName lastName')
     res.status(200).json(crewPicks)
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch crew picks' })
