@@ -15,7 +15,11 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native'
-import { fetchUserRecommendations, deleteRecommendation, updateRecommendation } from '../../services/destination-api'
+import {
+  fetchUserRecommendations,
+  deleteRecommendation,
+  updateRecommendation
+} from '../../services/apis/destination-api'
 import InteractableStarRating from '@/components/interactable-star-rating'
 import RecommendationCard from '@/components/recommendation-card'
 import React, { useState, useEffect, useRef } from 'react'

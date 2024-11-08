@@ -20,10 +20,10 @@ import {
   deleteRosterEntry
 } from '../../services/utils/database'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { fetchAircraftTypes } from '../../services/apis/aircraft-api'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { useNavigation, useRoute } from '@react-navigation/native'
-import { fetchAircraftTypes } from '../../services/aircraft-api'
 import AirportSearch from '@/components/airport-search'
 import RNPickerSelect from 'react-native-picker-select'
 import * as DocumentPicker from 'expo-document-picker'

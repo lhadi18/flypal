@@ -12,8 +12,8 @@ import {
 import StyledAirportSearch from '@/components/sign-up-airport-search'
 import AirlineSearch from '@/components/sign-up-airline-search'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { registerUser } from '../../services/apis/user-api'
 import RNPickerSelect from 'react-native-picker-select'
-import { registerUser } from '../../services/user-api'
 import { ROLES } from '../../constants/roles'
 import { useRouter } from 'expo-router'
 import React, { useState } from 'react'
@@ -94,7 +94,7 @@ const SignUp = () => {
                       <Text style={styles.label}>First Name</Text>
                       <View style={styles.name}>
                         <View style={styles.name}>
-                        <TextInput
+                          <TextInput
                             style={styles.input}
                             placeholder="First Name"
                             placeholderTextColor="grey"
@@ -102,7 +102,7 @@ const SignUp = () => {
                             onBlur={handleBlur('firstName')}
                             value={values.firstName}
                           />
-                      </View>
+                        </View>
                       </View>
                       <View style={styles.errorContainer}>
                         {touched.firstName && errors.firstName && (
@@ -363,10 +363,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: 'white'
   },
-  name:{
+  name: {
     borderRadius: 5,
     backgroundColor: 'white',
-    height: 40,
+    height: 40
   },
   name: {
     borderRadius: 5,
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     borderColor: 'grey',
     paddingHorizontal: 10,
     backgroundColor: 'white',
-    height: 40,
+    height: 40
   },
   emailContainer: {
     flexDirection: 'row',
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     backgroundColor: 'white',
-    height: 40,
+    height: 40
   },
   toggleButton: {
     padding: 10,

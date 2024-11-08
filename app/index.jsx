@@ -9,7 +9,7 @@ import {
   StyleSheet
 } from 'react-native'
 import { initializeDatabase } from '../services/utils/database'
-import { validateUserId } from '../services/user-api'
+import { validateUserId } from '../services/apis/user-api'
 import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
 import { useRouter, Link } from 'expo-router'

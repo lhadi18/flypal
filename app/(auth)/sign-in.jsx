@@ -1,7 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground, Alert } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { loginUser } from '../../services/user-api'
+import { loginUser } from '../../services/apis/user-api'
 import * as SecureStore from 'expo-secure-store'
 import { ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     backgroundColor: 'white',
-    height: 40,
+    height: 40
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     borderColor: 'grey',
     backgroundColor: 'white',
     paddingHorizontal: 10,
-    height: 40,
+    height: 40
   },
   toggleButton: {
     padding: 10,
