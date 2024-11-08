@@ -22,6 +22,7 @@ import {
 } from '../../services/apis/destination-api'
 import InteractableStarRating from '@/components/interactable-star-rating'
 import RecommendationCard from '@/components/recommendation-card'
+import { dietaryOptions } from '@/constants/dietary-options'
 import React, { useState, useEffect, useRef } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as SecureStore from 'expo-secure-store'
@@ -343,7 +344,7 @@ const MyRecommendations = () => {
                         {touched.rating && errors.rating && <Text style={styles.errorText}>{errors.rating}</Text>}
                         <Text style={styles.label}>Tags (optional)</Text>
                         <View style={styles.dietaryButtonsContainer}>
-                          {['Halal', 'Vegetarian', 'Vegan'].map(tag => (
+                          {dietaryOptions.map(tag => (
                             <TouchableOpacity
                               key={tag}
                               style={[styles.tagButtonModal, values.tags.includes(tag) && styles.tagButtonSelected]}
@@ -369,6 +370,7 @@ const MyRecommendations = () => {
                             </TouchableOpacity>
                           ))}
                         </View>
+
                         <View style={styles.buttonContainer}>
                           <TouchableOpacity
                             style={[styles.modalButton, styles.cancelButton]}
@@ -547,17 +549,22 @@ const styles = StyleSheet.create({
   },
   dietaryButtonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     marginVertical: 10,
     width: '100%'
   },
   tagButtonModal: {
-    paddingVertical: 7,
-    paddingHorizontal: 15,
-    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
     borderColor: '#4386AD',
     borderWidth: 1,
-    marginHorizontal: 5
+    marginVertical: 8,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexBasis: '45%'
   },
   tagButton: {
     paddingVertical: 5,
@@ -573,7 +580,8 @@ const styles = StyleSheet.create({
   },
   tagButtonText: {
     color: '#4386AD',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 16
   },
   tagButtonTextSelected: {
     color: '#FFF'
