@@ -5,19 +5,16 @@ const API_URL = 'https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.
 
 export const fetchNearbyPlaces = async (latitude, longitude, city, dietaryOption = '') => {
   try {
-    const query = dietaryOption ? `${dietaryOption} restaurants` : 'restaurants'
-
     const response = await axios.get(`${API_URL}/api/places/fetchNearbyPlaces`, {
       params: {
         latitude,
         longitude,
         city,
+        dietaryOption,
         radius: 7500,
-        type: 'restaurant',
-        query
+        type: 'restaurant'
       }
     })
-    console.log(response.data)
     return response.data
   } catch (error) {
     console.error('Failed to fetch nearby places:', error)
@@ -70,8 +67,12 @@ export const saveRecommendation = async data => {
   }
 }
 
-export const fetchCrewPicks = async airportId => {
-  const response = await axios.get(`${API_URL}/api/dining/crew-picks/${airportId}`)
+export const fetchCrewPicks = async (airportId, dietaryOption) => {
+  const url = dietaryOption
+    ? `${API_URL}/api/dining/crew-picks/${airportId}?dietaryOption=${dietaryOption}`
+    : `${API_URL}/api/dining/crew-picks/${airportId}`
+
+  const response = await axios.get(url)
   return response.data
 }
 
@@ -82,7 +83,6 @@ export const likeRecommendation = async (id, userId) => {
 
 export const fetchUserRecommendations = async userId => {
   const response = await axios.get(`${API_URL}/api/dining/user-recommendations/${userId}`)
-  console.log(response.data)
   return response.data
 }
 
