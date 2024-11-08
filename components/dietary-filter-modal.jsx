@@ -1,12 +1,11 @@
 import { StyleSheet, Text, View, TouchableOpacity, Modal, SafeAreaView, ScrollView } from 'react-native'
+import { dietaryOptions } from '../constants/dietary-options'
 import { BlurView } from 'expo-blur'
 import React from 'react'
 
 const DietaryFilterModal = ({ isVisible, onClose, selectedOption, onSelectOption }) => {
-  const dietaryOptions = ['Halal', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Kosher', 'Non-Halal']
-
   const handleSelectOption = option => {
-    onSelectOption(option) // Set only the selected option
+    onSelectOption(option)
   }
 
   return (
