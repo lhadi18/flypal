@@ -8,13 +8,13 @@ const bookmarkSchema = new mongoose.Schema(
       ref: 'User'
     },
     diningId: {
-      type: String // For dining bookmarks
+      type: String
     },
     eventId: {
-      type: String // For event bookmarks
+      type: String
     },
     airportId: {
-      type: mongoose.Schema.Types.ObjectId, // Reference to Airport model
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
       ref: 'Airport'
     },
@@ -51,6 +51,12 @@ const bookmarkSchema = new mongoose.Schema(
     },
     eventDescription: {
       type: String
+    },
+    latitude: {
+      type: Number
+    },
+    longitude: {
+      type: Number
     }
   },
   {
