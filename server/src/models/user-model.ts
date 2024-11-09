@@ -1,4 +1,5 @@
-import mongoose, { CallbackError, Schema, Document } from 'mongoose'
+import { Document, Schema, Types, CallbackError } from 'mongoose'
+import mongoose from 'mongoose'
 import bcrypt from 'bcrypt'
 
 export interface User extends Document {
@@ -8,12 +9,11 @@ export interface User extends Document {
   password: string
   homebase: mongoose.Schema.Types.ObjectId
   airline: mongoose.Schema.Types.ObjectId
-  role: string
-  friendRequests: mongoose.Schema.Types.ObjectId,
-  friends: mongoose.Schema.Types.ObjectId,
-  sentFriendRequests: mongoose.Schema.Types.ObjectId,
+  role: Types.ObjectId // Update to use ObjectId for Role reference
+  friendRequests: mongoose.Schema.Types.ObjectId[]
+  friends: mongoose.Schema.Types.ObjectId[]
+  sentFriendRequests: mongoose.Schema.Types.ObjectId[]
   matchPassword(enteredPassword: string): Promise<boolean>
-  
 }
 
 const userSchema: Schema<User> = new mongoose.Schema({
@@ -23,11 +23,10 @@ const userSchema: Schema<User> = new mongoose.Schema({
   password: { type: String, required: true },
   homebase: { type: mongoose.Schema.Types.ObjectId, ref: 'Airport', required: true },
   airline: { type: mongoose.Schema.Types.ObjectId, ref: 'Airline', required: true },
-  role: { type: String, required: true },
+  role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true }, // Reference to Role model
   friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  sentFriendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-
+  sentFriendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 })
 
 userSchema.pre<User>('save', async function (next) {

@@ -22,6 +22,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import StyledAirportSearch from '@/components/sign-up-airport-search'
 import AirlineSearch from '@/components/sign-up-airline-search'
 import RNPickerSelect from 'react-native-picker-select'
+import { getRoles } from '@/services/apis/user-api'
 import React, { useState, useEffect } from 'react'
 import * as SecureStore from 'expo-secure-store'
 import { ROLES } from '../../constants/roles'
@@ -46,6 +47,9 @@ const Settings = () => {
   const [oldPassword, setOldPassword] = useState('')
   const [password, setPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [roles, setRoles] = useState([])
+  const [loadingRoles, setLoadingRoles] = useState(true) // Optional: loading state for roles
+
   const [error, setError] = useState('')
   const router = useRouter()
 
@@ -54,14 +58,11 @@ const Settings = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
-      const response = await axios.get(
-        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/users/getUserId`,
-        {
-          params: {
-            userId
-          }
+      const response = await axios.get(`https://64f6-103-18-0-20.ngrok-free.app/api/users/getUserId`, {
+        params: {
+          userId
         }
-      )
+      })
       setUserDetails(response.data)
       console.log('Response Data:', response.data)
     } catch (error) {
@@ -73,6 +74,22 @@ const Settings = () => {
 
   useEffect(() => {
     fetchUserDetails()
+  }, [])
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setLoadingRoles(true)
+        const rolesData = await getRoles()
+        setRoles(rolesData.map(role => ({ label: role.value, value: role._id })))
+      } catch (error) {
+        console.error('Error fetching roles:', error)
+      } finally {
+        setLoadingRoles(false)
+      }
+    }
+
+    fetchRoles()
   }, [])
 
   const handleEditUserDetails = () => {
@@ -91,7 +108,7 @@ const Settings = () => {
       firstName: currentUserDetails.firstName,
       lastName: currentUserDetails.lastName,
       email: currentUserDetails.email,
-      role: currentUserDetails.role,
+      role: currentUserDetails.role?.value || '',
       homebase: currentUserDetails.homebase,
       airline: currentUserDetails.airline
     }
@@ -100,7 +117,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://64f6-103-18-0-20.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       console.log('User profile updated:', response.data)
@@ -125,7 +142,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://64f6-103-18-0-20.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -150,9 +167,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(
-                `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/users/deleteUser/${userId}`
-              )
+              await axios.delete(`https://64f6-103-18-0-20.ngrok-free.app/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -272,7 +287,7 @@ const Settings = () => {
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>Role</Text>
                 <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>{userDetails?.role || 'N/A'}</Text>
+                  <Text style={styles.infoValue}>{userDetails?.role?.value || 'N/A'}</Text>
                 </View>
               </View>
               <View style={styles.infoRow}>
@@ -348,16 +363,24 @@ const Settings = () => {
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>Role</Text>
                 <View>
-                  <RNPickerSelect
-                    style={pickerSelectStyles}
-                    onValueChange={value => setCurrentUserDetails({ ...currentUserDetails, role: value })}
-                    items={ROLES}
-                    value={currentUserDetails?.role || ''}
-                    placeholder={{
-                      label: 'Select your role',
-                      color: 'grey'
-                    }}
-                  />
+                  {loadingRoles ? (
+                    <ActivityIndicator size="small" color="#0000ff" />
+                  ) : (
+                    <RNPickerSelect
+                      style={pickerSelectStyles}
+                      onValueChange={value => {
+                        const selectedRole = roles.find(role => role.value === value)
+                        setCurrentUserDetails({ ...currentUserDetails, role: selectedRole })
+                      }}
+                      items={roles}
+                      value={currentUserDetails?.role?.value || ''}
+                      placeholder={{
+                        label: 'Select your role',
+                        value: null,
+                        color: 'grey'
+                      }}
+                    />
+                  )}
                 </View>
               </View>
               <View style={styles.infoRow}>
