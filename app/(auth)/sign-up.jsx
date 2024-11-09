@@ -10,13 +10,13 @@ import {
   Alert
 } from 'react-native'
 import StyledAirportSearch from '@/components/sign-up-airport-search'
+import { registerUser, getRoles } from '../../services/apis/user-api'
 import AirlineSearch from '@/components/sign-up-airline-search'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { registerUser } from '../../services/apis/user-api'
 import RNPickerSelect from 'react-native-picker-select'
+import React, { useState, useEffect } from 'react'
 import { ROLES } from '../../constants/roles'
 import { useRouter } from 'expo-router'
-import React, { useState } from 'react'
 import { Formik } from 'formik'
 import * as Yup from 'yup'
 
@@ -24,6 +24,25 @@ const SignUp = () => {
   const router = useRouter()
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
+  const [roles, setRoles] = useState([])
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const rolesData = await getRoles()
+        const formattedRoles = rolesData.map(role => ({
+          label: role.value,
+          value: role._id
+        }))
+        setRoles(formattedRoles)
+      } catch (error) {
+        console.error('Error fetching roles:', error)
+        setRoles([])
+      }
+    }
+
+    fetchRoles()
+  }, [])
 
   const validationSchema = Yup.object().shape({
     firstName: Yup.string().required('First Name is required'),
@@ -130,17 +149,19 @@ const SignUp = () => {
                   <View style={styles.inputContainer}>
                     <Text style={styles.label}>Role</Text>
                     <View style={styles.pickerContainer}>
-                      <RNPickerSelect
-                        onValueChange={handleChange('role')}
-                        items={ROLES}
-                        style={pickerSelectStyles}
-                        placeholder={{
-                          label: 'Select your role',
-                          value: null,
-                          color: 'grey'
-                        }}
-                        value={values.role}
-                      />
+                      {roles.length > 0 && (
+                        <RNPickerSelect
+                          onValueChange={handleChange('role')}
+                          items={roles}
+                          style={pickerSelectStyles}
+                          placeholder={{
+                            label: 'Select your role',
+                            value: null,
+                            color: 'grey'
+                          }}
+                          value={values.role}
+                        />
+                      )}
                     </View>
                     <View style={styles.errorContainer}>
                       {touched.role && errors.role && <Text style={styles.errorText}>{errors.role}</Text>}
