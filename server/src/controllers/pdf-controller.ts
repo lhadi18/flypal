@@ -1,14 +1,14 @@
 import express, { Request, Response } from 'express'
-import { parseInput, Duty } from '../utils/parser' // Import the parseInput function and Duty interface
+import { parseInput, Duty } from '../utils/parser'
 import { bucket } from '../services/gcs'
 import pdfParse from 'pdf-parse'
 import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 
-const uploadsDir = path.join(__dirname, '..', 'uploads')
+const uploadsDir = path.join('/tmp', 'uploads')
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir)
+  fs.mkdirSync(uploadsDir, { recursive: true })
 }
 
 const storage = multer.diskStorage({
