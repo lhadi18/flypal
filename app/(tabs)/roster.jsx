@@ -17,7 +17,8 @@ import {
   addRosterEntry,
   getAllRosterEntries,
   updateRosterEntry,
-  deleteRosterEntry
+  deleteRosterEntry,
+  getAircraftsFromDatabase
 } from '../../services/utils/database'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { fetchAircraftTypes } from '../../services/apis/aircraft-api'
@@ -125,13 +126,15 @@ const Roster = () => {
   }, [])
 
   useEffect(() => {
-    fetchAircraftTypes()
-      .then(data => {
+    const fetchAircrafts = async () => {
+      try {
+        const data = await getAircraftsFromDatabase()
         setAircraftTypeData(data)
-      })
-      .catch(error => {
-        console.error('Error fetching aircraft types:', error)
-      })
+      } catch (error) {
+        console.error('Error fetching aircraft data from SQLite:', error)
+      }
+    }
+    fetchAircrafts()
   }, [])
 
   useEffect(() => {
@@ -187,28 +190,30 @@ const Roster = () => {
     const end = moment(startDate).add(4, 'months').endOf('day')
 
     if (isConnected) {
-      try {
-        const response = await axios.get(
-          'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getRosterEntries',
-          {
-            params: {
-              userId,
-              startDate: start.toISOString(),
-              endDate: end.toISOString()
-            }
-          }
-        )
-
-        const rosterEntries = processEntries(response.data)
-        setRosterEntries(rosterEntries)
-        setEvents(rosterEntries[startDate] || [])
-      } catch (error) {
-        console.error('Error fetching roster entries:', error)
-      }
+      // try {
+      //   const response = await axios.get(
+      //     'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getRosterEntries',
+      //     {
+      //       params: {
+      //         userId,
+      //         startDate: start.toISOString(),
+      //         endDate: end.toISOString()
+      //       }
+      //     }
+      //   )
+      //   const rosterEntries = processEntries(response.data)
+      //   setRosterEntries(rosterEntries)
+      //   setEvents(rosterEntries[startDate] || [])
+      // } catch (error) {
+      //   console.error('Error fetching roster entries:', error)
+      // }
     } else {
       try {
         const offlineEntries = await getAllRosterEntries()
         const processedOfflineEntries = processEntries(offlineEntries)
+
+        const aircraftType = processedOfflineEntries['2024-11-10'][0].aircraftType
+        console.log(aircraftType)
 
         setRosterEntries(processedOfflineEntries)
         setEvents(processedOfflineEntries[startDate] || [])
@@ -397,7 +402,7 @@ const Roster = () => {
         {item.aircraftType && (
           <View style={styles.eventRow}>
             <Ionicons name="airplane-outline" size={18} color="#045D91" />
-            <Text style={styles.eventText}>Aircraft: {item.aircraftType.Model}</Text>
+            <Text style={styles.eventText}>Aircraft: {item.aircraftType.model}</Text>
           </View>
         )}
         {item.notes && (
@@ -577,18 +582,14 @@ const Roster = () => {
         type: file.mimeType
       })
 
-      const response = await axios.post(
-        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/pdf/upload',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+      const response = await axios.post('https://64f6-103-18-0-20.ngrok-free.app/api/pdf/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
         }
-      )
+      })
 
-      const parsedData = response.data
-      console.log(response.data)
+      // const parsedData = response.data
+      // console.log(response.data)
 
       if (false) {
         const userId = await SecureStore.getItemAsync('userId')
@@ -899,7 +900,7 @@ const Roster = () => {
                   onValueChange={value => {
                     setNewEventAircraftType(value)
                   }}
-                  items={aircraftTypeData}
+                  items={aircraftTypeData.map(aircraft => ({ label: aircraft.label, value: aircraft.value }))}
                   style={{
                     ...pickerSelectStyles,
                     inputIOS: {

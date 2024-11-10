@@ -131,14 +131,7 @@ export const loadAircraftsData = async () => {
       await db.runAsync(
         `INSERT INTO aircrafts (objectId, WingType, model, manufacturer, IATACode, ICAOCode)
          VALUES (?, ?, ?, ?, ?, ?);`,
-        [
-          aircraft._id, // Use _id as objectId
-          aircraft.WingType, // WingType
-          aircraft.Model, // Model
-          aircraft.Manufacturer, // Manufacturer
-          aircraft.IATACode, // IATACode
-          aircraft.ICAOCode // ICAOCode
-        ]
+        [aircraft._id, aircraft.WingType, aircraft.Model, aircraft.Manufacturer, aircraft.IATACode, aircraft.ICAOCode]
       )
     }
     console.log('Aircraft data loaded successfully from JSON file.')
@@ -194,19 +187,18 @@ export const addRosterEntry = async entry => {
   }
 }
 
-// Fetch all roster entries from the database
-// Fetch all roster entries from the database
 export const getAllRosterEntries = async () => {
   try {
     const rows = await db.getAllAsync(`
       SELECT roster_entries.*, 
-             airports1.objectId as originObjectId, airports1.IATA as originIATA, airports1.ICAO as originICAO, airports1.name as originName, airports1.city as originCity, airports1.country as originCountry, airports1.tz_database as originTz, 
-             airports1.latitude as originLatitude, airports1.longitude as originLongitude, 
-             airports2.objectId as destinationObjectId, airports2.IATA as destinationIATA, airports2.ICAO as destinationICAO, airports2.name as destinationName, airports2.city as destinationCity, airports2.country as destinationCountry, airports2.tz_database as destinationTz,
-             airports2.latitude as destinationLatitude, airports2.longitude as destinationLongitude
+             airports1.objectId AS originObjectId, airports1.IATA AS originIATA, airports1.ICAO AS originICAO, airports1.name AS originName, airports1.city AS originCity, airports1.country AS originCountry, airports1.tz_database AS originTz, 
+             airports2.objectId AS destinationObjectId, airports2.IATA AS destinationIATA, airports2.ICAO AS destinationICAO, airports2.name AS destinationName, airports2.city AS destinationCity, airports2.country AS destinationCountry, airports2.tz_database AS destinationTz,
+             aircrafts.objectId AS aircraftObjectId,
+             aircrafts.model AS aircraftModel
       FROM roster_entries
       LEFT JOIN airports AS airports1 ON roster_entries.origin = airports1.objectId
       LEFT JOIN airports AS airports2 ON roster_entries.destination = airports2.objectId
+      LEFT JOIN aircrafts ON roster_entries.aircraftType = aircrafts.objectId 
       WHERE pendingDeletion = 0;
     `)
 
@@ -233,6 +225,10 @@ export const getAllRosterEntries = async () => {
         tz_database: row.destinationTz,
         city_latitude: row.destinationLatitude,
         city_longitude: row.destinationLongitude
+      },
+      aircraftType: {
+        _id: row.aircraftObjectId,
+        model: row.aircraftModel
       }
     }))
 
@@ -243,7 +239,6 @@ export const getAllRosterEntries = async () => {
   }
 }
 
-// Update a roster entry to mark it as synced
 export const markEntryAsSynced = async id => {
   try {
     await db.runAsync(`UPDATE roster_entries SET synced = 1 WHERE id = ?;`, [id])
@@ -255,7 +250,7 @@ export const markEntryAsSynced = async id => {
 }
 
 export const updateRosterEntry = async (id, updatedData) => {
-  const updatedAt = moment().toISOString() // Set the current timestamp for updatedAt
+  const updatedAt = moment().toISOString()
 
   try {
     console.log(`Updating roster entry with ID: ${id}`, updatedData)
@@ -325,6 +320,22 @@ export const getAirportsFromDatabase = async (searchQuery = '') => {
     }))
   } catch (error) {
     console.error('Error fetching airports from SQLite:', error)
+    throw error
+  }
+}
+
+export const getAircraftsFromDatabase = async () => {
+  try {
+    const rows = await db.getAllAsync('SELECT * FROM aircrafts ORDER BY model ASC;')
+    return rows.map(row => ({
+      value: row.objectId,
+      label: row.model,
+      manufacturer: row.manufacturer,
+      IATACode: row.IATACode,
+      ICAOCode: row.ICAOCode
+    }))
+  } catch (error) {
+    console.error('Error fetching aircrafts from SQLite:', error)
     throw error
   }
 }

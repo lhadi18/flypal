@@ -150,7 +150,6 @@ export const getUserDiningBookmarks = async (req: Request, res: Response) => {
   const search = (req.query.search as string) || ''
 
   try {
-    // Aggregation pipeline with refined search logic
     let bookmarks = await Bookmark.aggregate([
       {
         $lookup: {
@@ -195,17 +194,12 @@ export const getUserDiningBookmarks = async (req: Request, res: Response) => {
           diningId: 1,
           sourceType: 1,
           rating: 1,
-          totalReviews: 1
+          totalReviews: 1,
+          latitude: 1,
+          longitude: 1
         }
       }
     ]).exec()
-
-    bookmarks = bookmarks.map(b => new Bookmark(b))
-
-    await Bookmark.populate(bookmarks, {
-      path: 'airportId',
-      select: 'name city country'
-    })
 
     const userPostDiningIds = bookmarks
       .filter(bookmark => bookmark.sourceType === 'DINING_USER_POST')
@@ -228,7 +222,7 @@ export const getUserDiningBookmarks = async (req: Request, res: Response) => {
     )
 
     const enrichedBookmarks = bookmarks.map(bookmark => {
-      const objBookmark = bookmark.toObject()
+      const objBookmark = bookmark // No need to call toObject()
 
       if (objBookmark.sourceType === 'DINING_USER_POST' && objBookmark.diningId) {
         const diningData = diningMap[objBookmark.diningId.toString()]
@@ -240,7 +234,6 @@ export const getUserDiningBookmarks = async (req: Request, res: Response) => {
         }
       }
 
-      // For DINING_API posts, use the rating directly from the Bookmark document if available
       return {
         ...objBookmark,
         rating: objBookmark.rating ?? null,

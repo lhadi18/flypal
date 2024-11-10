@@ -1,4 +1,3 @@
-// DiningBookmark.js
 import {
   SafeAreaView,
   View,
@@ -7,16 +6,20 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  StyleSheet
+  StyleSheet,
+  Modal
 } from 'react-native'
 import NonInteractableStarRating from '@/components/noninteractable-star-rating'
 import React, { useEffect, useState, useCallback } from 'react'
+import { MaterialIcons } from 'react-native-vector-icons'
 import { useGlobalStore } from '../../store/store'
 import * as SecureStore from 'expo-secure-store'
 import SearchBar from '@/components/search-bar'
 import icons from '../../constants/icons'
 import * as Linking from 'expo-linking'
+
 import axios from 'axios'
+
 import _ from 'lodash'
 
 const PLACEHOLDER_IMAGE_URL = '../../assets/images/no-image.png'
@@ -27,6 +30,9 @@ const DiningBookmark = () => {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isImageModalVisible, setImageModalVisible] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(null)
+
   const selectedAirport = useGlobalStore(state => state.selectedAirport)
 
   const fetchUserDiningBookmarks = useCallback(
@@ -35,7 +41,7 @@ const DiningBookmark = () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         const response = await axios.get(
-          `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
+          `https://64f6-103-18-0-20.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
           { params: { page, limit: 10, search: query } }
         )
 
@@ -86,6 +92,18 @@ const DiningBookmark = () => {
     fetchUserDiningBookmarks(1, '')
   }
 
+  const openImageModal = imageUri => {
+    setSelectedImage(imageUri)
+    setImageModalVisible(true)
+  }
+
+  const handleAddressPress = (latitude, longitude) => {
+    if (latitude && longitude) {
+      const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+      Linking.openURL(url)
+    }
+  }
+
   const renderBookmark = ({ item: bookmark }) => (
     <View key={bookmark.diningId || bookmark._id} style={styles.card}>
       <TouchableOpacity onPress={() => openImageModal(bookmark.imageUrl || PLACEHOLDER_IMAGE_URL)}>
@@ -100,7 +118,11 @@ const DiningBookmark = () => {
         </TouchableOpacity>
         <Text style={styles.restaurantName}>{bookmark.name}</Text>
 
-        <TouchableOpacity onPress={() => handleAddressPress(bookmark.location)}>
+        {selectedAirport?.city && selectedAirport?.country && (
+          <Text style={styles.airportLocation}>{`${bookmark.airportId.city}, ${bookmark.airportId.country}`}</Text>
+        )}
+
+        <TouchableOpacity onPress={() => handleAddressPress(bookmark.latitude, bookmark.longitude)}>
           <Text style={styles.address}>{bookmark.location}</Text>
         </TouchableOpacity>
 
@@ -152,6 +174,24 @@ const DiningBookmark = () => {
             }
           />
         )}
+
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={isImageModalVisible}
+          onRequestClose={() => setImageModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.imageModalContainer}
+            activeOpacity={1}
+            onPressOut={() => setImageModalVisible(false)}
+          >
+            <Image source={{ uri: selectedImage }} style={styles.expandedImage} />
+            <TouchableOpacity style={styles.imageModalCloseButton} onPress={() => setImageModalVisible(false)}>
+              <MaterialIcons name="close" size={24} color="white" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
       </View>
     </SafeAreaView>
   )
@@ -202,6 +242,12 @@ const styles = StyleSheet.create({
     marginVertical: 5,
     paddingRight: 40
   },
+  airportLocation: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4386AD',
+    marginTop: 5
+  },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -245,5 +291,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontStyle: 'italic'
+  },
+  imageModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  expandedImage: {
+    width: '90%',
+    height: '70%',
+    resizeMode: 'contain'
+  },
+  imageModalCloseButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    padding: 10,
+    zIndex: 1
   }
 })
