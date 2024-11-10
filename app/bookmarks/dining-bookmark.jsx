@@ -46,7 +46,6 @@ const DiningBookmark = () => {
         )
 
         const newBookmarks = response.data
-        console.log(newBookmarks)
 
         if (newBookmarks.length === 0) {
           setHasMore(false)
