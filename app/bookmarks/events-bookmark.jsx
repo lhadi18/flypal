@@ -39,12 +39,14 @@ const EventsBookmark = () => {
         const source = axios.CancelToken.source()
 
         const response = await axios.get(
-          `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
+          `https://64f6-103-18-0-20.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
           {
             params: { page, limit: 10, search: query },
             cancelToken: source.token
           }
         )
+
+        console.log(response.data)
 
         if (response.data.length === 0) {
           setHasMore(false)
@@ -92,6 +94,12 @@ const EventsBookmark = () => {
     setBookmarks([])
     setHasMore(true)
     fetchBookmarks(1, '')
+  }
+
+  const openMaps = eventLocationMap => {
+    if (eventLocationMap) {
+      Linking.openURL(eventLocationMap)
+    }
   }
 
   const renderBookmarkItem = ({ item }) => (
@@ -237,14 +245,17 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     backgroundColor: '#4386AD',
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 5,
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center'
   },
   actionText: {
     color: '#FFF',
-    marginRight: 5
+    fontWeight: 'bold',
+    textAlign: 'center'
   },
   mapsButton: {
     backgroundColor: '#4386AD',
