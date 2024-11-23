@@ -24,8 +24,12 @@ const SignIn = () => {
     try {
       const result = await loginUser({ email, password })
       const userId = result._id
+      const airlineIATA = result.airline.IATA
+      const homebaseTZDatabase = result.homebase.tz_database
 
       await SecureStore.setItemAsync('userId', userId)
+      await SecureStore.setItemAsync('airlineIATA', airlineIATA)
+      await SecureStore.setItemAsync('homebaseTZDatabase', homebaseTZDatabase)
 
       Alert.alert('Login Successful', `Welcome back, ${email}`)
       router.push('/roster')
