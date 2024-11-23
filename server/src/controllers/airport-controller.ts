@@ -42,3 +42,12 @@ export const getAirport = async (req: Request, res: Response) => {
     res.status(500).send('Error fetching airport data')
   }
 }
+
+export const getAirportsByIATA = async (iataCodes: string[]) => {
+  try {
+    const airports = await Airport.find({ IATA: { $in: iataCodes } }).lean()
+    return airports
+  } catch (error) {
+    console.error('Error fetching airport IATA')
+  }
+}

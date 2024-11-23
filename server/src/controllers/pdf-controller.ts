@@ -58,9 +58,8 @@ const uploadPdf = async (req: Request, res: Response) => {
     const match = text.match(pattern)
 
     if (match) {
-      const parsedData: Duty[] = parseInput(match[0].split('\n')) // Split the matched text into lines and parse it
-      console.log(parsedData)
-      res.send({ text: data.text, parsedData })
+      const parsedData: Duty[] = await parseInput(match[0].split('\n')) // Split the matched text into lines and parse it
+      res.send({ parsedData })
     } else {
       res.send({ text: data.text })
     }
