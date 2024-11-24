@@ -283,6 +283,10 @@ const Dining = () => {
 
   const handleSelectOption = option => {
     setSelectedDietaryOption(option)
+  }
+
+  const handleModalClose = () => {
+    setFilterModalVisible(false)
     setHasFetchedPlaces(false)
     setHasFetchedCrewPicks(false)
   }
@@ -320,7 +324,7 @@ const Dining = () => {
 
           <DietaryFilterModal
             isVisible={isFilterModalVisible}
-            onClose={() => setFilterModalVisible(false)}
+            onClose={handleModalClose}
             selectedOption={selectedDietaryOption}
             onSelectOption={handleSelectOption}
           />
