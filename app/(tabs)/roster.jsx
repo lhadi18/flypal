@@ -1256,6 +1256,33 @@ const Roster = () => {
                     </>
                   )}
 
+                  {newEventTitle === 'FLIGHT_DUTY' || newEventTitle === 'STANDBY' ? (
+                    <>
+                      <Text style={styles.label}>Aircraft Type</Text>
+                      <View style={styles.inputWrapper}>
+                        <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                        <RNPickerSelect
+                          onValueChange={value => {
+                            setNewEventAircraftType(value)
+                          }}
+                          items={aircraftTypeData.map(aircraft => ({
+                            label: aircraft.label,
+                            value: aircraft.value
+                          }))}
+                          style={{
+                            ...pickerSelectStyles,
+                            inputIOS: { ...pickerSelectStyles.inputIOS, paddingRight: 30 },
+                            inputAndroid: { ...pickerSelectStyles.inputAndroid, paddingRight: 30 },
+                            placeholder: { ...pickerSelectStyles.placeholder, paddingLeft: 0 }
+                          }}
+                          value={newEventAircraftType}
+                          placeholder={{ label: 'Select aircraft type', value: null }}
+                          useNativeAndroidPickerStyle={false}
+                        />
+                      </View>
+                    </>
+                  ) : null}
+
                   {/* Notes */}
                   <Text style={styles.label}>Notes (Optional)</Text>
                   <View style={styles.inputWrapper}>
