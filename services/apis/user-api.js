@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_URL = 'https://64f6-103-18-0-20.ngrok-free.app'
+const API_URL = 'https://40c7-115-164-76-186.ngrok-free.app'
 
 export const registerUser = async userData => {
   try {

@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     borderColor: '#4386AD',
     borderRadius: 10,
     backgroundColor: '#F8FAFC',
-    marginTop: 10
+    marginBottom: 10
   },
   resultItem: {
     flexDirection: 'row',

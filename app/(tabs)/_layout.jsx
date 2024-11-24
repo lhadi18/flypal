@@ -47,7 +47,7 @@ const TabsLayout = () => {
             headerLeft: () => (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 18 }}>
                 <TouchableOpacity onPress={() => null}>
-                  <Ionicons name="people" size={26} color="white" style={{ marginTop: 3 }} />
+                  <Ionicons name="share" size={26} color="white" style={{ marginTop: 3 }} />
                 </TouchableOpacity>
               </View>
             ),

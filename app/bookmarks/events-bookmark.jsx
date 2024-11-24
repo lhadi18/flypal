@@ -39,7 +39,7 @@ const EventsBookmark = () => {
         const source = axios.CancelToken.source()
 
         const response = await axios.get(
-          `https://64f6-103-18-0-20.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
+          `https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
           {
             params: { page, limit: 10, search: query },
             cancelToken: source.token

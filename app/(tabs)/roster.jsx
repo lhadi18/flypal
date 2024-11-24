@@ -34,6 +34,7 @@ import { DUTY_TYPES } from '../../constants/duties'
 import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
 import { Ionicons } from '@expo/vector-icons'
+import Toast from '@/components/toast'
 import uuid from 'react-native-uuid'
 import moment from 'moment-timezone'
 import axios from 'axios'
@@ -48,7 +49,7 @@ const Roster = () => {
   const [selectedDate, setSelectedDate] = useState('')
   const [events, setEvents] = useState([])
   const [modalVisible, setModalVisible] = useState(false)
-  const [newEventTitle, setNewEventTitle] = useState('')
+  const [newEventTitle, setNewEventTitle] = useState(null)
   const [newEventOrigin, setNewEventOrigin] = useState(null)
   const [newEventDestination, setNewEventDestination] = useState(null)
   const [newEventDepartureTime, setNewEventDepartureTime] = useState('')
@@ -65,6 +66,16 @@ const Roster = () => {
   const [editEventId, setEditEventId] = useState(null)
   const [markedDates, setMarkedDates] = useState({})
   const [loading, setLoading] = useState(false)
+  const [uploadedRosterData, setUploadedRosterData] = useState([])
+  const [showRosterModal, setShowRosterModal] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState(null)
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [uploadingRoster, setUploadingRoster] = useState(false)
+  const [selectedEntryIndex, setSelectedEntryIndex] = useState(null)
+  const [homebaseTZ, setHomebaseTZ] = useState('')
+
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [customReminderHour, setCustomReminderHour] = useState(2) // Default to 2 hours before the event
@@ -162,7 +173,7 @@ const Roster = () => {
         if (notificationsEnabled) {
           scheduleNotification(event, customReminderHour)
 
-          const eventTime = moment.tz(event.departureTime, event.origin.tz_database)
+          const eventTime = moment.tz(event.departureTime, event.origin?.tz_database || homebaseTZ)
           const departureHour = eventTime.hour()
 
           if (departureHour >= 0 && departureHour <= 7) {
@@ -173,7 +184,20 @@ const Roster = () => {
     }
 
     scheduleAllNotifications()
-  }, [notificationsEnabled, customReminderHour, restReminderEnabled, redEyeReminderTime, events])
+  }, [notificationsEnabled, customReminderHour, redEyeReminderTime, events])
+
+  useEffect(() => {
+    const fetchHomebaseTZ = async () => {
+      try {
+        const tz = await SecureStore.getItemAsync('homebaseTZDatabase')
+        if (tz) setHomebaseTZ(tz)
+      } catch (error) {
+        console.error('Error fetching home base timezone:', error)
+      }
+    }
+
+    fetchHomebaseTZ()
+  }, [])
 
   const cancelAllNotifications = async () => {
     await Notifications.cancelAllScheduledNotificationsAsync()
@@ -184,50 +208,46 @@ const Roster = () => {
   }
 
   const fetchRosterEntries = async startDate => {
-    const isConnected = false
-    const userId = await SecureStore.getItemAsync('userId')
-    const start = moment(startDate).subtract(4, 'months').startOf('day')
-    const end = moment(startDate).add(4, 'months').endOf('day')
+    try {
+      const offlineEntries = await getAllRosterEntries()
+      const processedOfflineEntries = processEntries(offlineEntries)
 
-    if (isConnected) {
-      // try {
-      //   const response = await axios.get(
-      //     'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getRosterEntries',
-      //     {
-      //       params: {
-      //         userId,
-      //         startDate: start.toISOString(),
-      //         endDate: end.toISOString()
-      //       }
-      //     }
-      //   )
-      //   const rosterEntries = processEntries(response.data)
-      //   setRosterEntries(rosterEntries)
-      //   setEvents(rosterEntries[startDate] || [])
-      // } catch (error) {
-      //   console.error('Error fetching roster entries:', error)
-      // }
-    } else {
-      try {
-        const offlineEntries = await getAllRosterEntries()
-        const processedOfflineEntries = processEntries(offlineEntries)
-
-        const aircraftType = processedOfflineEntries['2024-11-10'][0].aircraftType
-        console.log(aircraftType)
-
-        setRosterEntries(processedOfflineEntries)
-        setEvents(processedOfflineEntries[startDate] || [])
-      } catch (error) {
-        console.error('Error fetching offline roster entries:', error)
-      }
+      setRosterEntries(processedOfflineEntries)
+      setEvents(processedOfflineEntries[startDate] || [])
+    } catch (error) {
+      console.error('Error fetching offline roster entries:', error)
     }
   }
 
   const processEntries = entries => {
-    return entries.reduce((acc, entry) => {
-      const date = moment(entry.departureTime).format('YYYY-MM-DD')
-      if (!acc[date]) acc[date] = []
-      acc[date].push(entry)
+    return entries.reduce((acc, entry, index) => {
+      try {
+        const validDate = entry.departureTime || entry.createdAt
+
+        if (!validDate) {
+          console.warn(`Entry at index ${index} has no valid date.`, entry)
+          return acc
+        }
+
+        const timezone = entry.origin?.tz_database || entry.destination?.tz_database || homebaseTZ || 'UTC'
+
+        // if (['STANDBY', 'TRAINING', 'OFF_DUTY', 'MEDICAL_CHECK', 'MEETING'].includes(entry.type)) {
+        //   console.info(`Entry at index ${index} uses default timezone (${timezone}) due to type: ${entry.type}`)
+        // }
+
+        const date = moment(validDate).tz(timezone)
+        if (!date.isValid()) {
+          console.warn(`Invalid moment date for entry at index ${index}:`, validDate)
+          return acc
+        }
+
+        const formattedDate = date.format('YYYY-MM-DD')
+        if (!acc[formattedDate]) acc[formattedDate] = []
+        acc[formattedDate].push(entry)
+      } catch (error) {
+        console.error(`Error processing entry at index ${index}:`, error, entry)
+      }
+
       return acc
     }, {})
   }
@@ -270,7 +290,13 @@ const Roster = () => {
   }
 
   const getLocalTime = (time, timezone) => {
-    return moment(time).tz(timezone).format('DD/MM/YYYY HH:mm [GMT]Z')
+    const resolvedTimezone = timezone || homebaseTZ
+    return moment(time).tz(resolvedTimezone).format('DD/MM/YYYY HH:mm [GMT]Z')
+  }
+
+  const showToast = message => {
+    setToastMessage(message)
+    setToastVisible(true)
   }
 
   const handleDeleteEvent = rosterId => {
@@ -292,10 +318,12 @@ const Roster = () => {
               }
 
               await deleteRosterEntry(rosterId, isConnected)
+              showToast('Roster entry deleted successfully.')
 
               const today = getCurrentDate()
               await fetchRosterEntries(today)
             } catch (error) {
+              showToast('Failed to delete roster entry.')
               console.error('Error deleting event:', error)
             }
           }
@@ -309,19 +337,96 @@ const Roster = () => {
     const permissionGranted = await requestNotificationPermission()
     if (!permissionGranted) return
 
-    const eventTime = moment.tz(event.departureTime, event.origin.tz_database)
-    const reminderTime = eventTime.subtract(reminderHoursBefore, 'hours')
+    const timezone = event.origin?.tz_database || homebaseTZ
+    const eventStartTime = event.departureTime ? moment.tz(event.departureTime, timezone) : null
+    const eventEndTime = event.arrivalTime ? moment.tz(event.arrivalTime, timezone) : null
+
+    // Common validation
+    if (!eventStartTime || !eventStartTime.isValid()) {
+      console.warn('Invalid or missing start time for event:', event)
+      return
+    }
+
+    const reminderTime = eventStartTime.clone().subtract(reminderHoursBefore, 'hours')
 
     if (reminderTime.isAfter(moment())) {
+      let notificationTitle = 'Upcoming Event Reminder'
+      let notificationBody = ''
+
+      // Notification configuration based on event type
+      switch (event.type) {
+        case 'STANDBY':
+          notificationTitle = 'Standby Duty Reminder'
+          notificationBody = `Your standby duty starts in ${reminderHoursBefore} hours.`
+          break
+
+        case 'TRAINING':
+          notificationTitle = 'Training Reminder'
+          notificationBody = `Your training session starts in ${reminderHoursBefore} hours.`
+          break
+
+        case 'OFF_DUTY':
+          notificationTitle = 'Off Duty Reminder'
+          notificationBody = `Enjoy your off-duty time! It begins in ${reminderHoursBefore} hours.`
+          break
+
+        case 'LAYOVER':
+          notificationTitle = 'Layover Reminder'
+          notificationBody = `Your layover at ${event.origin?.name} (${event.origin?.IATA}) starts in ${reminderHoursBefore} hours.`
+          break
+
+        case 'MEDICAL_CHECK':
+          notificationTitle = 'Medical Check Reminder'
+          notificationBody = `Your medical check starts in ${reminderHoursBefore} hours.`
+          break
+
+        case 'MEETING':
+          notificationTitle = 'Meeting Reminder'
+          notificationBody = `Your meeting starts in ${reminderHoursBefore} hours.`
+          break
+
+        case 'FLIGHT_DUTY':
+          notificationTitle = `Flight Duty Reminder: ${event.flightNumber || 'N/A'}`
+          notificationBody = `Your flight from ${event.origin?.IATA || 'N/A'} to ${event.destination?.IATA || 'N/A'} departs in ${reminderHoursBefore} hours.`
+          break
+
+        default:
+          notificationTitle = 'Event Reminder'
+          notificationBody = `You have an upcoming event starting in ${reminderHoursBefore} hours.`
+      }
+
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: `Upcoming Flight: ${event.flightNumber}`,
-          body: `Flight from ${event.origin.IATA} to ${event.destination.IATA} is departing in ${reminderHoursBefore} hours!`,
+          title: notificationTitle,
+          body: notificationBody,
           sound: 'default',
           badge: 1
         },
         trigger: {
           date: new Date(reminderTime)
+        }
+      })
+    }
+
+    // Notification for end time, if applicable
+    if (eventEndTime && eventEndTime.isAfter(moment())) {
+      let endNotificationTitle = `${event.type} End Reminder`
+      let endNotificationBody = `Your ${event.type.toLowerCase()} ends soon.`
+
+      if (event.type === 'STANDBY') {
+        endNotificationTitle = 'Standby Duty End Reminder'
+        endNotificationBody = 'Your standby duty has ended.'
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: endNotificationTitle,
+          body: endNotificationBody,
+          sound: 'default',
+          badge: 1
+        },
+        trigger: {
+          date: new Date(eventEndTime)
         }
       })
     }
@@ -331,18 +436,15 @@ const Roster = () => {
     const permissionGranted = await requestNotificationPermission()
     if (!permissionGranted) return
 
-    const eventTime = moment.tz(event.departureTime, event.origin.tz_database)
+    const eventTime = moment.tz(event.departureTime, event.origin?.tz_database || homebaseTZ)
     const departureHour = eventTime.hour()
 
     if (departureHour >= 0 && departureHour <= 7) {
-      // Set the reminder for the day before at the given redEyeReminderTime
       const reminderDayBefore = eventTime.clone().subtract(1, 'day').set('hour', redEyeReminderTime).set('minute', 0)
 
       if (reminderDayBefore.isAfter(moment())) {
-        // Format the departure time with local time and GMT offset
         const formattedDepartureTime = eventTime.format('DD/MM/YYYY HH:mm [GMT]Z')
 
-        // Schedule the notification with the formatted departure time
         await Notifications.scheduleNotificationAsync({
           content: {
             title: `Red-Eye Flight Reminder: ${event.flightNumber}`,
@@ -358,84 +460,228 @@ const Roster = () => {
     }
   }
 
-  const renderEventItem = ({ item, index }) => (
-    <View style={[styles.eventItem, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9f9f9' }]}>
-      <View style={styles.eventHeader}>
-        <Text style={styles.eventFlightNumber}>
-          {item.origin.IATA} <Ionicons name="airplane-outline" size={20} color="#045D91" /> {item.destination.IATA} (
-          {item.flightNumber})
-        </Text>
-        <View style={styles.eventActions}>
-          <TouchableOpacity style={styles.editButton} onPress={() => handleEditEvent(item)}>
-            <Ionicons name="pencil-outline" size={20} color="#045D91" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteEvent(item.id)}>
-            <Ionicons name="trash-outline" size={20} color="red" />
-          </TouchableOpacity>
+  const renderEventItem = ({ item, index }) => {
+    return (
+      <View style={[styles.eventItem, { backgroundColor: '#ffffff' }]}>
+        <View style={styles.eventHeader}>
+          <Text style={styles.eventFlightNumber}>
+            {item.type === 'STANDBY' ? (
+              `Standby: ${item.flightNumber || ''}`
+            ) : item.type === 'TRAINING' ? (
+              `Training`
+            ) : item.type === 'OFF_DUTY' ? (
+              `Off Duty`
+            ) : item.type === 'LAYOVER' ? (
+              `Layover (${item.origin.IATA}/${item.origin.ICAO})`
+            ) : item.type === 'MEDICAL_CHECK' ? (
+              `Medical Check`
+            ) : item.type === 'MEETING' ? (
+              `Meeting`
+            ) : item.type === 'FLIGHT_DUTY' ? (
+              <>
+                {item.origin.IATA || 'N/A'} <Ionicons name="airplane-outline" size={20} color="#045D91" />{' '}
+                {item.destination.IATA || 'N/A'} {item.flightNumber && `(${item.flightNumber})`}
+              </>
+            ) : (
+              `${item.type || 'Event'}`
+            )}
+          </Text>
+          <View style={styles.eventActions}>
+            <TouchableOpacity style={styles.editButton} onPress={() => handleEditEvent(item)}>
+              <Ionicons name="pencil-outline" size={20} color="#045D91" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteEvent(item.id)}>
+              <Ionicons name="trash-outline" size={20} color="red" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.eventBody}>
+          {item.type === 'STANDBY' ? (
+            <>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  Start: {getLocalTime(item.departureTime, homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  End: {getLocalTime(item.arrivalTime, homebaseTZ)}
+                </Text>
+              </View>
+            </>
+          ) : item.type === 'TRAINING' ? (
+            <>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  Start: {getLocalTime(item.departureTime, homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  End: {getLocalTime(item.arrivalTime, homebaseTZ)}
+                </Text>
+              </View>
+              {item.notes && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Notes: {item.notes}</Text>
+                </View>
+              )}
+            </>
+          ) : item.type === 'OFF_DUTY' ? (
+            <>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  Start: {getLocalTime(item.departureTime, homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  End: {getLocalTime(item.arrivalTime, homebaseTZ)}
+                </Text>
+              </View>
+              {item.notes && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Notes: {item.notes}</Text>
+                </View>
+              )}
+            </>
+          ) : item.type === 'LAYOVER' ? (
+            <>
+              <View style={styles.eventRow}>
+                <Ionicons name="location-outline" size={18} color="#045D91" />
+                <Text style={styles.eventText}>
+                  Origin: {item.origin.name} ({item.origin.city}, {item.origin.country})
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  Start: {getLocalTime(item.departureTime, homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  End: {getLocalTime(item.arrivalTime, homebaseTZ)}
+                </Text>
+              </View>
+              {item.notes && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Notes: {item.notes}</Text>
+                </View>
+              )}
+            </>
+          ) : item.type === 'MEDICAL_CHECK' || item.type === 'MEETING' ? (
+            <>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  Start: {getLocalTime(item.departureTime, homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  End: {getLocalTime(item.arrivalTime, homebaseTZ)}
+                </Text>
+              </View>
+              {item.notes && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Notes: {item.notes}</Text>
+                </View>
+              )}
+            </>
+          ) : item.type === 'FLIGHT_DUTY' ? (
+            <>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  Departure: {getLocalTime(item.departureTime, item.origin?.tz_database || homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  Arrival: {getLocalTime(item.arrivalTime, item.destination?.tz_database || homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="location-outline" size={18} color="#045D91" />
+                <Text style={styles.eventText}>
+                  From: {item.origin.name} ({item.origin.city}, {item.origin.country})
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="location-outline" size={18} color="#045D91" />
+                <Text style={styles.eventText}>
+                  To: {item.destination.name} ({item.destination.city}, {item.destination.country})
+                </Text>
+              </View>
+              {item.aircraftType?.model && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="airplane-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Aircraft: {item.aircraftType.model}</Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <Text style={styles.eventText}>This event type is not explicitly handled yet.</Text>
+          )}
         </View>
       </View>
-      <View style={styles.eventBody}>
-        <View style={styles.eventRow}>
-          <Ionicons name="time-outline" size={18} color="#045D91" />
-          <Text style={[styles.eventText, styles.importantText]}>
-            {getLocalTime(item.departureTime, item.origin.tz_database)}
-          </Text>
-        </View>
-        <View style={styles.eventRow}>
-          <Ionicons name="time-outline" size={18} color="#045D91" />
-          <Text style={[styles.eventText, styles.importantText]}>
-            {getLocalTime(item.arrivalTime, item.destination.tz_database)}
-          </Text>
-        </View>
-        <View style={styles.eventRow}>
-          <Ionicons name="location-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>
-            From: {item.origin.name} ({item.origin.city}, {item.origin.country})
-          </Text>
-        </View>
-        <View style={styles.eventRow}>
-          <Ionicons name="location-outline" size={18} color="#045D91" />
-          <Text style={styles.eventText}>
-            To: {item.destination.name} ({item.destination.city}, {item.destination.country})
-          </Text>
-        </View>
-        {item.aircraftType && (
-          <View style={styles.eventRow}>
-            <Ionicons name="airplane-outline" size={18} color="#045D91" />
-            <Text style={styles.eventText}>Aircraft: {item.aircraftType.model}</Text>
-          </View>
-        )}
-        {item.notes && (
-          <View style={styles.eventRow}>
-            <Ionicons name="clipboard-outline" size={18} color="#045D91" />
-            <Text style={styles.eventText}>Notes: {item.notes}</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  )
+    )
+  }
 
   const handleEditEvent = event => {
     setEditMode(true)
     setEditEventId(event._id || event.id)
     setNewEventTitle(event.type)
 
-    setNewEventOrigin({
-      value: event.origin._id || event.origin.objectId,
-      label: `(${event.origin.IATA}/${event.origin.ICAO}) - ${event.origin.name}`,
-      timezone: event.origin.tz_database
-    })
+    setNewEventOrigin(
+      event.origin.objectId
+        ? {
+            value: event.origin.objectId,
+            label: `(${event.origin.IATA}/${event.origin.ICAO}) - ${event.origin.name}`,
+            timezone: event.origin.tz_database
+          }
+        : ''
+    )
 
-    setNewEventDestination({
-      value: event.destination._id || event.destination.objectId,
-      label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.destination.name}`,
-      timezone: event.destination.tz_database
-    })
-    setNewEventDepartureTime(formatTimeWithGMT(event.departureTime, event.origin.tz_database))
-    setNewEventArrivalTime(formatTimeWithGMT(event.arrivalTime, event.destination.tz_database))
-    setNewEventFlightNumber(event.flightNumber)
+    setNewEventDestination(
+      event.destination.objectId
+        ? {
+            value: event.destination.objectId,
+            label: `(${event.destination.IATA}/${event.destination.ICAO}) - ${event.destination.name}`,
+            timezone: event.destination.tz_database
+          }
+        : ''
+    )
+
+    setNewEventDepartureTime(
+      event.departureTime ? formatTimeWithGMT(event.departureTime, event.origin?.tz_database || homebaseTZ) : ''
+    )
+
+    setNewEventArrivalTime(
+      event.arrivalTime ? formatTimeWithGMT(event.arrivalTime, event.destination?.tz_database || homebaseTZ) : ''
+    )
+
+    setNewEventFlightNumber(event.flightNumber || '')
+
     setNewEventAircraftType(event.aircraftType ? event.aircraftType._id : '')
-    setNewEventNotes(event.notes)
+
+    setNewEventNotes(event.notes || '')
+
     setModalVisible(true)
   }
 
@@ -444,31 +690,45 @@ const Roster = () => {
       Alert.alert('Validation Error', 'Duty type is required')
       return
     }
-    if (!newEventOrigin) {
+
+    // Only check for origin when required
+    if (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'MEDICAL_CHECK', 'MEETING'].includes(newEventTitle) && !newEventOrigin) {
       Alert.alert('Validation Error', 'Origin is required')
       return
     }
-    if (!newEventDestination) {
+
+    // Check for required fields for standby
+    if (newEventTitle === 'STANDBY' && (!newEventDepartureTime || !newEventArrivalTime)) {
+      Alert.alert('Validation Error', 'Start and end times are required for standby duty.')
+      return
+    }
+
+    // Check for destination when required
+    if (
+      !['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER', 'MEDICAL_CHECK', 'MEETING'].includes(newEventTitle) &&
+      !newEventDestination
+    ) {
       Alert.alert('Validation Error', 'Destination is required')
       return
     }
+
     if (!newEventDepartureTime) {
-      Alert.alert('Validation Error', 'Departure time is required')
+      Alert.alert('Validation Error', 'Start time is required')
       return
     }
-    if (!newEventArrivalTime) {
+
+    if (!['STANDBY', 'TRAINING', 'OFF_DUTY'].includes(newEventTitle) && !newEventArrivalTime) {
       Alert.alert('Validation Error', 'Arrival time is required')
       return
     }
-    if (!newEventFlightNumber) {
-      Alert.alert('Validation Error', 'Flight number is required')
-      return
-    }
 
-    const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin.timezone)
-    const arrivalDateTime = moment.tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination.timezone)
+    const timezone = newEventOrigin?.timezone || homebaseTZ
+    const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, timezone)
+    const arrivalDateTime = newEventArrivalTime
+      ? moment.tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination?.timezone || timezone)
+      : null
 
-    if (departureDateTime.isAfter(arrivalDateTime)) {
+    if (newEventArrivalTime && departureDateTime.isAfter(arrivalDateTime)) {
       Alert.alert('Validation Error', 'Departure time cannot be later than arrival time')
       return
     }
@@ -477,7 +737,7 @@ const Roster = () => {
 
     const userId = await SecureStore.getItemAsync('userId')
     const formattedDepartureTime = departureDateTime.toISOString()
-    const formattedArrivalTime = arrivalDateTime.toISOString()
+    const formattedArrivalTime = arrivalDateTime?.toISOString()
 
     const eventEntry = {
       userId,
@@ -493,37 +753,11 @@ const Roster = () => {
       id: uuid.v4()
     }
 
-    const isConnected = false
-
     try {
       if (editMode) {
-        if (isConnected) {
-          // Online: Send update to server, then update SQLite and mark as synced
-          // const response = await axios.put(
-          //   `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
-          //   eventEntry
-          // )
-          // if (response.status === 200) {
-          //   eventEntry.synced = 1
-          // }
-          // Update entry in SQLite, whether synced or not
-          // await updateRosterEntry(editEventId, eventEntry)
-        } else {
-          await updateRosterEntry(editEventId, eventEntry)
-        }
+        await updateRosterEntry(editEventId, eventEntry)
       } else {
-        if (isConnected) {
-          // const response = await axios.post(
-          //   'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
-          //   eventEntry
-          // )
-          // if (response.status === 201) {
-          //   eventEntry.synced = 1
-          // }
-          // await addRosterEntry(eventEntry)
-        } else {
-          await addRosterEntry(eventEntry)
-        }
+        await addRosterEntry(eventEntry)
       }
 
       clearInputs()
@@ -541,6 +775,7 @@ const Roster = () => {
   const handleSelectOrigin = airport => {
     setNewEventOrigin(airport)
     setNewEventDepartureTime('')
+    setNewEventArrivalTime('')
   }
 
   const handleSelectDestination = airport => {
@@ -550,109 +785,138 @@ const Roster = () => {
 
   const handlePickDocument = async () => {
     let result = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'text/csv']
+      type: ['application/pdf']
     })
     if (result.assets && result.assets.length > 0) {
       const file = result.assets[0]
-      uploadFile(file)
+      setUploadingRoster(true)
+      setLoading(true)
+
+      try {
+        const formData = new FormData()
+        formData.append('file', {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType
+        })
+
+        const response = await axios.post('https://40c7-115-164-76-186.ngrok-free.app/api/pdf/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+
+        // console.log(response.data.parsedData)
+
+        if (response.data.parsedData) {
+          setUploadedRosterData(response.data.parsedData)
+          setShowRosterModal(true)
+        } else {
+          Alert.alert('Error', 'Unable to parse the uploaded roster.')
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error)
+        Alert.alert('Error', 'Error uploading file')
+      } finally {
+        setUploadingRoster(false) // Hide loading modal
+        setLoading(false)
+      }
     }
   }
 
-  // const fetchAirportByCode = async code => {
-  //   try {
-  //     const response = await axios.get(
-  //       'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/airport/getAirportByCode',
-  //       { params: { code } }
-  //     )
-  //     return response.data._id
-  //   } catch (error) {
-  //     console.error(`Error fetching airport for code ${code}:`, error)
-  //     return null
-  //   }
-  // }
+  const handleSaveUploadedRoster = async () => {
+    const incompleteEntries = uploadedRosterData.filter(entry => !entry.selectedDate)
+    if (incompleteEntries.length > 0) {
+      Alert.alert('Validation Error', 'Please select a date for all roster entries before saving.')
+      return
+    }
 
-  const uploadFile = async file => {
     setLoading(true)
 
     try {
-      const formData = new FormData()
-      formData.append('file', {
-        uri: file.uri,
-        name: file.name,
-        type: file.mimeType
-      })
+      const userId = await SecureStore.getItemAsync('userId')
+      const processedEntries = uploadedRosterData.map(entry => {
+        const selectedDate = moment(entry.selectedDate).format('YYYY-MM-DD')
 
-      const response = await axios.post('https://64f6-103-18-0-20.ngrok-free.app/api/pdf/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+        const flightNumber = entry.type === 'STANDBY' ? entry.standby : entry.flightNumber || ''
+
+        const startTime = entry.startTime
+          ? moment.tz(`${selectedDate} ${entry.startTime}`, 'YYYY-MM-DD HH:mm', homebaseTZ).toISOString()
+          : null
+
+        const endTime = entry.endTime
+          ? moment.tz(`${selectedDate} ${entry.endTime}`, 'YYYY-MM-DD HH:mm', homebaseTZ).toISOString()
+          : null
+
+        const departureTime =
+          entry.type === 'STANDBY'
+            ? startTime
+            : entry.departureTime
+              ? moment
+                  .tz(
+                    `${selectedDate} ${entry.departureTime}`,
+                    'YYYY-MM-DD HH:mm',
+                    entry.departureAirport?.tz_database || homebaseTZ
+                  )
+                  .toISOString()
+              : null
+
+        const arrivalTime =
+          entry.type === 'STANDBY'
+            ? endTime
+            : entry.arrivalTime
+              ? moment
+                  .tz(
+                    `${selectedDate} ${entry.arrivalTime}`,
+                    'YYYY-MM-DD HH:mm',
+                    entry.arrivalAirport?.tz_database || homebaseTZ
+                  )
+                  .toISOString()
+              : null
+
+        return {
+          id: uuid.v4(),
+          userId,
+          type: entry.type || 'STANDBY',
+          origin: entry.type === 'STANDBY' ? null : entry.departureAirport?.objectId || null,
+          destination: entry.type === 'STANDBY' ? null : entry.arrivalAirport?.objectId || null,
+          departureTime,
+          arrivalTime,
+          flightNumber,
+          startTime,
+          endTime,
+          notes: entry.notes || '',
+          synced: 0
         }
       })
 
-      // const parsedData = response.data
-      // console.log(response.data)
-
-      if (false) {
-        const userId = await SecureStore.getItemAsync('userId')
-
-        for (const entry of parsedData.data) {
-          if (entry.standby) continue
-
-          const originId = await fetchAirportByCode(entry.departureAirport)
-          const destinationId = await fetchAirportByCode(entry.arrivalAirport)
-
-          if (!originId || !destinationId) {
-            console.warn(`Skipping entry due to missing airport information: ${entry.flightNumber}`)
-            continue
-          }
-
-          const formattedDepartureTime = moment(entry.departureTime, 'HH:mm').toISOString()
-          const formattedArrivalTime = moment(entry.arrivalTime, 'HH:mm').toISOString()
-
-          const newEvent = {
-            userId,
-            type: 'FLIGHT',
-            origin: originId,
-            destination: destinationId,
-            departureTime: formattedDepartureTime,
-            arrivalTime: formattedArrivalTime,
-            flightNumber: entry.flightNumber,
-            aircraftType: null,
-            notes: ''
-          }
-
-          await axios.post(
-            'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
-            newEvent
-          )
-        }
-
-        Alert.alert('Success', 'All entries uploaded successfully')
-        const today = getCurrentDate()
-        await fetchRosterEntries(today)
-      } else {
-        Alert.alert('Error', 'Invalid file format')
+      for (const entry of processedEntries) {
+        await addRosterEntry(entry)
       }
+
+      setUploadedRosterData([])
+      setShowRosterModal(false)
+      Alert.alert('Success', 'All roster entries have been saved successfully.')
     } catch (error) {
-      console.error('Error uploading file:', error)
-      Alert.alert('Error', 'Error uploading file')
+      console.error('Error saving uploaded roster entries:', error)
+      Alert.alert('Error', 'An error occurred while saving the roster entries. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   const handleConfirmDeparture = date => {
-    if (!newEventOrigin) {
-      Alert.alert('Select origin first!')
-      return
-    }
-
-    const originTimezone = newEventOrigin.timezone
+    const timezone = newEventOrigin?.timezone || homebaseTZ
     const displayDepartureDate = moment(date).format('YYYY-MM-DDTHH:mm:ss')
-    const convertedDepartureDate = moment.tz(displayDepartureDate, originTimezone).format(DISPLAY_FORMAT)
+    const convertedDepartureDate = moment.tz(displayDepartureDate, timezone).format(DISPLAY_FORMAT)
 
     if (newEventArrivalTime) {
-      const arrivalDateTime = moment.tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination.timezone)
-      const departureDateTime = moment.tz(convertedDepartureDate, DISPLAY_FORMAT, originTimezone)
+      const arrivalDateTime = moment.tz(
+        newEventArrivalTime,
+        DISPLAY_FORMAT,
+        newEventDestination?.timezone || homebaseTZ
+      )
+      const departureDateTime = moment.tz(convertedDepartureDate, DISPLAY_FORMAT, timezone)
 
       if (departureDateTime.isAfter(arrivalDateTime)) {
         Alert.alert('Error', 'Departure time cannot be later than the arrival time.')
@@ -665,18 +929,13 @@ const Roster = () => {
   }
 
   const handleConfirmArrival = date => {
-    if (!newEventDestination) {
-      Alert.alert('Select destination first!')
-      return
-    }
-
-    const destinationTimezone = newEventDestination.timezone
+    const timezone = newEventDestination?.timezone || newEventOrigin?.timezone || homebaseTZ
     const displayArrivalDate = moment(date).format('YYYY-MM-DDTHH:mm:ss')
-    const convertedArrivalDate = moment.tz(displayArrivalDate, destinationTimezone).format(DISPLAY_FORMAT)
+    const convertedArrivalDate = moment.tz(displayArrivalDate, timezone).format(DISPLAY_FORMAT)
 
     if (newEventDepartureTime) {
-      const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin.timezone)
-      const arrivalDateTime = moment.tz(convertedArrivalDate, DISPLAY_FORMAT, destinationTimezone)
+      const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, newEventOrigin?.timezone || homebaseTZ)
+      const arrivalDateTime = moment.tz(convertedArrivalDate, DISPLAY_FORMAT, timezone)
 
       if (arrivalDateTime.isBefore(departureDateTime)) {
         Alert.alert('Error', 'Arrival time cannot be earlier than the departure time.')
@@ -729,11 +988,55 @@ const Roster = () => {
     )
   }
 
+  const handleDateChange = (date, index) => {
+    const updatedData = [...uploadedRosterData]
+    updatedData[index].selectedDate = date
+    setUploadedRosterData(updatedData)
+  }
+
+  const handleDutyTypeChange = value => {
+    setNewEventTitle(value)
+
+    if (['MEDICAL_CHECK', 'MEETING'].includes(value)) {
+      // Medical and Meeting: Show only Start Time, End Time, and Notes
+      setNewEventOrigin(null)
+      setNewEventDestination(null)
+      setNewEventFlightNumber('')
+      setNewEventAircraftType('')
+    } else if (value === 'LAYOVER') {
+      // Layover: Show Origin (required), Start Time, End Time, and Notes
+      setNewEventDestination(null)
+      setNewEventFlightNumber('')
+      setNewEventAircraftType('')
+    } else if (value === 'OFF_DUTY') {
+      // Off Duty: Show only Start Time, End Time, and Notes
+      setNewEventOrigin(null)
+      setNewEventDestination(null)
+      setNewEventFlightNumber('')
+      setNewEventAircraftType('')
+    } else if (value === 'STANDBY') {
+      // Standby: Show Start Time, End Time, Standby Number, and Notes
+      setNewEventOrigin(null)
+      setNewEventDestination(null)
+      setNewEventAircraftType('')
+    } else if (value === 'TRAINING') {
+      // Training: Show Start Time, End Time, and Notes
+      setNewEventOrigin(null)
+      setNewEventDestination(null)
+      setNewEventFlightNumber('')
+      setNewEventAircraftType('')
+    } else {
+      // Default for Flight Duty and other types
+      setNewEventOrigin(null)
+      setNewEventDestination(null)
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <SectionList
         sections={[{ title: selectedDate ? getFormattedDate(selectedDate) : '', data: events }]}
-        keyExtractor={(item, index) => item._id}
+        keyExtractor={(item, index) => item.id} //_id for online
         renderItem={renderEventItem}
         renderSectionHeader={({ section: { title } }) =>
           title ? (
@@ -792,6 +1095,7 @@ const Roster = () => {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.modalView}>
             <ScrollView contentContainerStyle={styles.scrollViewContent}>
+              {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <Ionicons name={editMode ? 'pencil-outline' : 'add-circle'} size={24} color="#045D91" />
                 <Text style={styles.modalText}>{editMode ? 'Edit Roster Entry' : 'Add Roster Entry'}</Text>
@@ -804,26 +1108,18 @@ const Roster = () => {
 
               <View style={styles.divider} />
 
+              {/* Duty Type Selection */}
               <Text style={styles.label}>Duty Type</Text>
               <View style={styles.inputWrapper}>
                 <Ionicons name="briefcase-outline" size={20} color="#045D91" style={styles.inputIcon} />
                 <RNPickerSelect
-                  onValueChange={value => setNewEventTitle(value)}
+                  onValueChange={handleDutyTypeChange}
                   items={DUTY_TYPES.map(duty => ({ label: duty.label, value: duty.value }))}
                   style={{
                     ...pickerSelectStyles,
-                    inputIOS: {
-                      ...pickerSelectStyles.inputIOS,
-                      paddingRight: 30
-                    },
-                    inputAndroid: {
-                      ...pickerSelectStyles.inputAndroid,
-                      paddingRight: 30
-                    },
-                    placeholder: {
-                      ...pickerSelectStyles.placeholder,
-                      paddingLeft: 0
-                    }
+                    inputIOS: { ...pickerSelectStyles.inputIOS, paddingRight: 30 },
+                    inputAndroid: { ...pickerSelectStyles.inputAndroid, paddingRight: 30 },
+                    placeholder: { ...pickerSelectStyles.placeholder, paddingLeft: 0 }
                   }}
                   value={newEventTitle}
                   placeholder={{ label: 'Select duty type', value: null }}
@@ -831,111 +1127,146 @@ const Roster = () => {
                 />
               </View>
 
-              <Text style={styles.label}>Origin</Text>
-              <AirportSearch
-                ref={originRef}
-                placeholder="Enter origin"
-                initialValue={newEventOrigin}
-                onSelect={handleSelectOrigin}
-              />
-              <Text style={styles.label}>Destination</Text>
-              <AirportSearch
-                ref={destinationRef}
-                placeholder="Enter destination"
-                initialValue={newEventDestination}
-                onSelect={handleSelectDestination}
-              />
-              <Text style={styles.label}>Departure Time (local time)</Text>
-              <TouchableOpacity
-                onPress={() => setDeparturePickerVisible(true)}
-                style={[styles.datePicker, !newEventOrigin || !newEventDestination ? styles.disabledButton : {}]}
-                disabled={!newEventOrigin || !newEventDestination}
-              >
-                <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
-                <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
-                  {newEventDepartureTime || 'Select departure time'}
-                </Text>
-              </TouchableOpacity>
-              <DateTimePickerModal
-                isVisible={isDeparturePickerVisible}
-                mode="datetime"
-                onConfirm={handleConfirmDeparture}
-                onCancel={() => setDeparturePickerVisible(false)}
-              />
+              {/* Render Additional Fields After Duty Type Selection */}
+              {newEventTitle && (
+                <>
+                  {['FLIGHT_DUTY', 'LAYOVER'].includes(newEventTitle) && (
+                    <>
+                      <Text style={styles.label}>Origin</Text>
+                      <AirportSearch
+                        ref={originRef}
+                        placeholder="Enter origin"
+                        initialValue={newEventOrigin}
+                        onSelect={handleSelectOrigin}
+                      />
+                    </>
+                  )}
 
-              <Text style={styles.label}>Arrival Time (local time)</Text>
-              <TouchableOpacity
-                onPress={() => setArrivalPickerVisible(true)}
-                style={[styles.datePicker, !newEventOrigin || !newEventDestination ? styles.disabledButton : {}]}
-                disabled={!newEventOrigin || !newEventDestination}
-              >
-                <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
-                <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
-                  {newEventArrivalTime || 'Select arrival time'}
-                </Text>
-              </TouchableOpacity>
-              <DateTimePickerModal
-                isVisible={isArrivalPickerVisible}
-                mode="datetime"
-                onConfirm={handleConfirmArrival}
-                onCancel={() => setArrivalPickerVisible(false)}
-              />
+                  {newEventTitle === 'STANDBY' && (
+                    <>
+                      <Text style={styles.label}>Origin (Optional)</Text>
+                      <AirportSearch
+                        ref={originRef}
+                        placeholder="Enter origin (optional)"
+                        initialValue={newEventOrigin}
+                        onSelect={handleSelectOrigin}
+                      />
+                    </>
+                  )}
 
-              <Text style={styles.label}>Flight Number</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter flight number"
-                  placeholderTextColor={'grey'}
-                  value={newEventFlightNumber}
-                  onChangeText={setNewEventFlightNumber}
-                />
-              </View>
+                  {newEventTitle === 'FLIGHT_DUTY' && (
+                    <>
+                      <Text style={styles.label}>Destination</Text>
+                      <AirportSearch
+                        ref={destinationRef}
+                        placeholder="Enter destination"
+                        initialValue={newEventDestination}
+                        onSelect={handleSelectDestination}
+                      />
+                    </>
+                  )}
 
-              <Text style={styles.label}>Aircraft Type (Optional)</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
-                <RNPickerSelect
-                  onValueChange={value => {
-                    setNewEventAircraftType(value)
-                  }}
-                  items={aircraftTypeData.map(aircraft => ({ label: aircraft.label, value: aircraft.value }))}
-                  style={{
-                    ...pickerSelectStyles,
-                    inputIOS: {
-                      ...pickerSelectStyles.inputIOS,
-                      paddingRight: 30
-                    },
-                    inputAndroid: {
-                      ...pickerSelectStyles.inputAndroid,
-                      paddingRight: 30
-                    },
-                    placeholder: {
-                      ...pickerSelectStyles.placeholder,
-                      paddingLeft: 0
-                    }
-                  }}
-                  value={newEventAircraftType}
-                  placeholder={{ label: 'Select aircraft type (Optional)', value: null }}
-                  useNativeAndroidPickerStyle={false}
-                />
-              </View>
+                  {/* Departure Time (previously Start Time) */}
+                  <Text style={styles.label}>
+                    {newEventTitle === 'FLIGHT_DUTY' ? 'Departure Time (local time)' : 'Start Time (local time)'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (newEventTitle !== 'FLIGHT_DUTY' || (newEventOrigin && newEventDestination)) {
+                        setDeparturePickerVisible(true)
+                      }
+                    }}
+                    style={[
+                      styles.datePicker,
+                      newEventTitle === 'FLIGHT_DUTY' && (!newEventOrigin || !newEventDestination)
+                        ? { backgroundColor: '#f0f0f0' } // Disabled style
+                        : {}
+                    ]}
+                    disabled={newEventTitle === 'FLIGHT_DUTY' && (!newEventOrigin || !newEventDestination)}
+                  >
+                    <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                    <Text style={[styles.dateText, newEventDepartureTime ? {} : { color: 'grey' }]}>
+                      {newEventDepartureTime ||
+                        (newEventTitle === 'FLIGHT_DUTY' ? 'Select departure time' : 'Select start time')}
+                    </Text>
+                  </TouchableOpacity>
+                  <DateTimePickerModal
+                    isVisible={isDeparturePickerVisible}
+                    mode="datetime"
+                    onConfirm={handleConfirmDeparture}
+                    onCancel={() => setDeparturePickerVisible(false)}
+                  />
 
-              <Text style={styles.label}>Notes (Optional)</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="clipboard-outline" size={20} color="#045D91" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Notes (Optional)"
-                  placeholderTextColor={'grey'}
-                  value={newEventNotes}
-                  onChangeText={setNewEventNotes}
-                />
-              </View>
+                  {/* Arrival Time (previously End Time) */}
+                  {newEventTitle && (
+                    <>
+                      <Text style={styles.label}>
+                        {newEventTitle === 'FLIGHT_DUTY' ? 'Arrival Time (local time)' : 'End Time (local time)'}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (newEventTitle !== 'FLIGHT_DUTY' || (newEventOrigin && newEventDestination)) {
+                            setArrivalPickerVisible(true)
+                          }
+                        }}
+                        style={[
+                          styles.datePicker,
+                          newEventTitle === 'FLIGHT_DUTY' && (!newEventOrigin || !newEventDestination)
+                            ? { backgroundColor: '#f0f0f0' } // Disabled style
+                            : {}
+                        ]}
+                        disabled={newEventTitle === 'FLIGHT_DUTY' && (!newEventOrigin || !newEventDestination)}
+                      >
+                        <Ionicons name="time-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                        <Text style={[styles.dateText, newEventArrivalTime ? {} : { color: 'grey' }]}>
+                          {newEventArrivalTime ||
+                            (newEventTitle === 'FLIGHT_DUTY' ? 'Select arrival time' : 'Select end time')}
+                        </Text>
+                      </TouchableOpacity>
+                      <DateTimePickerModal
+                        isVisible={isArrivalPickerVisible}
+                        mode="datetime"
+                        onConfirm={handleConfirmArrival}
+                        onCancel={() => setArrivalPickerVisible(false)}
+                      />
+                    </>
+                  )}
+
+                  {/* Flight Number (only for Flight Duty) */}
+                  {newEventTitle === 'FLIGHT_DUTY' && (
+                    <>
+                      <Text style={styles.label}>Flight Number</Text>
+                      <View style={styles.inputWrapper}>
+                        <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Enter flight number"
+                          placeholderTextColor={'grey'}
+                          value={newEventFlightNumber}
+                          onChangeText={setNewEventFlightNumber}
+                        />
+                      </View>
+                    </>
+                  )}
+
+                  {/* Notes */}
+                  <Text style={styles.label}>Notes (Optional)</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="clipboard-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Notes (Optional)"
+                      placeholderTextColor={'grey'}
+                      value={newEventNotes}
+                      onChangeText={setNewEventNotes}
+                    />
+                  </View>
+                </>
+              )}
 
               <View style={styles.divider} />
 
+              {/* Modal Buttons */}
               <View style={styles.buttonRow}>
                 <TouchableOpacity
                   style={[styles.button, styles.cancelButton]}
@@ -947,7 +1278,18 @@ const Roster = () => {
                 >
                   <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.addButton]} onPress={handleAddEvent} disabled={loading}>
+                <TouchableOpacity
+                  style={[styles.button, styles.addButton]}
+                  onPress={handleAddEvent}
+                  disabled={
+                    !newEventTitle ||
+                    (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER'].includes(newEventTitle) && !newEventOrigin) ||
+                    (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER'].includes(newEventTitle) && !newEventDestination) ||
+                    !newEventDepartureTime ||
+                    (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER'].includes(newEventTitle) && !newEventArrivalTime) ||
+                    loading
+                  }
+                >
                   {loading ? (
                     <ActivityIndicator size="small" color="#FFF" />
                   ) : (
@@ -959,9 +1301,269 @@ const Roster = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <Modal animationType="fade" transparent={true} visible={uploadingRoster} onRequestClose={() => {}}>
+        <View style={styles.loadingModalOverlay}>
+          <View style={styles.loadingModal}>
+            <ActivityIndicator size="large" color="#FFF" />
+            <Text style={styles.loadingText}>Uploading roster, please wait...</Text>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showRosterModal}
+        onRequestClose={() => setShowRosterModal(false)}
+      >
+        <SafeAreaView style={rosterModalStyles.modalOverlay}>
+          <View style={rosterModalStyles.modalView}>
+            <Text style={rosterModalStyles.modalText}>Uploaded Roster</Text>
+            <ScrollView style={rosterModalStyles.scrollView}>
+              {uploadedRosterData.map((entry, index) => {
+                const isFlight = entry.type === 'FLIGHT'
+
+                return (
+                  <View key={index} style={rosterModalStyles.rosterItem}>
+                    {isFlight ? (
+                      <>
+                        <Text style={rosterModalStyles.rosterText}>Flight: {entry.flightNumber || 'N/A'}</Text>
+
+                        {/* Date Selector */}
+                        <Text style={styles.label}>Select Date</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSelectedEntryIndex(index)
+                            setShowDatePicker(true)
+                          }}
+                          style={styles.datePicker}
+                        >
+                          <Ionicons name="calendar-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                          <Text style={[styles.dateText, entry.selectedDate ? {} : { color: 'grey' }]}>
+                            {entry.selectedDate ? moment(entry.selectedDate).format('DD/MM/YYYY') : 'Select a date'}
+                          </Text>
+                        </TouchableOpacity>
+                        <DateTimePickerModal
+                          isVisible={showDatePicker}
+                          mode="date"
+                          onConfirm={date => {
+                            const formattedDate = moment(date).format('YYYY-MM-DD')
+
+                            const updatedRosterData = [...uploadedRosterData]
+                            updatedRosterData[selectedEntryIndex].selectedDate = formattedDate
+
+                            setUploadedRosterData(updatedRosterData)
+                            setShowDatePicker(false)
+                          }}
+                          onCancel={() => setShowDatePicker(false)}
+                        />
+
+                        {/* Departure Section */}
+                        <Text style={rosterModalStyles.sectionHeader}>Departure</Text>
+                        <Text style={rosterModalStyles.rosterText}>
+                          Time:{' '}
+                          {entry.departureTime
+                            ? moment
+                                .tz(
+                                  `${selectedDate || getCurrentDate()} ${entry.departureTime}`,
+                                  'YYYY-MM-DD HH:mm',
+                                  entry.departureAirport.tz_database
+                                )
+                                .format('HH:mm [GMT]Z')
+                            : 'N/A'}
+                        </Text>
+                        <Text style={rosterModalStyles.rosterText}>
+                          Airport: {entry.departureAirport.name || 'Unknown'} ({entry.departureAirport.IATA}/
+                          {entry.departureAirport.ICAO})
+                        </Text>
+                        <Text style={rosterModalStyles.rosterText}>
+                          Location: {entry.departureAirport.city}, {entry.departureAirport.country}
+                        </Text>
+
+                        {/* Arrival Section */}
+                        <Text style={rosterModalStyles.sectionHeader}>Arrival</Text>
+                        <Text style={rosterModalStyles.rosterText}>
+                          Time:{' '}
+                          {entry.arrivalTime
+                            ? moment
+                                .tz(
+                                  `${selectedDate || getCurrentDate()} ${entry.arrivalTime}`,
+                                  'YYYY-MM-DD HH:mm',
+                                  entry.arrivalAirport.tz_database
+                                )
+                                .format('HH:mm [GMT]Z')
+                            : 'N/A'}
+                        </Text>
+                        <Text style={rosterModalStyles.rosterText}>
+                          Airport: {entry.arrivalAirport.name || 'Unknown'} ({entry.arrivalAirport.IATA}/
+                          {entry.arrivalAirport.ICAO})
+                        </Text>
+                        <Text style={rosterModalStyles.rosterText}>
+                          Location: {entry.arrivalAirport.city}, {entry.arrivalAirport.country}
+                        </Text>
+
+                        {/* Overnight Info */}
+                        {entry.overnight && <Text style={rosterModalStyles.rosterText}>Overnight: Yes</Text>}
+                      </>
+                    ) : (
+                      <>
+                        {/* Standby Section */}
+                        <Text style={rosterModalStyles.sectionHeader}>Standby Details</Text>
+
+                        {/* Date Selector for Standby */}
+                        <Text style={styles.label}>Select Date</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSelectedEntryIndex(index)
+                            setShowDatePicker(true)
+                          }}
+                          style={styles.datePicker}
+                        >
+                          <Ionicons name="calendar-outline" size={20} color="#045D91" style={styles.inputIcon} />
+                          <Text style={[styles.dateText, entry.selectedDate ? {} : { color: 'grey' }]}>
+                            {entry.selectedDate ? moment(entry.selectedDate).format('DD/MM/YYYY') : 'Select a date'}
+                          </Text>
+                        </TouchableOpacity>
+                        <DateTimePickerModal
+                          isVisible={showDatePicker}
+                          mode="date"
+                          onConfirm={date => {
+                            const formattedDate = moment(date).format('YYYY-MM-DD')
+
+                            const updatedRosterData = [...uploadedRosterData]
+                            updatedRosterData[selectedEntryIndex].selectedDate = formattedDate
+
+                            setUploadedRosterData(updatedRosterData)
+                            setShowDatePicker(false)
+                          }}
+                          onCancel={() => setShowDatePicker(false)}
+                        />
+
+                        {/* Standby Details */}
+                        <Text style={rosterModalStyles.rosterText}>Standby Number: {entry.standby || 'N/A'}</Text>
+                        <Text style={rosterModalStyles.rosterText}>
+                          Start Time:{' '}
+                          {entry.startTime
+                            ? moment
+                                .tz(
+                                  `${entry.selectedDate || getCurrentDate()} ${entry.startTime}`,
+                                  'YYYY-MM-DD HH:mm',
+                                  homebaseTZ
+                                )
+                                .format('HH:mm [GMT]Z')
+                            : 'N/A'}
+                        </Text>
+                        <Text style={rosterModalStyles.rosterText}>
+                          End Time:{' '}
+                          {entry.endTime
+                            ? moment
+                                .tz(
+                                  `${entry.selectedDate || getCurrentDate()} ${entry.endTime}`,
+                                  'YYYY-MM-DD HH:mm',
+                                  homebaseTZ
+                                )
+                                .format('HH:mm [GMT]Z')
+                            : 'N/A'}
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                )
+              })}
+            </ScrollView>
+
+            {/* Save Button */}
+            <TouchableOpacity
+              style={[rosterModalStyles.button, rosterModalStyles.saveButton]}
+              onPress={handleSaveUploadedRoster}
+            >
+              <Text style={rosterModalStyles.buttonText}>Save</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[rosterModalStyles.button, rosterModalStyles.cancelButton]}
+              onPress={() => setShowRosterModal(false)}
+            >
+              <Text style={rosterModalStyles.buttonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      <Toast visible={toastVisible} message={toastMessage} duration={3000} onHide={() => setToastVisible(false)} />
     </SafeAreaView>
   )
 }
+
+const rosterModalStyles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)'
+  },
+  sectionHeader: {
+    marginTop: 10,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#045D91',
+    marginBottom: 5
+  },
+  modalView: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 0,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    position: 'relative'
+  },
+  modalText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15
+  },
+  scrollView: {
+    flex: 1,
+    marginTop: 20
+  },
+  rosterItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd'
+    // marginVertical: 10
+  },
+  rosterText: {
+    fontSize: 16,
+    marginBottom: 5
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    padding: 10,
+    elevation: 2,
+    marginTop: 10,
+    width: '100%',
+    justifyContent: 'center',
+    backgroundColor: '#045D91'
+  },
+  buttonText: {
+    fontWeight: 'bold',
+    color: 'white',
+    fontSize: 16
+  },
+  cancelButton: {
+    backgroundColor: '#FF5C5C'
+  }
+})
 
 const pickerSelectStyles = StyleSheet.create({
   inputIOS: {
@@ -1031,7 +1633,8 @@ const styles = StyleSheet.create({
   eventBody: {
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0'
+    borderTopColor: '#f0f0f0',
+    paddingRight: 10
   },
   eventRow: {
     flexDirection: 'row',
@@ -1214,6 +1817,25 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between'
+  },
+  loadingModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(128, 128, 128, 0.5)'
+  },
+  loadingModal: {
+    width: 220,
+    padding: 20,
+    backgroundColor: '#333',
+    borderRadius: 12,
+    alignItems: 'center'
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#FFF',
+    fontSize: 16,
+    textAlign: 'center'
   }
 })
 

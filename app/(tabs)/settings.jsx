@@ -58,7 +58,7 @@ const Settings = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
-      const response = await axios.get(`https://64f6-103-18-0-20.ngrok-free.app/api/users/getUserId`, {
+      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/getUserId`, {
         params: {
           userId
         }
@@ -117,7 +117,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://64f6-103-18-0-20.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       console.log('User profile updated:', response.data)
@@ -142,7 +142,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://64f6-103-18-0-20.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -167,7 +167,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://64f6-103-18-0-20.ngrok-free.app/api/users/deleteUser/${userId}`)
+              await axios.delete(`https://40c7-115-164-76-186.ngrok-free.app/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)

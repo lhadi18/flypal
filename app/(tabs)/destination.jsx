@@ -44,21 +44,31 @@ const Destination = () => {
 
       const allRosterEntries = await getAllRosterEntries()
 
-      // Filter roster for the next 30 days and ensure unique destinations
-      const uniqueDestinations = new Map()
-      const next30DaysRoster = allRosterEntries.filter(entry => {
+      // Filter entries in one pass
+      const uniqueDestinations = new Set()
+      const filteredRoster = allRosterEntries.filter(entry => {
         const departureTime = moment(entry.departureTime).toISOString()
+
+        // Check date range
         const isWithin30Days = departureTime >= startOfToday && departureTime <= endOf30Days
 
+        // Check for valid object IDs
+        const hasValidObjectIds = entry.origin.objectId && entry.destination.objectId
+
+        // Ensure destination uniqueness
         const destinationKey = entry.destination.objectId
-        if (isWithin30Days && !uniqueDestinations.has(destinationKey)) {
-          uniqueDestinations.set(destinationKey, true)
+        const isUniqueDestination = !uniqueDestinations.has(destinationKey)
+
+        if (isWithin30Days && hasValidObjectIds && isUniqueDestination) {
+          uniqueDestinations.add(destinationKey)
           return true
         }
+
         return false
       })
 
-      setRoster(next30DaysRoster)
+      console.log(filteredRoster)
+      setRoster(filteredRoster)
     } catch (error) {
       console.error('Error fetching roster data from SQLite:', error)
     }

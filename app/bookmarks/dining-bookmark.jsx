@@ -41,7 +41,7 @@ const DiningBookmark = () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         const response = await axios.get(
-          `https://64f6-103-18-0-20.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
+          `https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
           { params: { page, limit: 10, search: query } }
         )
 
