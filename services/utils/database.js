@@ -340,9 +340,35 @@ export const getAircraftsFromDatabase = async () => {
   }
 }
 
+// export const resetDatabase = async () => {
+//   try {
+//     // Check if database is initialized
+//     if (!db) {
+//       db = await SQLite.openDatabaseAsync('flypal.db')
+//     }
+
+//     // Drop all tables if they exist
+//     await db.execAsync('DROP TABLE IF EXISTS roster_entries;')
+//     await db.execAsync('DROP TABLE IF EXISTS airports;')
+//     await db.execAsync('DROP TABLE IF EXISTS aircrafts;')
+
+//     console.log('All tables dropped successfully.')
+
+//     // Reinitialize the database
+//     await initializeDatabase()
+
+//     console.log('Database reset and reinitialized.')
+//   } catch (error) {
+//     console.error('Error resetting the database:', error)
+//     throw error
+//   }
+// }
+
 // Initialize database and load airport data on startup
 initializeDatabase()
   .then(async () => {
+    // await resetDatabase()
+
     await loadAirportsData()
     await loadAircraftsData()
   })
