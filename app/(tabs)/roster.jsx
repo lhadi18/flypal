@@ -784,6 +784,15 @@ const Roster = () => {
   }
 
   const handlePickDocument = async () => {
+    const userId = await SecureStore.getItemAsync('userId')
+
+    const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/airline/${userId}/canUploadRoster`)
+
+    if (!response.data || !response.data.canUploadRoster) {
+      Alert.alert('Roster Import Not Supported', 'We have yet to support roster imports for your airline.')
+      return
+    }
+
     let result = await DocumentPicker.getDocumentAsync({
       type: ['application/pdf']
     })
@@ -806,8 +815,6 @@ const Roster = () => {
           }
         })
 
-        // console.log(response.data.parsedData)
-
         if (response.data.parsedData) {
           setUploadedRosterData(response.data.parsedData)
           setShowRosterModal(true)
@@ -818,7 +825,7 @@ const Roster = () => {
         console.error('Error uploading file:', error)
         Alert.alert('Error', 'Error uploading file')
       } finally {
-        setUploadingRoster(false) // Hide loading modal
+        setUploadingRoster(false)
         setLoading(false)
       }
     }

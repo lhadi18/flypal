@@ -7,6 +7,7 @@ export interface IAirline extends Document {
   Callsign: string
   Country: string
   Active: string
+  canUploadRoster?: boolean
 }
 
 const AirlineSchema: Schema = new Schema({
@@ -15,7 +16,8 @@ const AirlineSchema: Schema = new Schema({
   ICAO: { type: String, required: true },
   Callsign: { type: String, required: true },
   Country: { type: String, required: true },
-  Active: { type: String, required: true }
+  Active: { type: String, required: true },
+  canUploadRoster: { type: Boolean, default: false }
 })
 const Airline = mongoose.model<IAirline>('Airline', AirlineSchema)
 
