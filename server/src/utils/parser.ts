@@ -55,7 +55,7 @@ const parseInput = async (lines: string[]): Promise<Duty[]> => {
 
     if (isFlightNumber(line)) {
       if (Object.keys(currentDuty).length > 0) {
-        currentDuty.type = currentDuty.standby ? 'STANDBY' : 'FLIGHT'
+        currentDuty.type = currentDuty.standby ? 'STANDBY' : 'FLIGHT_DUTY'
         data.push(currentDuty)
         currentDuty = {}
       }
@@ -91,7 +91,7 @@ const parseInput = async (lines: string[]): Promise<Duty[]> => {
       currentDuty.overnight = line
     } else if (/^D7S\d$/.test(line)) {
       if (Object.keys(currentDuty).length > 0) {
-        currentDuty.type = currentDuty.standby ? 'STANDBY' : 'FLIGHT'
+        currentDuty.type = currentDuty.standby ? 'STANDBY' : 'FLIGHT_DUTY'
         data.push(currentDuty)
         currentDuty = {}
       }
@@ -101,7 +101,7 @@ const parseInput = async (lines: string[]): Promise<Duty[]> => {
   }
 
   if (Object.keys(currentDuty).length > 0) {
-    currentDuty.type = currentDuty.standby ? 'STANDBY' : 'FLIGHT'
+    currentDuty.type = currentDuty.standby ? 'STANDBY' : 'FLIGHT_DUTY'
     data.push(currentDuty)
   }
 
