@@ -1,17 +1,21 @@
 import {
   registerUser,
   loginUser,
-  validateUserId, 
-  getUserDetails, 
-  updateUserDetails, 
+  validateUserId,
+  getUserDetails,
+  updateUserDetails,
   updateUserPassword,
   getUsers,
   deleteUser,
   createUser,
   updateUser,
-  getAllUsers,
-  getMessages,
-  sendMessage
+  friendRequest,
+  friendList,
+  addFriend,
+  acceptRequest,
+  removeFriend,
+  declineRequest,
+  getNonFriends,
 } from '../controllers/user-controller'
 import express from 'express'
 
@@ -20,15 +24,19 @@ const router = express.Router()
 router.post('/register', registerUser)
 router.post('/login', loginUser)
 router.post('/validateUserId', validateUserId)
-router.get('/getUserId', getUserDetails);
+router.get('/getUserId', getUserDetails)
 router.put('/updateUserId/:id', updateUserDetails)
-router.put('/updatePassword/:id', updateUserPassword);
-router.get('/getAllUsers/:id', getAllUsers);
+router.put('/updatePassword/:id', updateUserPassword)
+router.post('/friendRequest', friendRequest)
 router.get('/getUsers', getUsers)
 router.delete('/deleteUser/:id', deleteUser)
 router.post('/createUser', createUser)
 router.put('/updateUser/:id', updateUser)
-router.get('/messages/:userId/:recipientId', getMessages);
-router.post('/messages', sendMessage);
+router.get('/friendList/:id', friendList)
+router.get('/addFriend/:id', addFriend)
+router.post('/acceptRequest', acceptRequest)
+router.post('/removeFriend', removeFriend);
+router.post('/declineRequest', declineRequest);
+router.get('/nonFriends/:id', getNonFriends);
 
 export default router

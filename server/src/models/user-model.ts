@@ -8,10 +8,10 @@ export interface User extends Document {
   password: string
   homebase: mongoose.Schema.Types.ObjectId
   airline: mongoose.Schema.Types.ObjectId
-  role: string
-  friendRequests: mongoose.Schema.Types.ObjectId,
-  friends: mongoose.Schema.Types.ObjectId,
-  sentFriendRequests: mongoose.Schema.Types.ObjectId,
+  role: mongoose.Schema.Types.ObjectId
+  friendRequests: mongoose.Schema.Types.ObjectId[],
+  friends: mongoose.Schema.Types.ObjectId[],
+  sentFriendRequests: mongoose.Schema.Types.ObjectId[],
   matchPassword(enteredPassword: string): Promise<boolean>
   
 }
@@ -23,7 +23,7 @@ const userSchema: Schema<User> = new mongoose.Schema({
   password: { type: String, required: true },
   homebase: { type: mongoose.Schema.Types.ObjectId, ref: 'Airport', required: true },
   airline: { type: mongoose.Schema.Types.ObjectId, ref: 'Airline', required: true },
-  role: { type: String, required: true },
+  role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },
   friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   sentFriendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
