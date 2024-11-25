@@ -1,7 +1,12 @@
 import Message from '../models/message-model'
 import { Request, Response } from 'express'
+import { bucket } from '../services/gcs'
 import User from '../models/user-model'
+import { v4 as uuidv4 } from 'uuid'
 import mongoose from 'mongoose'
+import multer from 'multer'
+
+const DEFAULT_PROFILE_PICTURE_URL = 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
 
 export const registerUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, password, homebase, airline, role } = req.body
@@ -326,5 +331,72 @@ export const sendMessage = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error sending message:', error)
     res.status(500).json({ message: 'Error sending message' })
+  }
+}
+
+export const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 6 * 1024 * 1024
+  }
+})
+
+export const uploadProfilePicture = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' })
+    }
+
+    const { userId } = req.params
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' })
+    }
+
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    if (user.profilePicture && user.profilePicture !== DEFAULT_PROFILE_PICTURE_URL) {
+      const filePath = user.profilePicture.split(`https://storage.googleapis.com/${bucket.name}/`)[1]
+      if (filePath) {
+        try {
+          await bucket.file(filePath).delete()
+          console.log('Existing profile picture deleted:', filePath)
+        } catch (error) {
+          console.error('Error deleting existing profile picture:', error)
+        }
+      }
+    }
+
+    const uniqueFilename = `profile-pictures/${uuidv4()}-${req.file.originalname}`
+    const blob = bucket.file(uniqueFilename)
+    const blobStream = blob.createWriteStream({
+      resumable: false,
+      contentType: req.file.mimetype
+    })
+
+    blobStream.on('error', error => {
+      console.error('Error uploading to GCS:', error)
+      res.status(500).json({ message: 'Error uploading profile picture' })
+    })
+
+    blobStream.on('finish', async () => {
+      try {
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+
+        await User.findByIdAndUpdate(userId, { profilePicture: publicUrl })
+
+        res.status(200).json({ message: 'Profile picture uploaded successfully', url: publicUrl })
+      } catch (error) {
+        console.error('Error updating database:', error)
+        res.status(500).json({ message: 'Error updating profile picture in database' })
+      }
+    })
+
+    blobStream.end(req.file.buffer)
+  } catch (error) {
+    console.error('Error handling profile picture upload:', error)
+    res.status(500).json({ message: 'Error uploading profile picture' })
   }
 }

@@ -13,6 +13,7 @@ export interface User extends Document {
   friendRequests: mongoose.Schema.Types.ObjectId[]
   friends: mongoose.Schema.Types.ObjectId[]
   sentFriendRequests: mongoose.Schema.Types.ObjectId[]
+  profilePicture: string
   matchPassword(enteredPassword: string): Promise<boolean>
 }
 
@@ -23,10 +24,14 @@ const userSchema: Schema<User> = new mongoose.Schema({
   password: { type: String, required: true },
   homebase: { type: mongoose.Schema.Types.ObjectId, ref: 'Airport', required: true },
   airline: { type: mongoose.Schema.Types.ObjectId, ref: 'Airline', required: true },
-  role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true }, // Reference to Role model
+  role: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },
   friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  sentFriendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+  sentFriendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  profilePicture: {
+    type: String,
+    default: 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+  }
 })
 
 userSchema.pre<User>('save', async function (next) {
