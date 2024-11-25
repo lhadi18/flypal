@@ -16,6 +16,8 @@ import {
   removeFriend,
   declineRequest,
   getNonFriends,
+  upload,
+  uploadProfilePicture
 } from '../controllers/user-controller'
 import express from 'express'
 
@@ -38,5 +40,6 @@ router.post('/acceptRequest', acceptRequest)
 router.post('/removeFriend', removeFriend);
 router.post('/declineRequest', declineRequest);
 router.get('/nonFriends/:id', getNonFriends);
+router.put('/updateProfilePicture/:userId', upload.single('profilePicture'), uploadProfilePicture)
 
 export default router

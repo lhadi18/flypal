@@ -8,7 +8,9 @@ import {
   ImageBackground,
   StyleSheet
 } from 'react-native'
-import { validateUserId } from '../services/user-api'
+import { initializeDatabase } from '../services/utils/database'
+import { validateUserId } from '../services/apis/user-api'
+import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
 import { useRouter, Link } from 'expo-router'
 import React, { useEffect } from 'react'
@@ -17,14 +19,28 @@ const App = () => {
   const router = useRouter()
 
   useEffect(() => {
+    // Initialize database
+    initializeDatabase()
+
+    // Check for notification permissions on app launch
+    const checkNotificationPermissions = async () => {
+      const { status } = await Notifications.getPermissionsAsync()
+      if (status !== 'granted') {
+        const { status: newStatus } = await Notifications.requestPermissionsAsync()
+        if (newStatus !== 'granted') {
+          console.warn('Notification permissions not granted.')
+        }
+      }
+    }
+
+    // Re-authenticate user
     const reAuthenticate = async () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         if (userId) {
-          // Optionally validate the userId if necessary
           const isValid = await validateUserId(userId)
           if (isValid) {
-            router.push('/roster')
+            router.replace('/roster')
           }
         }
       } catch (error) {
@@ -32,6 +48,8 @@ const App = () => {
       }
     }
 
+    // Execute both functions
+    checkNotificationPermissions()
     reAuthenticate()
   }, [])
 

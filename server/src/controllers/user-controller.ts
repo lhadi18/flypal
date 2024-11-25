@@ -1,7 +1,12 @@
+import Message from '../models/message-model'
 import { Request, Response } from 'express'
+import { bucket } from '../services/gcs'
 import User from '../models/user-model'
-import Message from '../models/message-model';
+import { v4 as uuidv4 } from 'uuid'
 import mongoose from 'mongoose'
+import multer from 'multer'
+
+const DEFAULT_PROFILE_PICTURE_URL = 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
 
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
   const { firstName, lastName, email, password, homebase, airline, role } = req.body;
@@ -45,7 +50,7 @@ export const loginUser = async (req: Request, res: Response) => {
   const { email, password } = req.body
 
   try {
-    const user = await User.findOne({ email }).populate('homebase').populate('airline')
+    const user = await User.findOne({ email }).populate('homebase').populate('airline').populate('role', 'value')
 
     if (user && (await user.matchPassword(password))) {
       res.status(200).json({
@@ -92,44 +97,41 @@ export const validateUserId = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// Get user details
-export const getUserDetails = async (req: Request, res: Response): Promise<void> => {
-  const { userId } = req.query;
+export const getUserDetails = async (req: Request, res: Response) => {
+  const { userId } = req.query
+  console.log('Received userId:', userId)
 
   if (typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
-    res.status(400).json({ message: 'Invalid User ID' });
-    return;
+    return res.status(400).json({ message: 'Invalid User ID' })
   }
 
   try {
     const user = await User.findById(userId)
       .populate('homebase', 'IATA ICAO city')
       .populate('airline', 'ICAO Name')
-      .select('-password');
-
+      .populate('role', 'value')
+      .select('-password')
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      return res.status(404).json({ message: 'User not found' })
     }
-    
-    res.status(200).json(user);
+    res.status(200).json(user)
   } catch (error) {
-    console.error('Error fetching user details:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching user details:', error)
+    res.status(500).json({ message: 'Server error' })
   }
-};
+}
+
 
 // Update user details
-export const updateUserDetails = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
-  const { firstName, lastName, email, homebase, airline, role } = req.body;
+export const updateUserDetails = async (req: Request, res: Response) => {
+  const { id } = req.params
+  const { firstName, lastName, email, homebase, airline, role } = req.body
 
   try {
     const user = await User.findById(id);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      return res.status(404).json({ message: 'User not found' })
     }
 
     user.firstName = firstName;
@@ -139,7 +141,7 @@ export const updateUserDetails = async (req: Request, res: Response): Promise<vo
     user.airline = airline;
     user.role = role;
 
-    await user.save();
+    await user.save()
 
     res.status(200).json({
       _id: user._id,
@@ -156,30 +158,29 @@ export const updateUserDetails = async (req: Request, res: Response): Promise<vo
   }
 };
 
-// Update user password
-export const updateUserPassword = async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
-  const { password } = req.body;
+
+export const updateUserPassword = async (req: Request, res: Response) => {
+  const { id } = req.params
+  const { password } = req.body
 
   try {
-    const user = await User.findById(id);
+    const user = await User.findById(id)
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
-      return;
+      return res.status(404).json({ error: 'User not found' })
     }
     
     if (password) {
-      user.password = password;
-      await user.save();
-      res.json({ message: 'Password updated successfully' });
+      user.password = password
+      const updatedPassword = await user.save()
+      res.json(updatedPassword)
     } else {
       res.status(400).json({ message: 'Password is required' });
     }
   } catch (error) {
-    console.error('Error updating password:', error);
-    res.status(500).json({ message: 'Failed to update password' });
+    console.error(error)
+    res.status(500).json({ error: 'Failed to update password' })
   }
-};
+}
 
 export const friendRequest = async (req: Request, res: Response): Promise<void> => {
   const { senderId, recipientId } = req.body;
@@ -216,7 +217,6 @@ export const friendRequest = async (req: Request, res: Response): Promise<void> 
   } catch (error) {
     console.error('Error sending friend request:', error);
     res.status(500).json({ message: 'Server error' });
-  }
 };
 
 export const friendList = async (req: Request, res: Response) => {
@@ -428,7 +428,7 @@ export const getUsers = async (req: Request, res: Response) => {
         { firstName: { $regex: search, $options: 'i' } },
         { lastName: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
-        { role: { $regex: search, $options: 'i' } },
+        { 'role.value': { $regex: search, $options: 'i' } },
         { 'homebase.name': { $regex: search, $options: 'i' } },
         { 'airline.Name': { $regex: search, $options: 'i' } }
       ]
@@ -437,6 +437,7 @@ export const getUsers = async (req: Request, res: Response) => {
     const users = await User.find(query)
       .populate('homebase', 'name')
       .populate('airline', 'Name')
+      .populate('role', 'value')
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
 
@@ -518,45 +519,94 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       email: user.email,
       homebase: user.homebase,
       airline: user.airline,
-      role: user.role,
-    });
+      role: user.role
+    })
   } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error' })
   }
-};
+}
 
+export const getMessages = async (req: Request, res: Response) => {
+  const { userId, recipientId } = req.params
 
-// export const getMessages = async (req: Request, res: Response) => {
-//   const { userId, recipientId } = req.params;
+  try {
+    const messages = await Message.find({
+      $or: [
+        { sender: userId, recipient: recipientId },
+        { sender: recipientId, recipient: userId }
+      ]
+    }).sort({ timestamp: -1 })
 
-//   try {
-//     const messages = await Message.find({
-//       $or: [
-//         { sender: userId, recipient: recipientId },
-//         { sender: recipientId, recipient: userId },
-//       ],
-//     }).sort({ timestamp: -1 });
+    res.status(200).json(messages)
+  } catch (error) {
+    console.error('Error fetching messages:', error)
+    res.status(500).json({ message: 'Error fetching messages' })
+  }
+}
 
-//     res.status(200).json(messages);
-//   } catch (error) {
-//     console.error('Error fetching messages:', error);
-//     res.status(500).json({ message: 'Error fetching messages' });
-//   }
-// };
+export const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 6 * 1024 * 1024
+  }
+})
 
-// // Send a new message
-// export const sendMessage = async (req: Request, res: Response) => {
-//   const { sender, recipient, content } = req.body;
+export const uploadProfilePicture = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' })
+    }
 
-//   try {
-//     const newMessage = new Message({ sender, recipient, content });
-//     await newMessage.save();
+    const { userId } = req.params
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' })
+    }
 
-//     res.status(201).json(newMessage);
-//   } catch (error) {
-//     console.error('Error sending message:', error);
-//     res.status(500).json({ message: 'Error sending message' });
-//   }
-// };
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
 
+    if (user.profilePicture && user.profilePicture !== DEFAULT_PROFILE_PICTURE_URL) {
+      const filePath = user.profilePicture.split(`https://storage.googleapis.com/${bucket.name}/`)[1]
+      if (filePath) {
+        try {
+          await bucket.file(filePath).delete()
+          console.log('Existing profile picture deleted:', filePath)
+        } catch (error) {
+          console.error('Error deleting existing profile picture:', error)
+        }
+      }
+    }
+
+    const uniqueFilename = `profile-pictures/${uuidv4()}-${req.file.originalname}`
+    const blob = bucket.file(uniqueFilename)
+    const blobStream = blob.createWriteStream({
+      resumable: false,
+      contentType: req.file.mimetype
+    })
+
+    blobStream.on('error', error => {
+      console.error('Error uploading to GCS:', error)
+      res.status(500).json({ message: 'Error uploading profile picture' })
+    })
+
+    blobStream.on('finish', async () => {
+      try {
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+
+        await User.findByIdAndUpdate(userId, { profilePicture: publicUrl })
+
+        res.status(200).json({ message: 'Profile picture uploaded successfully', url: publicUrl })
+      } catch (error) {
+        console.error('Error updating database:', error)
+        res.status(500).json({ message: 'Error updating profile picture in database' })
+      }
+    })
+
+    blobStream.end(req.file.buffer)
+  } catch (error) {
+    console.error('Error handling profile picture upload:', error)
+    res.status(500).json({ message: 'Error uploading profile picture' })
+  }
+}

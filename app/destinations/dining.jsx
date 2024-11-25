@@ -20,14 +20,17 @@ import {
   saveRecommendation,
   fetchCrewPicks,
   likeRecommendation
-} from '../../services/destination-api'
+} from '../../services/apis/destination-api'
 import NonInteractableStarRating from '@/components/noninteractable-star-rating'
 import InteractableStarRating from '@/components/interactable-star-rating'
+import DietaryFilterModal from '@/components/dietary-filter-modal'
 import { MaterialIcons, FontAwesome } from '@expo/vector-icons'
+import { dietaryOptions } from '@/constants/dietary-options'
 import { useGlobalStore } from '../../store/store'
 import React, { useState, useEffect } from 'react'
 import * as SecureStore from 'expo-secure-store'
 import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system'
 import icons from '../../constants/icons'
 import { BlurView } from 'expo-blur'
 import { Formik } from 'formik'
@@ -37,8 +40,8 @@ const PLACEHOLDER_IMAGE_URL = '../../assets/images/no-image.png'
 const NO_CREW_PICKS_IMAGE = require('../../assets/images/no-crew-picks.jpg')
 
 const Dining = () => {
-  const [selectedDietary, setSelectedDietary] = useState('')
   const [isFilterModalVisible, setFilterModalVisible] = useState(false)
+  const [selectedDietaryOption, setSelectedDietaryOption] = useState(null)
   const [loadingCrewPicks, setLoadingCrewPicks] = useState(false)
   const [selectedTab, setSelectedTab] = useState('Our Picks')
   const [places, setPlaces] = useState([])
@@ -60,7 +63,7 @@ const Dining = () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         const response = await fetch(
-          `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}`
+          `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}`
         )
         if (response.ok) {
           const userBookmarks = await response.json()
@@ -74,12 +77,16 @@ const Dining = () => {
     fetchBookmarks()
   }, [])
 
-  // Fetch dining data based on the selected tab, only once per tab
   useEffect(() => {
     const fetchDiningData = async () => {
       if (selectedTab === 'Our Picks' && selectedAirport && !hasFetchedPlaces) {
         try {
-          const nearbyPlaces = await fetchNearbyPlaces(selectedAirport.city_latitude, selectedAirport.city_longitude)
+          const nearbyPlaces = await fetchNearbyPlaces(
+            selectedAirport.city_latitude,
+            selectedAirport.city_longitude,
+            selectedAirport.city,
+            selectedDietaryOption || null
+          )
           const updatedPlaces = nearbyPlaces.map(place => ({
             ...place,
             bookmarked: bookmarks.includes(place.place_id)
@@ -91,7 +98,10 @@ const Dining = () => {
         }
       } else if (selectedTab === 'Crew Picks' && selectedAirport && !hasFetchedCrewPicks) {
         try {
-          const crewData = await fetchCrewPicks(selectedAirport.id)
+          const crewData = await fetchCrewPicks(
+            selectedAirport.objectId || selectedAirport.id || selectedAirport.value,
+            selectedDietaryOption
+          )
           const updatedCrewPicks = crewData.map(pick => ({
             ...pick,
             bookmarked: bookmarks.includes(pick._id)
@@ -103,10 +113,26 @@ const Dining = () => {
         }
       }
     }
-    fetchDiningData()
-  }, [selectedTab, selectedAirport, hasFetchedPlaces, hasFetchedCrewPicks, bookmarks])
 
-  const toggleBookmark = async (id, sourceType, restaurantName, location, imageUrl, rating, totalReviews) => {
+    if ((selectedTab === 'Our Picks' && !hasFetchedPlaces) || (selectedTab === 'Crew Picks' && !hasFetchedCrewPicks)) {
+      fetchDiningData()
+    }
+  }, [selectedTab, selectedAirport, hasFetchedPlaces, hasFetchedCrewPicks, selectedDietaryOption])
+
+  const toggleBookmark = async (
+    id,
+    sourceType,
+    restaurantName,
+    location,
+    imageUrl,
+    rating,
+    totalReviews,
+    latitude,
+    longitude
+  ) => {
+    console.log(latitude)
+    console.log(longitude)
+
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const isBookmarked = bookmarks.includes(id)
@@ -121,10 +147,12 @@ const Dining = () => {
         imageUrl,
         rating,
         totalReviews,
-        airportId: selectedAirport.id
+        latitude,
+        longitude,
+        airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value
       }
 
-      await fetch(`https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await fetch(`https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -206,20 +234,31 @@ const Dining = () => {
       review: values.review,
       rating: values.rating,
       tags: values.tags,
-      airportId: selectedAirport.id,
+      airportId: selectedAirport.objectId || selectedAirport.id,
       image: values.image
+    }
+
+    if (data.image) {
+      const imageSizeLimit = 8 * 1024 * 1024 // 8 MB image
+      const imageInfo = await FileSystem.getInfoAsync(data.image)
+      if (imageInfo.size > imageSizeLimit) {
+        Alert.alert('Image Size Exceeded', 'Please select an image smaller than 8 MB.')
+        setLoading(false)
+        return
+      }
     }
 
     try {
       await saveRecommendation(data)
       console.log('Dining recommendation added successfully')
-      fetchCrewPicks(selectedAirport.id).then(data => setCrewPicks(data)) // Refresh Crew Picks
+      fetchCrewPicks(selectedAirport.objectId || selectedAirport.id).then(data => setCrewPicks(data)) // Refresh Crew Picks
     } catch (error) {
       console.error('Error:', error)
     } finally {
       setPostModalVisible(false)
       resetForm()
       setImage(null)
+      setSelectedDietaryOption(null)
       setLoading(false)
     }
   }
@@ -242,6 +281,12 @@ const Dining = () => {
   const openInGoogleMaps = (latitude, longitude) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
     Linking.openURL(url)
+  }
+
+  const handleSelectOption = option => {
+    setSelectedDietaryOption(option)
+    setHasFetchedPlaces(false)
+    setHasFetchedCrewPicks(false)
   }
 
   const validationSchema = Yup.object().shape({
@@ -269,13 +314,18 @@ const Dining = () => {
               <TouchableOpacity style={styles.icon} onPress={() => setFilterModalVisible(true)}>
                 <MaterialIcons name="filter-list" size={24} color="#4386AD" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.icon} onPress={() => setPostModalVisible(true)}>
-                <MaterialIcons name="post-add" size={24} color="#4386AD" />
-              </TouchableOpacity>
             </View>
+            <TouchableOpacity style={styles.icon} onPress={() => setPostModalVisible(true)}>
+              <MaterialIcons name="post-add" size={24} color="#4386AD" />
+            </TouchableOpacity>
           </View>
 
-          {/* Filter Modal */}
+          <DietaryFilterModal
+            isVisible={isFilterModalVisible}
+            onClose={() => setFilterModalVisible(false)}
+            selectedOption={selectedDietaryOption}
+            onSelectOption={handleSelectOption}
+          />
           <Modal
             animationType="slide"
             transparent={true}
@@ -283,6 +333,7 @@ const Dining = () => {
             onRequestClose={() => {
               setPostModalVisible(false)
               setImage(null)
+              setSelectedDietaryOption(null)
             }}
           >
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -312,6 +363,7 @@ const Dining = () => {
                               onPress={() => {
                                 setPostModalVisible(false)
                                 setImage(null)
+                                setSelectedDietaryOption(null)
                               }}
                             >
                               <MaterialIcons name="close" size={24} color="black" />
@@ -375,27 +427,23 @@ const Dining = () => {
                             />
                           </View>
                           {touched.rating && errors.rating && <Text style={styles.errorText}>{errors.rating}</Text>}
-                          <Text style={styles.label}>Tags (optional)</Text>
+                          <Text style={styles.label}>Dietary Tags (optional)</Text>
                           <View style={styles.dietaryButtonsContainer}>
-                            {['Halal', 'Vegetarian', 'Vegan'].map(tag => (
+                            {dietaryOptions.map(tag => (
                               <TouchableOpacity
                                 key={tag}
-                                style={[styles.tagButtonModal, values.tags.includes(tag) && styles.tagButtonSelected]}
+                                style={[
+                                  styles.tagButtonModal,
+                                  selectedDietaryOption === tag && styles.tagButtonSelected
+                                ]}
                                 onPress={() => {
-                                  if (values.tags.includes(tag)) {
-                                    setFieldValue(
-                                      'tags',
-                                      values.tags.filter(t => t !== tag)
-                                    )
-                                  } else {
-                                    setFieldValue('tags', [...values.tags, tag])
-                                  }
+                                  setSelectedDietaryOption(selectedDietaryOption === tag ? null : tag)
                                 }}
                               >
                                 <Text
                                   style={[
                                     styles.tagButtonText,
-                                    values.tags.includes(tag) && styles.tagButtonTextSelected
+                                    selectedDietaryOption === tag && styles.tagButtonTextSelected
                                   ]}
                                 >
                                   {tag}
@@ -409,6 +457,7 @@ const Dining = () => {
                               onPress={() => {
                                 setPostModalVisible(false)
                                 setImage(null)
+                                setSelectedDietaryOption(null)
                               }}
                             >
                               <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -434,7 +483,6 @@ const Dining = () => {
             </KeyboardAvoidingView>
           </Modal>
 
-          {/* Image Modal */}
           <Modal
             animationType="fade"
             transparent={true}
@@ -468,10 +516,12 @@ const Dining = () => {
                         place.place_id,
                         'DINING_API',
                         place.name,
-                        place.vicinity,
+                        place.formatted_address || place.vicinity,
                         place.photoUrl || PLACEHOLDER_IMAGE_URL,
                         place.rating,
-                        place.user_ratings_total
+                        place.user_ratings_total,
+                        place.geometry.location.lat,
+                        place.geometry.location.lng
                       )
                     }
                   >
@@ -481,7 +531,7 @@ const Dining = () => {
                     />
                   </TouchableOpacity>
                   <Text style={styles.restaurantName}>{place.name}</Text>
-                  <Text style={styles.address}>{place.vicinity}</Text>
+                  <Text style={styles.address}>{place.formatted_address}</Text>
                   <View style={styles.ratingContainer}>
                     <NonInteractableStarRating rating={place.rating} />
                     <Text style={styles.ratingText}>{`${place.rating} (${place.user_ratings_total} reviews)`}</Text>
@@ -725,17 +775,21 @@ const styles = StyleSheet.create({
   },
   dietaryButtonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 10,
-    width: '100%'
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginVertical: 10
   },
   tagButtonModal: {
-    paddingVertical: 7,
-    paddingHorizontal: 15,
-    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
     borderColor: '#4386AD',
     borderWidth: 1,
-    marginHorizontal: 5
+    marginVertical: 8,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexBasis: '45%'
   },
   tagButton: {
     paddingVertical: 5,
@@ -751,7 +805,8 @@ const styles = StyleSheet.create({
   },
   tagButtonText: {
     color: '#4386AD',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    fontSize: 16
   },
   tagButtonTextSelected: {
     color: '#FFF'

@@ -1,6 +1,8 @@
 import React, { useState, useCallback, forwardRef, useImperativeHandle, useEffect } from 'react'
-import { View, TextInput, ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
+import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native'
+import { getAirportsFromDatabase } from '../services/utils/database'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import NetInfo from '@react-native-community/netinfo'
 import axios from 'axios'
 import _ from 'lodash'
 
@@ -22,22 +24,35 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
   }, [initialValue])
 
   const fetchAirports = async searchQuery => {
-    try {
-      const response = await axios.get(
-        `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/airport/getAirport`,
-        {
-          params: { query: searchQuery }
-        }
-      )
-      if (response.data.length === 0) {
+    // const isConnected = await NetInfo.fetch().then(state => state.isConnected)
+    const isConnected = false
+
+    if (isConnected) {
+      // try {
+      //   const response = await axios.get(
+      //     `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/airport/getAirport`,
+      //     { params: { query: searchQuery } }
+      //   )
+      //   if (response.data.length === 0) {
+      //     setNoResults(true)
+      //   } else {
+      //     setNoResults(false)
+      //     setResults(response.data)
+      //   }
+      // } catch (error) {
+      //   console.error('Error fetching airports online:', error)
+      //   setNoResults(true)
+      // }
+    } else {
+      try {
+        const offlineResults = await getAirportsFromDatabase(searchQuery)
+
+        setResults(offlineResults)
+        setNoResults(offlineResults.length === 0)
+      } catch (error) {
+        console.error('Error fetching airports offline:', error)
         setNoResults(true)
-      } else {
-        setNoResults(false)
-        setResults(response.data)
       }
-    } catch (error) {
-      // console.error('Error fetching airports:', error)
-      setNoResults(true)
     }
   }
 

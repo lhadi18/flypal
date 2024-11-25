@@ -1,4 +1,5 @@
-import mongoose, { CallbackError, Schema, Document } from 'mongoose'
+import { Document, Schema, Types, CallbackError } from 'mongoose'
+import mongoose from 'mongoose'
 import bcrypt from 'bcrypt'
 
 export interface User extends Document {
@@ -8,12 +9,12 @@ export interface User extends Document {
   password: string
   homebase: mongoose.Schema.Types.ObjectId
   airline: mongoose.Schema.Types.ObjectId
-  role: mongoose.Schema.Types.ObjectId
-  friendRequests: mongoose.Schema.Types.ObjectId[],
-  friends: mongoose.Schema.Types.ObjectId[],
-  sentFriendRequests: mongoose.Schema.Types.ObjectId[],
+  role: Types.ObjectId // Update to use ObjectId for Role reference
+  friendRequests: mongoose.Schema.Types.ObjectId[]
+  friends: mongoose.Schema.Types.ObjectId[]
+  sentFriendRequests: mongoose.Schema.Types.ObjectId[]
+  profilePicture: string
   matchPassword(enteredPassword: string): Promise<boolean>
-  
 }
 
 const userSchema: Schema<User> = new mongoose.Schema({
@@ -27,7 +28,10 @@ const userSchema: Schema<User> = new mongoose.Schema({
   friendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   sentFriendRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-
+  profilePicture: {
+    type: String,
+    default: 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+  }
 })
 
 userSchema.pre<User>('save', async function (next) {

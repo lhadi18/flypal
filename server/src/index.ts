@@ -36,7 +36,7 @@ app.use('/api/checklist', checklistRoutes)
 app.use('/api/bookmarks', bookmarkRoutes)
 app.use('/api/roles', roleRoutes)
 
-const PORT = process.env.PORT || 9000
+const PORT = process.env.PORT || 8080
 
 const httpServer = http.createServer(app)
 

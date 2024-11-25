@@ -1,16 +1,18 @@
 import * as SecureStore from 'expo-secure-store'
 import axios from 'axios'
 
-const API_URL = 'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app'
+const API_URL = 'https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app'
 
-export const fetchNearbyPlaces = async (latitude, longitude) => {
+export const fetchNearbyPlaces = async (latitude, longitude, city, dietaryOption = '') => {
   try {
     const response = await axios.get(`${API_URL}/api/places/fetchNearbyPlaces`, {
       params: {
         latitude,
         longitude,
+        city,
+        dietaryOption,
         radius: 7500,
-        type: 'cafe'
+        type: 'restaurant'
       }
     })
     return response.data
@@ -65,8 +67,12 @@ export const saveRecommendation = async data => {
   }
 }
 
-export const fetchCrewPicks = async airportId => {
-  const response = await axios.get(`${API_URL}/api/dining/crew-picks/${airportId}`)
+export const fetchCrewPicks = async (airportId, dietaryOption) => {
+  const url = dietaryOption
+    ? `${API_URL}/api/dining/crew-picks/${airportId}?dietaryOption=${dietaryOption}`
+    : `${API_URL}/api/dining/crew-picks/${airportId}`
+
+  const response = await axios.get(url)
   return response.data
 }
 
@@ -77,7 +83,6 @@ export const likeRecommendation = async (id, userId) => {
 
 export const fetchUserRecommendations = async userId => {
   const response = await axios.get(`${API_URL}/api/dining/user-recommendations/${userId}`)
-  console.log(response.data)
   return response.data
 }
 

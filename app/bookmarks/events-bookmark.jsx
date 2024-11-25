@@ -7,13 +7,12 @@ import {
   TouchableOpacity,
   Linking,
   ActivityIndicator,
-  TextInput,
-  Alert // Import Alert from React Native
+  Alert
 } from 'react-native'
 import React, { useEffect, useState, useCallback } from 'react'
-import Ionicons from 'react-native-vector-icons/Ionicons'
 import { FontAwesome } from '@expo/vector-icons'
 import * as SecureStore from 'expo-secure-store'
+import SearchBar from '@/components/search-bar'
 import icons from '@/constants/icons'
 import axios from 'axios'
 import _ from 'lodash'
@@ -26,7 +25,19 @@ const EventsBookmark = () => {
   const [hasMore, setHasMore] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Debounced fetch function to reduce API calls during typing
+  useEffect(() => {
+    setBookmarks([])
+    setLoading(true)
+    setHasMore(true)
+    fetchBookmarks(1, searchQuery)
+  }, [searchQuery])
+
+  const renderLoadingIndicator = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#4386AD" />
+    </View>
+  )
+
   const fetchBookmarks = useCallback(
     _.debounce(async (page, query = '') => {
       setLoading(true)
@@ -35,22 +46,23 @@ const EventsBookmark = () => {
         const source = axios.CancelToken.source()
 
         const response = await axios.get(
-          `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
+          `https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
           {
             params: { page, limit: 10, search: query },
             cancelToken: source.token
           }
         )
 
+        console.log(response.data)
+
         if (response.data.length === 0) {
           setHasMore(false)
+          if (page === 1) setBookmarks([])
         } else {
           setBookmarks(prevBookmarks => (page === 1 ? response.data : [...prevBookmarks, ...response.data]))
         }
       } catch (err) {
-        if (axios.isCancel(err)) {
-          console.log('Request canceled', err.message)
-        } else {
+        if (!axios.isCancel(err)) {
           setError(err)
         }
       } finally {
@@ -62,10 +74,38 @@ const EventsBookmark = () => {
     []
   )
 
-  // Fetch bookmarks on initial load or when searchQuery changes
-  useEffect(() => {
-    fetchBookmarks(1, searchQuery)
-  }, [searchQuery])
+  const confirmRemoveBookmark = item => {
+    Alert.alert(
+      'Remove Bookmark',
+      `Are you sure you want to remove this bookmark?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Remove',
+          onPress: async () => {
+            try {
+              const userId = await SecureStore.getItemAsync('userId')
+              await axios.post('https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/unbookmark', {
+                userId,
+                sourceType: 'EVENT_API',
+                eventId: item.eventId,
+                airportId: item.airportId._id
+              })
+
+              setBookmarks(prevBookmarks => prevBookmarks.filter(bookmark => bookmark._id !== item._id))
+            } catch (error) {
+              console.error('Failed to unbookmark:', error)
+              Alert.alert('Error', 'Failed to remove the bookmark. Please try again.')
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    )
+  }
 
   const loadMoreBookmarks = () => {
     if (hasMore) {
@@ -86,45 +126,15 @@ const EventsBookmark = () => {
     setPage(0)
     setBookmarks([])
     setHasMore(true)
-    fetchBookmarks(1, '') // Fetch initial bookmarks with an empty query
+    fetchBookmarks(1, '')
   }
 
-  // Function to confirm before removing a bookmark
-  const confirmRemoveBookmark = item => {
-    Alert.alert(
-      'Remove Bookmark',
-      'Are you sure you want to remove this bookmark?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => removeBookmark(item)
-        }
-      ],
-      { cancelable: true }
-    )
-  }
-
-  // Function to remove a bookmark
-  const removeBookmark = async item => {
-    try {
-      // API call to remove bookmark (replace with your API endpoint)
-      const userId = await SecureStore.getItemAsync('userId')
-      await axios.delete(
-        `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/bookmarks/user/${userId}/events/${item._id}`
-      )
-      // Update bookmarks list
-      setBookmarks(prevBookmarks => prevBookmarks.filter(bookmark => bookmark._id !== item._id))
-    } catch (error) {
-      setError(error)
+  const openMaps = eventLocationMap => {
+    if (eventLocationMap) {
+      Linking.openURL(eventLocationMap)
     }
   }
 
-  // Render each bookmark item
   const renderBookmarkItem = ({ item }) => (
     <View style={styles.eventCard}>
       <TouchableOpacity onPress={() => confirmRemoveBookmark(item)} style={styles.bookmarkButton}>
@@ -156,34 +166,33 @@ const EventsBookmark = () => {
 
   return (
     <View style={styles.container}>
-      {/* Static Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#4386AD" style={styles.icon} />
-        <TextInput
-          placeholder="Search events by name, city, or country"
-          placeholderTextColor="grey"
-          style={styles.input}
-          value={searchQuery}
-          onChangeText={handleSearchInput}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color="grey" />
-          </TouchableOpacity>
-        )}
-      </View>
+      <SearchBar
+        placeholder="Search events by name, city, or country"
+        value={searchQuery}
+        onChangeText={handleSearchInput}
+        onClear={clearSearch}
+      />
 
-      {/* Scrollable List of Bookmarked Events */}
       <View style={styles.listContainer}>
-        <FlatList
-          ListHeaderComponent={() => <View style={styles.header}></View>}
-          data={bookmarks}
-          renderItem={renderBookmarkItem}
-          keyExtractor={item => item._id}
-          onEndReached={loadMoreBookmarks}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={hasMore && <ActivityIndicator size="small" color="#4386AD" />}
-        />
+        {loading && page === 1 ? (
+          renderLoadingIndicator()
+        ) : (
+          <FlatList
+            data={bookmarks}
+            renderItem={renderBookmarkItem}
+            keyExtractor={item => item._id}
+            onEndReached={loadMoreBookmarks}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={hasMore && renderLoadingIndicator()}
+            ListEmptyComponent={() =>
+              !loading && (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>No results for "{searchQuery}"</Text>
+                </View>
+              )
+            }
+          />
+        )}
       </View>
     </View>
   )
@@ -197,35 +206,9 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: 'white'
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-    backgroundColor: 'white',
-    borderColor: '#045D91',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5
-  },
+
   listContainer: {
     flex: 1
-  },
-  input: {
-    height: 40,
-    flex: 1,
-    fontSize: 16,
-    color: 'black'
-  },
-  icon: {
-    marginRight: 10
-  },
-  clearButton: {
-    marginLeft: 10
   },
   title: {
     fontSize: 24,
@@ -295,14 +278,17 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     backgroundColor: '#4386AD',
-    padding: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 5,
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center'
   },
   actionText: {
     color: '#FFF',
-    marginRight: 5
+    fontWeight: 'bold',
+    textAlign: 'center'
   },
   mapsButton: {
     backgroundColor: '#4386AD',
@@ -325,5 +311,22 @@ const styles = StyleSheet.create({
   bookmarkIcon: {
     width: 24,
     height: 24
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20
+  },
+  noResultsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center'
   }
 })

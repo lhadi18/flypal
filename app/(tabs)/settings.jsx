@@ -1,68 +1,122 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert } from 'react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faUser, faBell, faUserGroup, faKey, faTrash, faChevronRight, faChevronLeft } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store'
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  TextInput,
+  Alert,
+  Modal
+} from 'react-native'
+import {
+  faUser,
+  faBell,
+  faUserGroup,
+  faKey,
+  faTrash,
+  faChevronRight,
+  faChevronLeft,
+  faPen
+} from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import StyledAirportSearch from '@/components/sign-up-airport-search'
 import AirlineSearch from '@/components/sign-up-airline-search'
 import RNPickerSelect from 'react-native-picker-select'
+import { getRoles } from '@/services/apis/user-api'
+import { MaterialIcons } from '@expo/vector-icons'
+import React, { useState, useEffect } from 'react'
+import * as ImagePicker from 'expo-image-picker'
+import * as SecureStore from 'expo-secure-store'
+import * as FileSystem from 'expo-file-system'
 import { ROLES } from '../../constants/roles'
 import { useRouter } from 'expo-router'
+import axios from 'axios'
 
 const Settings = () => {
-  const [currentScreen, setCurrentScreen] = useState('Settings');
+  const [currentScreen, setCurrentScreen] = useState('Settings')
   const [userDetails, setUserDetails] = useState({
     firstName: '',
     lastName: '',
     role: '',
     homebase: { IATA: '', city: '', ICAO: '' },
-    airline: {ICAO: '', Name: ''},
+    airline: { ICAO: '', Name: '' },
     email: ''
-  });
-  const [loading, setLoading] = useState(true);
+  })
+  const [loading, setLoading] = useState(true)
   const [currentUserDetails, setCurrentUserDetails] = useState(null)
   const [oldPasswordVisible, setOldPasswordVisible] = useState(false)
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
-  const [oldPassword, setOldPassword] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [error, setError] = useState('');
+  const [oldPassword, setOldPassword] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [roles, setRoles] = useState([])
+  const [loadingRoles, setLoadingRoles] = useState(true) // Optional: loading state for roles
+  const [showModal, setShowModal] = useState(false) // Modal state
+  const [image, setImage] = useState(
+    userDetails.profilePicture || 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+  )
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const [error, setError] = useState('')
   const router = useRouter()
 
+  const MAX_IMAGE_SIZE = 6 * 1024 * 1024
+
   const fetchUserDetails = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const userId = await SecureStore.getItemAsync('userId');
-      console.log(userId);
-      const response = await axios.get(`https://8799-103-18-0-20.ngrok-free.app/api/users/getUserId`, {
-        params: { 
-          userId 
+      const userId = await SecureStore.getItemAsync('userId')
+      console.log(userId)
+      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/getUserId`, {
+        params: {
+          userId
         }
-      });
-      setUserDetails(response.data);
-      console.log('Response Data:', response.data);
+      })
+      setUserDetails(response.data)
+      setImage(
+        response.data.profilePicture ||
+          'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+      )
+      console.log('Response Data:', response.data)
     } catch (error) {
-        console.error('Error fetching user details:', error);
+      console.error('Error fetching user details:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchUserDetails();
-  }, []);
+    fetchUserDetails()
+  }, [])
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setLoadingRoles(true)
+        const rolesData = await getRoles()
+        setRoles(rolesData.map(role => ({ label: role.value, value: role._id })))
+      } catch (error) {
+        console.error('Error fetching roles:', error)
+      } finally {
+        setLoadingRoles(false)
+      }
+    }
+
+    fetchRoles()
+  }, [])
 
   const handleEditUserDetails = () => {
-    setCurrentUserDetails(userDetails);
-    setCurrentScreen('EditProfile');
+    setCurrentUserDetails(userDetails)
+    setCurrentScreen('EditProfile')
   }
 
   const updateUserDetails = async () => {
     if (!currentUserDetails) {
-      console.error('No user details available to update');
-      return;
+      console.error('No user details available to update')
+      return
     }
 
     const updatedUserData = {
@@ -70,48 +124,51 @@ const Settings = () => {
       firstName: currentUserDetails.firstName,
       lastName: currentUserDetails.lastName,
       email: currentUserDetails.email,
-      role: currentUserDetails.role,
+      role: currentUserDetails.role?.value || '',
       homebase: currentUserDetails.homebase,
       airline: currentUserDetails.airline
-    };
+    }
 
-    console.log('Updated user data to be sent:', updatedUserData);
+    console.log('Updated user data to be sent:', updatedUserData)
 
     try {
       const response = await axios.put(
-        `https://8799-103-18-0-20.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
-      );
-      console.log('User profile updated:', response.data);
-      // handleEditUserDetails(response.data); 
-      fetchUserDetails();
-      setCurrentScreen('UserProfile');
+      )
+      console.log('User profile updated:', response.data)
+      // handleEditUserDetails(response.data);
+      fetchUserDetails()
+      setCurrentScreen('UserProfile')
     } catch (error) {
-      console.error('Error updating user profile:', error);
+      console.error('Error updating user profile:', error)
     }
-  };
+  }
 
   const handleChangePassword = async () => {
     if (password !== confirmNewPassword) {
-      setError('Passwords do not match');
-      return;
+      setError('Passwords do not match')
+      return
     }
-  
-    const userId = await SecureStore.getItemAsync('userId');
+
+    const userId = await SecureStore.getItemAsync('userId')
     const data = {
-      password,
-    };
-  
-    try {
-      const response = await axios.put(`https://8799-103-18-0-20.ngrok-free.app/api/users/updatePassword/${userId}`, data);
-      console.log('Password updated:', response.data);
-      Alert.alert('Password updated successfully!');
-      setCurrentScreen('Settings');
-    } catch (error) {
-      setError('Failed to update password');
-      console.error(error);
+      password
     }
-  };
+
+    try {
+      const response = await axios.put(
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updatePassword/${userId}`,
+        data
+      )
+      console.log('Password updated:', response.data)
+      Alert.alert('Password updated successfully!')
+      setCurrentScreen('Settings')
+    } catch (error) {
+      setError('Failed to update password')
+      console.error(error)
+    }
+  }
 
   const deleteUserAccount = userId => {
     Alert.alert(
@@ -126,7 +183,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://8799-103-18-0-20.ngrok-free.app/api/users/deleteUser/${userId}`)
+              await axios.delete(`https://40c7-115-164-76-186.ngrok-free.app/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -136,26 +193,156 @@ const Settings = () => {
       ],
       { cancelable: true }
     )
-  };
+  }
 
   const handleLogout = async () => {
     try {
-      await SecureStore.deleteItemAsync('userId');
-      router.push('/sign-in');
+      await SecureStore.deleteItemAsync('userId')
+      router.push('/sign-in')
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Error logging out:', error)
     }
-  };
+  }
+
+  const handleImagePress = () => {
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+  }
+
+  const handleEditProfilePicture = async () => {
+    Alert.alert(
+      'Edit Profile Picture',
+      'Choose an option',
+      [
+        {
+          text: 'Take Photo',
+          onPress: openCamera
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: openGallery
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        }
+      ],
+      { cancelable: true }
+    )
+  }
+
+  const openCamera = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Denied', 'Camera access is required to take a photo.')
+      return
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1
+    })
+
+    if (!result.canceled) {
+      const imageSize = await getImageSize(result.assets[0].uri)
+      if (imageSize > MAX_IMAGE_SIZE) {
+        Alert.alert('Error', 'Image size exceeds the 6MB limit. Please select a smaller image.')
+        return
+      }
+      setImage(result.assets[0].uri)
+      updateProfilePicture(result.assets[0].uri)
+    }
+  }
+
+  const openGallery = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Denied', 'Gallery access is required to select a photo.')
+      return
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1
+    })
+
+    if (!result.canceled) {
+      const imageSize = await getImageSize(result.assets[0].uri)
+      if (imageSize > MAX_IMAGE_SIZE) {
+        Alert.alert('Error', 'Image size exceeds the 6MB limit. Please select a smaller image.')
+        return
+      }
+      setImage(result.assets[0].uri)
+      updateProfilePicture(result.assets[0].uri)
+    }
+  }
+
+  const updateProfilePicture = async uri => {
+    setShowModal(false)
+    setUploadingImage(true)
+
+    try {
+      const userId = await SecureStore.getItemAsync('userId')
+      const formData = new FormData()
+      formData.append('profilePicture', {
+        uri,
+        type: 'image/jpeg',
+        name: 'profile.jpg'
+      })
+
+      const response = await axios.put(
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }
+      )
+
+      Alert.alert('Success', 'Profile picture updated successfully.')
+
+      await fetchUserDetails()
+    } catch (error) {
+      console.error('Error updating profile picture:', error)
+      Alert.alert('Error', 'Failed to update profile picture.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const getImageSize = async uri => {
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(uri)
+      return fileInfo.size
+    } catch (error) {
+      console.error('Error getting file size:', error)
+      return 0
+    }
+  }
 
   const renderSettings = () => (
     <View style={styles.container}>
       <View style={styles.header}></View>
-      <Image style={styles.avatar} source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }} />
+      <View style={styles.avatarContainer}>
+        <TouchableOpacity onPress={() => setShowModal(true)}>
+          <Image style={styles.avatar} source={{ uri: image }} />
+        </TouchableOpacity>
+      </View>
       <View style={styles.body}>
         <View style={styles.bodyContent}>
-          <Text style={styles.name}>{userDetails?.firstName} {userDetails?.lastName}</Text>
+          <Text style={styles.name}>
+            {userDetails?.firstName} {userDetails?.lastName}
+          </Text>
           <Text style={styles.info}>Homebase</Text>
-          <Text style={styles.homebase}>{userDetails.homebase?.IATA} - {userDetails.homebase?.city}</Text>
+          <Text style={styles.homebase}>
+            {userDetails.homebase?.IATA} - {userDetails.homebase?.city}
+          </Text>
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.button} onPress={() => setCurrentScreen('UserProfile')}>
               <View style={styles.buttonContent}>
@@ -164,7 +351,7 @@ const Settings = () => {
               </View>
               <FontAwesomeIcon icon={faChevronRight} style={styles.iconRight} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={() => router.push('reminder/reminder-settings')}>
               <View style={styles.buttonContent}>
                 <FontAwesomeIcon icon={faBell} style={styles.icon} />
                 <Text style={styles.textButton}>Reminders</Text>
@@ -203,15 +390,41 @@ const Settings = () => {
           </View>
         </View>
       </View>
+      <Modal visible={showModal} transparent={true} animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Image style={styles.modalImage} source={{ uri: image }} />
+            <TouchableOpacity style={styles.editButtonModal} onPress={handleEditProfilePicture}>
+              <FontAwesomeIcon icon={faPen} size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.modalClose} onPress={closeModal}>
+            <Text style={styles.modalCloseText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      <Modal animationType="fade" transparent={true} visible={uploadingImage} onRequestClose={() => {}}>
+        <View style={styles.loadingModalOverlay}>
+          <View style={styles.loadingModal}>
+            <ActivityIndicator size="large" color="#FFF" />
+            <Text style={styles.loadingText}>Uploading image, please wait...</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
-  );
+  )
 
   const renderUserProfile = () => (
     <ScrollView style={styles.container}>
       <View style={styles.header}></View>
       <Image
         style={styles.avatar}
-        source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }}
+        source={{
+          uri:
+            userDetails.profilePicture ||
+            'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+        }}
       />
       <View style={styles.bodyProfile}>
         <View style={styles.boxProfile}>
@@ -241,47 +454,52 @@ const Settings = () => {
                 <View style={styles.infoStyles}>
                   <Text style={styles.infoValue}>{userDetails?.email || 'N/A'}</Text>
                 </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Role</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Role</Text>
                 <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>{userDetails?.role || 'N/A'}</Text>
+                  <Text style={styles.infoValue}>{userDetails?.role?.value || 'N/A'}</Text>
                 </View>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>Homebase</Text>
                 <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>{userDetails.homebase ? `${userDetails.homebase?.IATA}/${userDetails.homebase?.ICAO} - ${userDetails.homebase?.city}`  : 'N/A'}</Text>
+                  <Text style={styles.infoValue}>
+                    {userDetails.homebase
+                      ? `${userDetails.homebase?.IATA}/${userDetails.homebase?.ICAO} - ${userDetails.homebase?.city}`
+                      : 'N/A'}
+                  </Text>
                 </View>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>Airline</Text>
                 <View style={styles.infoStyles}>
-                  <Text style={styles.infoValue}>{userDetails.airline ? `${userDetails.airline.ICAO} - ${userDetails.airline.Name}` : 'N/A'}</Text>
+                  <Text style={styles.infoValue}>
+                    {userDetails.airline ? `${userDetails.airline.ICAO} - ${userDetails.airline.Name}` : 'N/A'}
+                  </Text>
                 </View>
+              </View>
+              <View style={styles.buttonEdit}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentScreen('Settings')}>
+                  <Text style={styles.cancelText}>Back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.editButton} onPress={handleEditUserDetails}>
+                  <Text style={styles.editText}>Edit Profile</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.buttonEdit}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentScreen('Settings')}>
-                <Text style={styles.cancelText}>Back</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.editButton} onPress={handleEditUserDetails}>
-                <Text style={styles.editText}>Edit Profile</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
           )}
         </View>
       </View>
     </ScrollView>
-  );
+  )
 
   const renderEditProfile = () => (
-
     <ScrollView style={styles.container}>
       <View style={styles.header}></View>
       <Image
         style={styles.avatar}
-        source={{ uri: 'https://bootdey.com/img/Content/avatar/avatar6.png' }}
+        source={{ uri: 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg' }}
       />
       <View style={styles.bodyProfile}>
         <View style={styles.boxProfile}>
@@ -291,81 +509,93 @@ const Settings = () => {
           {loading ? (
             <ActivityIndicator size="large" color="#0000ff" />
           ) : (
-          <View style={styles.infoContainer}>
-            <View style={styles.infoItem}>
-              <View style={styles.infoColumn}>
-                <Text style={styles.infoTitle}>First Name</Text>
+            <View style={styles.infoContainer}>
+              <View style={styles.infoItem}>
+                <View style={styles.infoColumn}>
+                  <Text style={styles.infoTitle}>First Name</Text>
                   <TextInput
                     style={styles.infoStyles}
                     value={currentUserDetails?.firstName || ''}
                     onChangeText={text => setCurrentUserDetails({ ...currentUserDetails, firstName: text })}
-                />
-              </View>
-              <View style={styles.infoColumn}>
-                <Text style={styles.infoTitle}>Last Name</Text>
+                  />
+                </View>
+                <View style={styles.infoColumn}>
+                  <Text style={styles.infoTitle}>Last Name</Text>
                   <TextInput
                     style={styles.infoStyles}
                     value={currentUserDetails?.lastName || ''}
                     onChangeText={text => setCurrentUserDetails({ ...currentUserDetails, lastName: text })}
                   />
+                </View>
               </View>
-            </View>
-            <View style={styles.infoRow}>
-               <Text style={styles.infoTitle}>E-mail Address</Text>
-               <View style={styles.infoStyles}>
-                 <Text style={{color: 'grey'}}>{userDetails?.email || 'N/A'}</Text>
-               </View>
-             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Role</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>E-mail Address</Text>
+                <View style={styles.infoStyles}>
+                  <Text style={{ color: 'grey' }}>{userDetails?.email || 'N/A'}</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Role</Text>
                 <View>
-                  <RNPickerSelect
-                    style={pickerSelectStyles}
-                    onValueChange={value => setCurrentUserDetails({ ...currentUserDetails, role: value })}
-                    items={ROLES}
-                    value={currentUserDetails?.role || ''}
-                    placeholder={{
-                      label: 'Select your role',
-                      color: 'grey'
-                    }}
+                  {loadingRoles ? (
+                    <ActivityIndicator size="small" color="#0000ff" />
+                  ) : (
+                    <RNPickerSelect
+                      style={pickerSelectStyles}
+                      onValueChange={value => {
+                        const selectedRole = roles.find(role => role.value === value)
+                        setCurrentUserDetails({ ...currentUserDetails, role: selectedRole })
+                      }}
+                      items={roles}
+                      value={currentUserDetails?.role?.value || ''}
+                      placeholder={{
+                        label: 'Select your role',
+                        value: null,
+                        color: 'grey'
+                      }}
+                    />
+                  )}
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Homebase</Text>
+                <View>
+                  <StyledAirportSearch
+                    placeholder={`${currentUserDetails.homebase?.IATA}/${currentUserDetails.homebase?.ICAO} - ${currentUserDetails.homebase?.city}`}
+                    onSelect={airport =>
+                      setCurrentUserDetails({ ...currentUserDetails, homebase: airport ? airport.id : '' })
+                    }
+                    value={currentUserDetails.homebase}
                   />
                 </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Homebase</Text>
-              <View>
-                <StyledAirportSearch
-                  placeholder={`${currentUserDetails.homebase?.IATA}/${currentUserDetails.homebase?.ICAO} - ${currentUserDetails.homebase?.city}`}
-                  onSelect={airport => setCurrentUserDetails({ ...currentUserDetails, homebase: airport ? airport.id : '' })}
-                  value={currentUserDetails.homebase}
-                />
               </View>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoTitle}>Airline</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoTitle}>Airline</Text>
                 <View>
                   <AirlineSearch
-                      placeholder={`${currentUserDetails.airline?.ICAO} - ${currentUserDetails.airline?.Name}`}
-                      onSelect={airline => setCurrentUserDetails({ ...currentUserDetails, airline: airline ? airline.id : '' })} // Use airline ID
-                      value={userDetails.airline}
-                    />
-                  </View>
+                    placeholder={`${currentUserDetails.airline?.ICAO} - ${currentUserDetails.airline?.Name}`}
+                    onSelect={airline =>
+                      setCurrentUserDetails({ ...currentUserDetails, airline: airline ? airline.id : '' })
+                    } // Use airline ID
+                    value={userDetails.airline}
+                  />
+                </View>
+              </View>
+              <View style={styles.buttonEdit}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentScreen('UserProfile')}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.editButton} onPress={updateUserDetails}>
+                  <Text style={styles.editText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.buttonEdit}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentScreen('UserProfile')}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.editButton} onPress={updateUserDetails}>
-                <Text style={styles.editText}>Save Changes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
           )}
         </View>
       </View>
     </ScrollView>
-  );
-  
+  )
+
   const renderEditPassword = () => (
     <ScrollView style={styles.container}>
       <View style={styles.bodyProfile}>
@@ -388,10 +618,7 @@ const Settings = () => {
                     value={password}
                     onChangeText={setPassword}
                   />
-                  <TouchableOpacity
-                    style={styles.toggleButton}
-                    onPress={() => setPasswordVisible(!passwordVisible)}
-                  >
+                  <TouchableOpacity style={styles.toggleButton} onPress={() => setPasswordVisible(!passwordVisible)}>
                     <Image
                       source={
                         passwordVisible
@@ -452,8 +679,8 @@ const Settings = () => {
       {currentScreen === 'EditProfile' && renderEditProfile()}
       {currentScreen === 'ChangePassword' && renderEditPassword()}
     </>
-  );
-};
+  )
+}
 const pickerSelectStyles = StyleSheet.create({
   inputIOS: {
     fontSize: 14,
@@ -491,7 +718,7 @@ const styles = StyleSheet.create({
   },
   error: {
     color: 'red',
-    marginBottom: 10,
+    marginBottom: 10
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -501,7 +728,7 @@ const styles = StyleSheet.create({
     borderColor: 'grey',
     paddingHorizontal: 10,
     backgroundColor: 'white',
-    height: 40,
+    height: 40
   },
   passwordInput: {
     flex: 1,
@@ -685,7 +912,7 @@ const styles = StyleSheet.create({
     color: 'black',
     borderRadius: 5,
     borderColor: '#ADADAD',
-    borderWidth: 1,
+    borderWidth: 1
   },
   editButton: {
     backgroundColor: '#045D91',
@@ -711,6 +938,72 @@ const styles = StyleSheet.create({
   cancelText: {
     color: '#656565',
     fontWeight: '600',
+    textAlign: 'center'
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginTop: -50,
+    zIndex: 1
+  },
+  avatar: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    borderWidth: 4,
+    borderColor: 'white'
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)'
+  },
+  modalContent: {
+    alignItems: 'center',
+    position: 'relative'
+  },
+  modalImage: {
+    width: 300,
+    height: 300,
+    resizeMode: 'contain',
+    borderRadius: 10
+  },
+  editButtonModal: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#045D91',
+    borderRadius: 20,
+    padding: 10
+  },
+  modalClose: {
+    marginTop: 20,
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10
+  },
+  modalCloseText: {
+    color: '#045D91',
+    fontWeight: 'bold'
+  },
+  loadingModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(128, 128, 128, 0.5)'
+  },
+  loadingModal: {
+    width: 220,
+    padding: 20,
+    backgroundColor: '#333',
+    borderRadius: 12,
+    alignItems: 'center'
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#FFF',
+    fontSize: 16,
     textAlign: 'center'
   }
 })

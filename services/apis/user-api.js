@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_URL = 'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app'
+const API_URL = 'https://64f6-103-18-0-20.ngrok-free.app'
 
 export const registerUser = async userData => {
   try {
@@ -50,6 +50,23 @@ export const validateUserId = async userId => {
       data: {
         userId: userId
       }
+    })
+    console.log(response.data)
+    return response.data
+  } catch (error) {
+    if (error.response && error.response.data) {
+      throw error.response.data
+    } else {
+      throw new Error('An unknown error occurred')
+    }
+  }
+}
+
+export const getRoles = async () => {
+  try {
+    const response = await axios({
+      method: 'get',
+      url: `${API_URL}/api/roles/getAllRoles`
     })
     console.log(response.data)
     return response.data

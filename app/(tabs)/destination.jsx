@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, Image, TouchableOpacity } from 'react-native'
+import { getAllRosterEntries } from '@/services/utils/database'
 import { useFocusEffect } from '@react-navigation/native'
 import AirportSearch from '@/components/airport-search'
 import React, { useState, useCallback } from 'react'
@@ -6,7 +7,7 @@ import { useGlobalStore } from '../../store/store'
 import * as SecureStore from 'expo-secure-store'
 import { AntDesign } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import axios from 'axios'
+import moment from 'moment-timezone'
 
 const Destination = () => {
   const [roster, setRoster] = useState([])
@@ -14,6 +15,7 @@ const Destination = () => {
   const setSelectedAirport = useGlobalStore(state => state.setSelectedAirport)
 
   const handleSelectAirport = airport => {
+    console.log(airport)
     if (airport) {
       setSelectedAirport(airport)
       router.push('destinations/events')
@@ -28,15 +30,37 @@ const Destination = () => {
         return
       }
 
-      const response = await axios.get(
-        'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getNext30DaysRoster',
-        {
-          params: { userId }
+      // const response = await axios.get(
+      //   'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getNext30DaysRoster',
+      //   {
+      //     params: { userId }
+      //   }
+      // )
+      // setRoster(response.data)
+
+      // Fetch data for the next 30 days from SQLite
+      const startOfToday = moment().startOf('day').toISOString()
+      const endOf30Days = moment().startOf('day').add(30, 'days').toISOString()
+
+      const allRosterEntries = await getAllRosterEntries()
+
+      // Filter roster for the next 30 days and ensure unique destinations
+      const uniqueDestinations = new Map()
+      const next30DaysRoster = allRosterEntries.filter(entry => {
+        const departureTime = moment(entry.departureTime).toISOString()
+        const isWithin30Days = departureTime >= startOfToday && departureTime <= endOf30Days
+
+        const destinationKey = entry.destination.objectId
+        if (isWithin30Days && !uniqueDestinations.has(destinationKey)) {
+          uniqueDestinations.set(destinationKey, true)
+          return true
         }
-      )
-      setRoster(response.data)
+        return false
+      })
+
+      setRoster(next30DaysRoster)
     } catch (error) {
-      console.error(error)
+      console.error('Error fetching roster data from SQLite:', error)
     }
   }
 
