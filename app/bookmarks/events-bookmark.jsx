@@ -25,6 +25,13 @@ const EventsBookmark = () => {
   const [hasMore, setHasMore] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
+  useEffect(() => {
+    setBookmarks([])
+    setLoading(true)
+    setHasMore(true)
+    fetchBookmarks(1, searchQuery)
+  }, [searchQuery])
+
   const renderLoadingIndicator = () => (
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color="#4386AD" />
@@ -39,7 +46,7 @@ const EventsBookmark = () => {
         const source = axios.CancelToken.source()
 
         const response = await axios.get(
-          `https://64f6-103-18-0-20.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
+          `https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
           {
             params: { page, limit: 10, search: query },
             cancelToken: source.token
@@ -67,12 +74,38 @@ const EventsBookmark = () => {
     []
   )
 
-  useEffect(() => {
-    setBookmarks([])
-    setLoading(true)
-    setHasMore(true)
-    fetchBookmarks(1, searchQuery)
-  }, [searchQuery])
+  const confirmRemoveBookmark = item => {
+    Alert.alert(
+      'Remove Bookmark',
+      `Are you sure you want to remove this bookmark?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Remove',
+          onPress: async () => {
+            try {
+              const userId = await SecureStore.getItemAsync('userId')
+              await axios.post('https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/unbookmark', {
+                userId,
+                sourceType: 'EVENT_API',
+                eventId: item.eventId,
+                airportId: item.airportId._id
+              })
+
+              setBookmarks(prevBookmarks => prevBookmarks.filter(bookmark => bookmark._id !== item._id))
+            } catch (error) {
+              console.error('Failed to unbookmark:', error)
+              Alert.alert('Error', 'Failed to remove the bookmark. Please try again.')
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    )
+  }
 
   const loadMoreBookmarks = () => {
     if (hasMore) {

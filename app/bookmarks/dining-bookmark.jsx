@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Modal
+  Modal,
+  Alert
 } from 'react-native'
 import NonInteractableStarRating from '@/components/noninteractable-star-rating'
 import React, { useEffect, useState, useCallback } from 'react'
@@ -41,7 +42,7 @@ const DiningBookmark = () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         const response = await axios.get(
-          `https://64f6-103-18-0-20.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
+          `https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
           { params: { page, limit: 10, search: query } }
         )
 
@@ -104,6 +105,44 @@ const DiningBookmark = () => {
     }
   }
 
+  const handleUnbookmarkPress = (diningId, sourceType, airportId) => {
+    Alert.alert(
+      'Remove Bookmark',
+      'Are you sure you want to remove this bookmark?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Remove',
+          onPress: async () => {
+            try {
+              const userId = await SecureStore.getItemAsync('userId')
+              const response = await axios.post('https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/unbookmark', {
+                userId,
+                sourceType,
+                diningId,
+                airportId: airportId._id
+              })
+
+              if (response.status === 200) {
+                setBookmarks(prevBookmarks => prevBookmarks.filter(bookmark => bookmark.diningId !== diningId))
+              } else {
+                console.error('Failed to unbookmark:', response.data.error)
+                Alert.alert('Error', 'Failed to remove the bookmark. Please try again.')
+              }
+            } catch (error) {
+              console.error('Error unbookmarking dining:', error)
+              Alert.alert('Error', 'Failed to remove the bookmark. Please try again.')
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    )
+  }
+
   const renderBookmark = ({ item: bookmark }) => (
     <View key={bookmark.diningId || bookmark._id} style={styles.card}>
       <TouchableOpacity onPress={() => openImageModal(bookmark.imageUrl || PLACEHOLDER_IMAGE_URL)}>
@@ -112,7 +151,7 @@ const DiningBookmark = () => {
       <View style={styles.cardContent}>
         <TouchableOpacity
           style={styles.bookmarkButton}
-          onPress={() => handleUnbookmarkPress(bookmark.diningId, bookmark.sourceType, bookmark.airport)}
+          onPress={() => handleUnbookmarkPress(bookmark.diningId, bookmark.sourceType, bookmark.airportId)}
         >
           <Image source={icons.bookmarkFilled} style={styles.bookmarkIcon} />
         </TouchableOpacity>

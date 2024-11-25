@@ -119,11 +119,13 @@ export const getUserEventBookmarks = async (req: Request, res: Response) => {
 
       {
         $project: {
+          'airportId._id': 1,
           'airportId.name': 1,
           'airportId.city': 1,
           'airportId.country': 1,
           _id: 1,
           name: 1,
+          eventId: 1,
           location: 1,
           imageUrl: 1,
           eventDescription: 1,
@@ -182,6 +184,7 @@ export const getUserDiningBookmarks = async (req: Request, res: Response) => {
 
       {
         $project: {
+          'airportId._id': 1,
           'airportId.name': 1,
           'airportId.city': 1,
           'airportId.country': 1,
