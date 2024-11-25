@@ -89,6 +89,8 @@ const Roster = () => {
 
   const DISPLAY_FORMAT = 'DD/MM/YYYY HH:mm [GMT]Z'
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024
+
   // Load saved settings from AsyncStorage
   const loadSettings = async () => {
     try {
@@ -798,6 +800,15 @@ const Roster = () => {
     })
     if (result.assets && result.assets.length > 0) {
       const file = result.assets[0]
+
+      if (file.size > MAX_FILE_SIZE) {
+        Alert.alert(
+          'File Too Large',
+          `The selected file exceeds the maximum allowed size of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+        )
+        return
+      }
+
       setUploadingRoster(true)
       setLoading(true)
 
@@ -1356,7 +1367,7 @@ const Roster = () => {
             <Text style={rosterModalStyles.modalText}>Uploaded Roster</Text>
             <ScrollView style={rosterModalStyles.scrollView}>
               {uploadedRosterData.map((entry, index) => {
-                const isFlight = entry.type === 'FLIGHT'
+                const isFlight = entry.type === 'FLIGHT_DUTY'
 
                 return (
                   <View key={index} style={rosterModalStyles.rosterItem}>
