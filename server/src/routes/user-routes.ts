@@ -1,9 +1,9 @@
 import {
   registerUser,
   loginUser,
-  validateUserId, 
-  getUserDetails, 
-  updateUserDetails, 
+  validateUserId,
+  getUserDetails,
+  updateUserDetails,
   updateUserPassword,
   getUsers,
   deleteUser,
@@ -11,7 +11,9 @@ import {
   updateUser,
   getAllUsers,
   getMessages,
-  sendMessage
+  sendMessage,
+  upload,
+  uploadProfilePicture
 } from '../controllers/user-controller'
 import express from 'express'
 
@@ -20,15 +22,16 @@ const router = express.Router()
 router.post('/register', registerUser)
 router.post('/login', loginUser)
 router.post('/validateUserId', validateUserId)
-router.get('/getUserId', getUserDetails);
+router.get('/getUserId', getUserDetails)
 router.put('/updateUserId/:id', updateUserDetails)
-router.put('/updatePassword/:id', updateUserPassword);
-router.get('/getAllUsers/:id', getAllUsers);
+router.put('/updatePassword/:id', updateUserPassword)
+router.get('/getAllUsers/:id', getAllUsers)
 router.get('/getUsers', getUsers)
 router.delete('/deleteUser/:id', deleteUser)
 router.post('/createUser', createUser)
 router.put('/updateUser/:id', updateUser)
-router.get('/messages/:userId/:recipientId', getMessages);
-router.post('/messages', sendMessage);
+router.get('/messages/:userId/:recipientId', getMessages)
+router.post('/messages', sendMessage)
+router.put('/updateProfilePicture/:userId', upload.single('profilePicture'), uploadProfilePicture)
 
 export default router
