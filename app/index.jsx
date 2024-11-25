@@ -40,7 +40,7 @@ const App = () => {
         if (userId) {
           const isValid = await validateUserId(userId)
           if (isValid) {
-            router.push('/roster')
+            router.replace('/roster')
           }
         }
       } catch (error) {

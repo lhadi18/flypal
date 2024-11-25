@@ -297,11 +297,17 @@ const Settings = () => {
         name: 'profile.jpg'
       })
 
-      await axios.put(`https://40c7-115-164-76-186.ngrok-free.app/api/users/updateProfilePicture/${userId}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
+      const response = await axios.put(
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }
+      )
 
       Alert.alert('Success', 'Profile picture updated successfully.')
+
+      await fetchUserDetails()
     } catch (error) {
       console.error('Error updating profile picture:', error)
       Alert.alert('Error', 'Failed to update profile picture.')

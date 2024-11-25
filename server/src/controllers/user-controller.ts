@@ -6,12 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import mongoose from 'mongoose'
 import multer from 'multer'
 
-export const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 6 * 1024 * 1024
-  }
-})
+const DEFAULT_PROFILE_PICTURE_URL = 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
 
 export const registerUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, password, homebase, airline, role } = req.body
@@ -339,6 +334,13 @@ export const sendMessage = async (req: Request, res: Response) => {
   }
 }
 
+export const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 6 * 1024 * 1024
+  }
+})
+
 export const uploadProfilePicture = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
@@ -348,6 +350,23 @@ export const uploadProfilePicture = async (req: Request, res: Response) => {
     const { userId } = req.params
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' })
+    }
+
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    if (user.profilePicture && user.profilePicture !== DEFAULT_PROFILE_PICTURE_URL) {
+      const filePath = user.profilePicture.split(`https://storage.googleapis.com/${bucket.name}/`)[1]
+      if (filePath) {
+        try {
+          await bucket.file(filePath).delete()
+          console.log('Existing profile picture deleted:', filePath)
+        } catch (error) {
+          console.error('Error deleting existing profile picture:', error)
+        }
+      }
     }
 
     const uniqueFilename = `profile-pictures/${uuidv4()}-${req.file.originalname}`
