@@ -37,9 +37,9 @@ router.put('/updateUser/:id', updateUser)
 router.get('/friendList/:id', friendList)
 router.get('/addFriend/:id', addFriend)
 router.post('/acceptRequest', acceptRequest)
-router.post('/removeFriend', removeFriend);
-router.post('/declineRequest', declineRequest);
-router.get('/nonFriends/:id', getNonFriends);
+router.post('/removeFriend', removeFriend)
+router.post('/declineRequest', declineRequest)
+router.get('/nonFriends/:id', getNonFriends)
 router.put('/updateProfilePicture/:userId', upload.single('profilePicture'), uploadProfilePicture)
 
 export default router

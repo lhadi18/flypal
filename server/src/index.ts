@@ -4,6 +4,7 @@ import aircraftRoutes from './routes/aircraft-routes'
 import bookmarkRoutes from './routes/bookmark-routes'
 import airportRoutes from './routes/airport-routes'
 import airlineRoutes from './routes/airline-routes'
+import messageRoutes from './routes/message-routes'
 import rosterRoutes from './routes/roster-routes'
 import placesRoutes from './routes/places-routes'
 import eventRoutes from './routes/event-routes'
@@ -15,6 +16,8 @@ import express from 'express'
 import dotenv from 'dotenv'
 import http from 'http'
 import cors from 'cors'
+
+import { setupWebSocketServer } from './websocket/websocket'
 
 dotenv.config()
 connectDB()
@@ -35,6 +38,7 @@ app.use('/api/pdf', pdfRoutes)
 app.use('/api/checklist', checklistRoutes)
 app.use('/api/bookmarks', bookmarkRoutes)
 app.use('/api/roles', roleRoutes)
+app.use('/api/messages', messageRoutes)
 
 const PORT = process.env.PORT || 8080
 
@@ -43,3 +47,5 @@ const httpServer = http.createServer(app)
 httpServer.listen(PORT, () => {
   console.log(`HTTP Server running on port ${PORT}`)
 })
+
+setupWebSocketServer(httpServer)
