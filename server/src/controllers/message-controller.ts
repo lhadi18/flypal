@@ -1,5 +1,6 @@
 import Message from '../models/message-model'
 import { Request, Response } from 'express'
+import mongoose from 'mongoose'
 
 // Create a new message
 export const createMessage = async (req: Request, res: Response) => {
@@ -19,6 +20,63 @@ export const createMessage = async (req: Request, res: Response) => {
     res.status(201).json(message)
   } catch (error) {
     res.status(500).json({ error: 'Failed to send message.' })
+  }
+}
+
+export const getConversations = async (req: Request, res: Response) => {
+  const { userId } = req.params
+
+  try {
+    const conversations = await Message.aggregate([
+      {
+        $match: {
+          $or: [{ sender: new mongoose.Types.ObjectId(userId) }, { recipient: new mongoose.Types.ObjectId(userId) }]
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $lt: ['$sender', '$recipient'] },
+              { sender: '$sender', recipient: '$recipient' },
+              { sender: '$recipient', recipient: '$sender' }
+            ]
+          },
+          lastMessage: { $last: '$content' },
+          lastTimestamp: { $last: '$timestamp' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id.sender',
+          foreignField: '_id',
+          as: 'senderDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id.recipient',
+          foreignField: '_id',
+          as: 'recipientDetails'
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          sender: { $arrayElemAt: ['$senderDetails', 0] },
+          recipient: { $arrayElemAt: ['$recipientDetails', 0] },
+          lastMessage: 1,
+          lastTimestamp: 1
+        }
+      }
+    ])
+
+    res.status(200).json(conversations)
+  } catch (error) {
+    console.error('Error fetching conversations:', error)
+    res.status(500).json({ error: 'Failed to fetch conversations.' })
   }
 }
 

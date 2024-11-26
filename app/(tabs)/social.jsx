@@ -372,11 +372,72 @@ const Connection = () => {
   )
 }
 
-const Message = () => (
-  <View style={styles.tabContent}>
-    <Text style={styles.tabText}>Message</Text>
-  </View>
-)
+const Message = () => {
+  const [conversations, setConversations] = useState([])
+  const [userId, setUserId] = useState(null)
+  const router = useRouter()
+
+  const fetchConversations = async () => {
+    const userId = await SecureStore.getItemAsync('userId')
+    setUserId(userId)
+
+    try {
+      const response = await axios.get(
+        `https://40c7-115-164-76-186.ngrok-free.app/api/messages/conversations/${userId}`
+      )
+      setConversations(response.data)
+    } catch (error) {
+      console.log('Error fetching conversations:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchConversations()
+  }, [])
+
+  return (
+    <View style={styles.tabContent}>
+      {conversations.length > 0 ? (
+        <FlatList
+          data={conversations}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => {
+            const otherUser = item.sender._id === userId ? item.recipient : item.sender
+
+            return (
+              <TouchableOpacity
+                style={styles.cardContainer}
+                onPress={() =>
+                  router.push({
+                    pathname: 'messages/messaging-screen',
+                    params: {
+                      id: otherUser._id,
+                      firstName: otherUser.firstName,
+                      lastName: otherUser.lastName
+                    }
+                  })
+                }
+              >
+                <View style={styles.profileContainer}>
+                  <View style={styles.profilePicture} />
+                  <View style={styles.profileInfo}>
+                    <Text style={styles.name}>{`${otherUser.firstName} ${otherUser.lastName}`}</Text>
+                    <Text style={styles.role}>{item.lastMessage}</Text>
+                    <Text style={styles.timestamp}>{new Date(item.lastTimestamp).toLocaleString()}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )
+          }}
+        />
+      ) : (
+        <View style={styles.noFriendsContainer}>
+          <Text style={styles.noFriendsText}>No conversations yet. Start a chat!</Text>
+        </View>
+      )}
+    </View>
+  )
+}
 
 const Request = () => {
   const [requests, setRequests] = useState([])
@@ -921,6 +982,11 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     marginTop: 5,
     alignSelf: 'flex-start'
+  },
+  timestamp: {
+    fontSize: 10,
+    color: 'gray',
+    marginTop: 5
   }
 })
 

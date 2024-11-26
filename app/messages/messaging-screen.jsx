@@ -109,15 +109,52 @@ const MessagingScreen = () => {
     }
   }
 
-  const renderMessage = ({ item }) => {
-    const isMe = String(item.sender._id) === String(userId)
+  const groupMessagesByDate = messages => {
+    const grouped = {}
+
+    messages.forEach(message => {
+      const messageDate = new Date(message.timestamp)
+      const formattedDate = isToday(messageDate)
+        ? 'Today'
+        : isYesterday(messageDate)
+          ? 'Yesterday'
+          : format(messageDate, 'MMMM d, yyyy')
+
+      if (!grouped[formattedDate]) {
+        grouped[formattedDate] = []
+      }
+      grouped[formattedDate].push(message)
+    })
+
+    return Object.entries(grouped).map(([date, messages]) => ({ date, messages }))
+  }
+
+  const renderItem = ({ item }) => {
+    if (item.type === 'header') {
+      return <Text style={styles.dateHeader}>{item.date}</Text>
+    }
+
+    const { message } = item
+    const isMe = String(message.sender._id) === String(userId)
 
     return (
       <View style={[styles.messageContainer, isMe ? styles.myMessageContainer : styles.theirMessageContainer]}>
-        <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{item.content}</Text>
-        <Text style={styles.timestamp}>{format(new Date(item.timestamp), 'h:mm a')}</Text>
+        <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{message.content}</Text>
+        <Text style={styles.timestamp}>{format(new Date(message.timestamp), 'h:mm a')}</Text>
       </View>
     )
+  }
+
+  const getFlatListData = () => {
+    const groupedMessages = groupMessagesByDate(messages)
+    const flatData = []
+
+    groupedMessages.forEach(({ date, messages }) => {
+      flatData.push({ type: 'header', date })
+      messages.forEach(message => flatData.push({ type: 'message', message }))
+    })
+
+    return flatData
   }
 
   return (
@@ -137,9 +174,9 @@ const MessagingScreen = () => {
         {/* Messages List */}
         <FlatList
           ref={flatListRef} // Reference to scroll programmatically
-          data={messages}
-          keyExtractor={item => item._id}
-          renderItem={renderMessage}
+          data={getFlatListData()}
+          keyExtractor={(item, index) => (item.type === 'header' ? `header-${item.date}` : item.message._id)}
+          renderItem={renderItem}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -242,5 +279,18 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: '#fff',
     fontSize: 16
+  },
+  dateHeader: {
+    alignSelf: 'center',
+    marginVertical: 10,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#00000080', // Black with 50% opacity
+    borderRadius: 10,
+    backgroundColor: '#ffffff'
   }
 })
