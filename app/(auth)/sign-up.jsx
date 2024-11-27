@@ -442,7 +442,6 @@ const styles = StyleSheet.create({
   },
   registerButtonText: {
     color: 'white',
-    fontFamily: 'Roboto-Regular',
     fontSize: 16,
     textAlign: 'center',
     fontWeight: 'bold'

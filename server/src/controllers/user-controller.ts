@@ -5,6 +5,10 @@ import User from '../models/user-model'
 import { v4 as uuidv4 } from 'uuid'
 import mongoose from 'mongoose'
 import multer from 'multer'
+import Roster from '../models/roster-model'
+import DiningRecommendation from '../models/dining-recommendation-model'
+import Checklist from '../models/checklist-model'
+import Bookmark from '../models/bookmark-model'
 
 const DEFAULT_PROFILE_PICTURE_URL = 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
 
@@ -97,50 +101,54 @@ export const validateUserId = async (req: Request, res: Response): Promise<void>
   }
 }
 
-export const getUserDetails = async (req: Request, res: Response) => {
-  const { userId } = req.query
-  console.log('Received userId:', userId)
+export const getUserDetails = async (req: Request, res: Response): Promise<void> => {
+  const { userId } = req.query;
 
   if (typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ message: 'Invalid User ID' })
+    res.status(400).json({ message: 'Invalid User ID' });
+    return;
   }
 
   try {
     const user = await User.findById(userId)
+      .populate('role', 'value')
       .populate('homebase', 'IATA ICAO city')
       .populate('airline', 'ICAO Name')
-      .populate('role', 'value')
-      .select('-password')
+      .select('-password');
+
     if (!user) {
-      return res.status(404).json({ message: 'User not found' })
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
-    res.status(200).json(user)
+    
+    res.status(200).json(user);
   } catch (error) {
-    console.error('Error fetching user details:', error)
-    res.status(500).json({ message: 'Server error' })
+    console.error('Error fetching user details:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-}
+};
 
 // Update user details
-export const updateUserDetails = async (req: Request, res: Response) => {
-  const { id } = req.params
-  const { firstName, lastName, email, homebase, airline, role } = req.body
+export const updateUserDetails = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { firstName, lastName, email, homebase, airline, role } = req.body;
 
   try {
-    const user = await User.findById(id)
+    const user = await User.findById(id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' })
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
 
-    user.firstName = firstName
-    user.lastName = lastName
-    user.email = email
-    user.homebase = homebase
-    user.airline = airline
-    user.role = role
+    user.firstName = firstName;
+    user.lastName = lastName;
+    user.email = email;
+    user.homebase = homebase;
+    user.airline = airline;
+    user.role = role;
 
-    await user.save()
+    await user.save();
 
     res.status(200).json({
       _id: user._id,
@@ -149,36 +157,39 @@ export const updateUserDetails = async (req: Request, res: Response) => {
       email: user.email,
       homebase: user.homebase,
       airline: user.airline,
-      role: user.role
-    })
+      role: user.role,
+    });
   } catch (error) {
-    console.error('Error updating user details:', error)
-    res.status(500).json({ message: 'Server error' })
+    console.error('Error updating user details:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-}
+};
 
-export const updateUserPassword = async (req: Request, res: Response) => {
-  const { id } = req.params
-  const { password } = req.body
+// Update user password
+export const updateUserPassword = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { password } = req.body;
 
   try {
-    const user = await User.findById(id)
+    const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' })
+      res.status(404).json({ message: 'User not found' });
+      return;
     }
-
+    
     if (password) {
-      user.password = password
-      const updatedPassword = await user.save()
-      res.json(updatedPassword)
+      user.password = password;
+      await user.save();
+      res.json({ message: 'Password updated successfully' });
     } else {
-      res.status(400).json({ message: 'Password is required' })
+      res.status(400).json({ message: 'Password is required' });
     }
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'Failed to update password' })
+    console.error('Error updating password:', error);
+    res.status(500).json({ message: 'Failed to update password' });
   }
-}
+};
+
 
 export const friendRequest = async (req: Request, res: Response): Promise<void> => {
   const { senderId, recipientId } = req.body
@@ -442,12 +453,41 @@ export const deleteUser = async (req: Request, res: Response) => {
   const { id } = req.params
 
   try {
-    await User.findByIdAndDelete(id)
-    res.status(200).json({ message: 'User deleted successfully' })
+    // Find and delete the user
+    const deletedUser = await User.findByIdAndDelete(id)
+    if (!deletedUser) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    await Roster.deleteMany({ userId: id })
+    await DiningRecommendation.deleteMany({ user: id })
+    await Checklist.deleteMany({ userId: id })
+    await Bookmark.deleteMany({ userId: id })
+    await Message.deleteMany({
+      $or: [{ sender: id }, { recipient: id }]
+    })
+    await User.updateMany(
+      { friends: id },
+      { $pull: { friends: id } }
+    )
+
+    await User.updateMany(
+      { friendRequests: id },
+      { $pull: { friendRequests: id } }
+    )
+
+    await User.updateMany(
+      { sentFriendRequests: id },
+      { $pull: { sentFriendRequests: id } }
+    )
+
+    res.status(200).json({ message: 'User and all related records deleted successfully, and references removed' })
   } catch (error) {
+    console.error('Error deleting user and related data:', error)
     res.status(500).json({ message: 'Server error' })
   }
 }
+
 
 export const createUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, password, homebase, airline, role } = req.body
@@ -540,62 +580,69 @@ export const upload = multer({
   }
 })
 
-export const uploadProfilePicture = async (req: Request, res: Response) => {
+export const uploadProfilePicture = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' })
+      res.status(400).json({ message: 'No file uploaded' });
+      return; // Explicitly return to prevent further execution
     }
 
-    const { userId } = req.params
+    const { userId } = req.params;
     if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' })
+      res.status(400).json({ message: 'User ID is required' });
+      return; // Explicitly return to prevent further execution
     }
 
-    const user = await User.findById(userId)
+    const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' })
+      res.status(404).json({ message: 'User not found' });
+      return; // Explicitly return to prevent further execution
     }
 
+    // Delete the existing profile picture if it exists and is not the default
     if (user.profilePicture && user.profilePicture !== DEFAULT_PROFILE_PICTURE_URL) {
-      const filePath = user.profilePicture.split(`https://storage.googleapis.com/${bucket.name}/`)[1]
+      const filePath = user.profilePicture.split(`https://storage.googleapis.com/${bucket.name}/`)[1];
       if (filePath) {
         try {
-          await bucket.file(filePath).delete()
-          console.log('Existing profile picture deleted:', filePath)
+          await bucket.file(filePath).delete();
+          console.log('Existing profile picture deleted:', filePath);
         } catch (error) {
-          console.error('Error deleting existing profile picture:', error)
+          console.error('Error deleting existing profile picture:', error);
         }
       }
     }
 
-    const uniqueFilename = `profile-pictures/${uuidv4()}-${req.file.originalname}`
-    const blob = bucket.file(uniqueFilename)
+    // Generate a unique filename for the new profile picture
+    const uniqueFilename = `profile-pictures/${uuidv4()}-${req.file.originalname}`;
+    const blob = bucket.file(uniqueFilename);
     const blobStream = blob.createWriteStream({
       resumable: false,
-      contentType: req.file.mimetype
-    })
+      contentType: req.file.mimetype,
+    });
 
-    blobStream.on('error', (error: any) => {
-      console.error('Error uploading to GCS:', error)
-      res.status(500).json({ message: 'Error uploading profile picture' })
-    })
+    blobStream.on('error', (error) => {
+      console.error('Error uploading to GCS:', error);
+      res.status(500).json({ message: 'Error uploading profile picture' });
+    });
 
     blobStream.on('finish', async () => {
       try {
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
 
-        await User.findByIdAndUpdate(userId, { profilePicture: publicUrl })
+        // Update the user's profile picture URL in the database
+        await User.findByIdAndUpdate(userId, { profilePicture: publicUrl });
 
-        res.status(200).json({ message: 'Profile picture uploaded successfully', url: publicUrl })
+        res.status(200).json({ message: 'Profile picture uploaded successfully', url: publicUrl });
       } catch (error) {
-        console.error('Error updating database:', error)
-        res.status(500).json({ message: 'Error updating profile picture in database' })
+        console.error('Error updating database:', error);
+        res.status(500).json({ message: 'Error updating profile picture in database' });
       }
-    })
+    });
 
-    blobStream.end(req.file.buffer)
+    blobStream.end(req.file.buffer); // End the stream and upload the file
   } catch (error) {
-    console.error('Error handling profile picture upload:', error)
-    res.status(500).json({ message: 'Error uploading profile picture' })
+    console.error('Error handling profile picture upload:', error);
+    res.status(500).json({ message: 'Error uploading profile picture' });
   }
-}
+};
+

@@ -3,7 +3,7 @@ import axios from 'axios'
 export const fetchAircraftTypes = async () => {
   try {
     const response = await axios.get(
-      'https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/aircraft/getAircraft'
+      'https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/aircraft/getAircraft'
     )
     const data = response.data
       .map(item => ({

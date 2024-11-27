@@ -39,7 +39,7 @@ const Settings = () => {
   const [userDetails, setUserDetails] = useState({
     firstName: '',
     lastName: '',
-    role: '',
+    role: {value: ''},
     homebase: { IATA: '', city: '', ICAO: '' },
     airline: { ICAO: '', Name: '' },
     email: ''
@@ -70,7 +70,7 @@ const Settings = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
-      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/getUserId`, {
+      const response = await axios.get(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/getUserId`, {
         params: {
           userId
         }
@@ -133,7 +133,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       console.log('User profile updated:', response.data)
@@ -158,7 +158,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -183,7 +183,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://40c7-115-164-76-186.ngrok-free.app/api/users/deleteUser/${userId}`)
+              await axios.delete(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -298,7 +298,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -327,14 +327,14 @@ const Settings = () => {
   }
 
   const renderSettings = () => (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}></View>
       <View style={styles.avatarContainer}>
         <TouchableOpacity onPress={() => setShowModal(true)}>
           <Image style={styles.avatar} source={{ uri: image }} />
         </TouchableOpacity>
       </View>
-      <View style={styles.body}>
+      <View>
         <View style={styles.bodyContent}>
           <Text style={styles.name}>
             {userDetails?.firstName} {userDetails?.lastName}
@@ -358,7 +358,7 @@ const Settings = () => {
               </View>
               <FontAwesomeIcon icon={faChevronRight} style={styles.iconRight} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={() => router.push('/social?tab=connection')}>
               <View style={styles.buttonContent}>
                 <FontAwesomeIcon icon={faUserGroup} style={styles.icon} />
                 <Text style={styles.textButton}>Connections</Text>
@@ -412,20 +412,22 @@ const Settings = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   )
 
   const renderUserProfile = () => (
     <ScrollView style={styles.container}>
       <View style={styles.header}></View>
-      <Image
-        style={styles.avatar}
-        source={{
-          uri:
-            userDetails.profilePicture ||
-            'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
-        }}
-      />
+      <View style={styles.avatarContainer}>
+        <Image
+          style={styles.avatar}
+          source={{
+            uri:
+              userDetails.profilePicture ||
+              'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+          }}
+        />
+      </View>
       <View style={styles.bodyProfile}>
         <View style={styles.boxProfile}>
           <View style={styles.headerProfile}>
@@ -497,10 +499,16 @@ const Settings = () => {
   const renderEditProfile = () => (
     <ScrollView style={styles.container}>
       <View style={styles.header}></View>
-      <Image
-        style={styles.avatar}
-        source={{ uri: 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg' }}
-      />
+      <View style={styles.avatarContainer}>
+        <Image
+          style={styles.avatar}
+          source={{
+            uri:
+              userDetails.profilePicture ||
+              'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+          }}
+        />
+      </View>
       <View style={styles.bodyProfile}>
         <View style={styles.boxProfile}>
           <View style={styles.headerProfile}>
@@ -536,22 +544,22 @@ const Settings = () => {
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>Role</Text>
-                <View>
+                <View style={styles.roleField}>
                   {loadingRoles ? (
                     <ActivityIndicator size="small" color="#0000ff" />
                   ) : (
                     <RNPickerSelect
                       style={pickerSelectStyles}
                       onValueChange={value => {
-                        const selectedRole = roles.find(role => role.value === value)
-                        setCurrentUserDetails({ ...currentUserDetails, role: selectedRole })
+                        const selectedRole = roles.find(role => role.value === value) || null;
+                        setCurrentUserDetails({ ...currentUserDetails, role: selectedRole });
                       }}
                       items={roles}
                       value={currentUserDetails?.role?.value || ''}
                       placeholder={{
-                        label: 'Select your role',
+                        label: currentUserDetails?.role?.value || 'Select your role', // Show user's role name if available
                         value: null,
-                        color: 'grey'
+                        color: 'grey',
                       }}
                     />
                   )}
@@ -683,36 +691,36 @@ const Settings = () => {
 }
 const pickerSelectStyles = StyleSheet.create({
   inputIOS: {
-    fontSize: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    fontSize: 12,
+    paddingHorizontal: 5,
     borderWidth: 1,
-    borderColor: 'grey',
-    borderRadius: 5,
+    borderColor: '#ccc',
+    borderRadius: 10,
     color: 'black',
-    paddingRight: 30,
-    backgroundColor: 'white',
-    height: 40
   },
   inputAndroid: {
-    fontSize: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 0.5,
-    borderColor: 'grey',
-    borderRadius: 5,
+    fontSize: 12,
+    paddingHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
     color: 'black',
-    paddingRight: 30,
-    backgroundColor: 'white',
-    height: 40
   },
   placeholder: {
     color: 'grey',
-    fontSize: 14 // matching the text size
-  }
-})
+  },
+});
+
 
 const styles = StyleSheet.create({
+  roleField: {
+    width: '100%',
+    backgroundColor: 'white',
+    color: 'black',
+    borderRadius: 5,
+    borderColor: '#ADADAD',
+    borderWidth: 1
+  },
   logout: {
     marginTop: 30
   },
@@ -764,7 +772,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowOffset: { width: 2, height: 4 }
   },
-  avatar: {
+  viewAvatar: {
     width: 130,
     height: 130,
     borderRadius: 63,
@@ -779,7 +787,7 @@ const styles = StyleSheet.create({
     marginTop: 50
   },
   bodyProfile: {
-    marginTop: 70
+    marginTop: 20
   },
   bodyContent: {
     alignItems: 'center',

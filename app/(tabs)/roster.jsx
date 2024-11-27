@@ -192,7 +192,7 @@ const Roster = () => {
     if (isConnected) {
       // try {
       //   const response = await axios.get(
-      //     'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/getRosterEntries',
+      //     'https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/roster/getRosterEntries',
       //     {
       //       params: {
       //         userId,
@@ -500,7 +500,7 @@ const Roster = () => {
         if (isConnected) {
           // Online: Send update to server, then update SQLite and mark as synced
           // const response = await axios.put(
-          //   `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
+          //   `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/roster/updateRosterEntry/${editEventId}`,
           //   eventEntry
           // )
           // if (response.status === 200) {
@@ -514,7 +514,7 @@ const Roster = () => {
       } else {
         if (isConnected) {
           // const response = await axios.post(
-          //   'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
+          //   'https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/roster/createRosterEntry',
           //   eventEntry
           // )
           // if (response.status === 201) {
@@ -561,7 +561,7 @@ const Roster = () => {
   // const fetchAirportByCode = async code => {
   //   try {
   //     const response = await axios.get(
-  //       'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/airport/getAirportByCode',
+  //       'https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/airport/getAirportByCode',
   //       { params: { code } }
   //     )
   //     return response.data._id
@@ -582,7 +582,7 @@ const Roster = () => {
         type: file.mimeType
       })
 
-      const response = await axios.post('https://64f6-103-18-0-20.ngrok-free.app/api/pdf/upload', formData, {
+      const response = await axios.post('https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/pdf/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -621,7 +621,7 @@ const Roster = () => {
           }
 
           await axios.post(
-            'https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/roster/createRosterEntry',
+            'https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/roster/createRosterEntry',
             newEvent
           )
         }

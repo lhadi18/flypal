@@ -89,7 +89,7 @@ const Checklists = () => {
     }
     try {
       const response = await axios.post(
-        'https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/checklist/createChecklist',
+        'https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/checklist/createChecklist',
         checklistData
       )
       console.log('Checklist created:', response.data)
@@ -106,7 +106,7 @@ const Checklists = () => {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
       const response = await axios.get(
-        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/checklist/getChecklist`,
+        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/checklist/getChecklist`,
         {
           params: {
             userId
@@ -115,10 +115,14 @@ const Checklists = () => {
       )
       setChecklists(response.data)
     } catch (error) {
-      console.error('Error fetching checklists:', error)
+      if (error.response && error.response.status === 404) {
+        setChecklists([])
+      } else {
+        console.error('Error fetching checklists:', error)
+      }
     }
   }
-
+  
   useEffect(() => {
     fetchChecklists()
   }, [])
@@ -137,7 +141,7 @@ const Checklists = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
+                `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
               )
               await fetchChecklists()
             } catch (error) {
@@ -166,7 +170,7 @@ const Checklists = () => {
     }
     try {
       const response = await axios.put(
-        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
+        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
         updatedChecklistData
       )
       console.log('Checklist updated:', response.data)
@@ -314,7 +318,7 @@ const Checklists = () => {
             </View>
           ))
         ) : (
-          <Text>No checklists available.</Text>
+          <Text style={styles.noChecklist}>No checklists available.</Text>
         )}
       </View>
     </ScrollView>
@@ -396,19 +400,19 @@ const EditChecklistForm = ({
               ))}
               {!isLimitReached && leftColumnItems.length < 10 && (
                 <View style={formStyles.inputBox}>
-                  <Ionicons name="add-circle" size={18} color="grey" />
-                  <TextInput
-                    style={[formStyles.input, { fontStyle: 'normal' }]}
-                    placeholder="Add item..."
-                    placeholderTextColor="grey"
-                    onChangeText={text => setNewItemText(text)}
-                    onSubmitEditing={() => {
-                      onAddChecklistItem(newItemText)
-                      setNewItemText('')
-                    }}
-                    value={newItemText}
-                  />
-                </View>
+                <Ionicons name="add-circle" size={18} color="grey" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[formStyles.input, { fontStyle: 'normal' }]}
+                  placeholder="Add item..."
+                  placeholderTextColor="grey"
+                  onChangeText={text => setNewItemText(text)}
+                  onSubmitEditing={() => {
+                    onAddChecklistItem(newItemText)
+                    setNewItemText('')
+                  }}
+                  value={newItemText}
+                />
+              </View>              
               )}
             </View>
             <View style={{ flex: 1 }}>
@@ -423,7 +427,7 @@ const EditChecklistForm = ({
               ))}
               {!isLimitReached && rightColumnItems.length < 10 && leftColumnItems.length === 10 && (
                 <View style={formStyles.inputBox}>
-                  <Ionicons name="add-circle" size={18} color="grey" />
+                  <Ionicons name="add-circle" size={18} color="grey" style={{ marginRight: 8 }}/>
                   <TextInput
                     style={[formStyles.input, { fontStyle: 'normal' }]}
                     placeholder="Add item..."
@@ -530,7 +534,7 @@ const CreateItemChecklistForm = ({
               ))}
               {!isLimitReached && leftColumnItems.length < 10 && (
                 <View style={formStyles.inputBox}>
-                  <Ionicons name="add-circle" size={18} color="grey" />
+                  <Ionicons name="add-circle" size={18} color="grey" style={{ marginRight: 8 }} />
                   <TextInput
                     style={[formStyles.input, { fontStyle: 'normal' }]}
                     placeholder="Add item..."
@@ -600,6 +604,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     padding: 15
   },
+  noChecklist: {
+    marginLeft: 15
+  },
   button: {
     position: 'absolute',
     width: 60,
@@ -635,7 +642,7 @@ const styles = StyleSheet.create({
     fontSize: 12
   },
   headerDetails: {
-    fontWeight: 600
+    fontWeight: '600'
   },
   icon: {
     marginLeft: 'auto',
@@ -665,32 +672,34 @@ const formStyles = StyleSheet.create({
   header: {
     fontSize: 18,
     fontWeight: '600',
-    paddingHorizontal: 30,
+    paddingHorizontal: 20,
     paddingVertical: 15
   },
   title: {
+    height: 20,
     marginBottom: 10,
-    paddingBottom: 3,
+    paddingBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: '#5F5F5F',
     fontSize: 12,
     alignItems: 'stretch'
   },
   details: {
+    height: 20,
     marginBottom: 10,
-    paddingBottom: 3,
+    paddingBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: '#5F5F5F',
     fontSize: 12
   },
   inputBox: {
     flexDirection: 'row',
-    alignItems: 'stretch'
+    alignItems: 'center', // Ensures vertical alignment of children
   },
   input: {
-    paddingLeft: 8,
     width: '80%',
-    fontSize: 12
+    fontSize: 12,
+    textAlignVertical: 'center', // Ensures text is vertically aligned in TextInput
   },
   dateButton: {
     backgroundColor: '#045D91',
@@ -722,7 +731,7 @@ const formStyles = StyleSheet.create({
   },
   checklistTitle: {
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: '600',
     marginBottom: 5,
     color: '#6A6A6A'
   },

@@ -88,7 +88,7 @@ const MessagingScreen = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/messages/${userId}/${recipientId}`)
+        const response = await fetch(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/messages/${userId}/${recipientId}`)
         const data = await response.json()
         setMessages(data)
       } catch (error) {
@@ -99,7 +99,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://localhost:8080')
+      ws.current = new WebSocket('ws://192.168.0.6:8080')
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')

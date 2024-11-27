@@ -17,11 +17,10 @@ import { TabView, SceneMap, TabBar } from 'react-native-tab-view'
 import React, { useContext, useEffect, useState } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as SecureStore from 'expo-secure-store'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import axios from 'axios'
 
 const Connection = () => {
-  const [isOpen, setIsOpen] = useState(false)
   const [friends, setFriends] = useState([])
   const [openUserId, setOpenUserId] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
@@ -30,6 +29,8 @@ const Connection = () => {
   const [currentPage, setCurrentPage] = useState('connections')
   const [nonFriends, setNonFriends] = useState([])
   const [sentFriendRequests, setSentFriendRequests] = useState([])
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [filteredFriends, setFilteredFriends] = useState([]);
 
   const router = useRouter()
 
@@ -65,8 +66,9 @@ const Connection = () => {
     setCurrentUserId(userId)
 
     try {
-      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/friendList/${userId}`)
+      const response = await axios.get(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/friendList/${userId}`)
       setFriends(response.data)
+      setFilteredFriends(response.data);
     } catch (error) {
       console.log('error retrieving friends', error)
     }
@@ -78,7 +80,7 @@ const Connection = () => {
 
   const removeFriend = async friendId => {
     try {
-      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/removeFriend`, {
+      const response = await fetch(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/removeFriend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -107,7 +109,7 @@ const Connection = () => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -132,7 +134,7 @@ const Connection = () => {
     }
 
     try {
-      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/friendRequest`, {
+      const response = await fetch(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/friendRequest`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -158,6 +160,22 @@ const Connection = () => {
     }
   }
 
+  const handleSearch = (text) => {
+    setSearchKeyword(text);
+  
+    if (text.trim() === '') {
+      // Reset filteredFriends to the full friends list if search is empty
+      setFilteredFriends(friends);
+    } else {
+      // Filter friends based on the search input
+      setFilteredFriends(
+        friends.filter((friend) =>
+          `${friend.firstName} ${friend.lastName}`.toLowerCase().includes(text.toLowerCase())
+        )
+      );
+    }
+  };
+
   const goToConnectPage = () => {
     setCurrentPage('connect')
   }
@@ -181,7 +199,7 @@ const Connection = () => {
                   {user.profilePicture ? (
                     <Image source={{ uri: user.profilePicture }} style={styles.profilePicture} />
                   ) : (
-                    <View style={styles.profilePicturePlaceholder} />
+                    <View style={styles.profilePictureSmall} />
                   )}
                   <View style={styles.profileInfo}>
                     <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
@@ -216,87 +234,108 @@ const Connection = () => {
 
   return (
     <View style={styles.tabContent}>
-      <TextInput style={styles.searchBar} placeholder="Search friend..." placeholderTextColor="grey" />
+      <TextInput
+        style={styles.searchBar}
+        placeholder="Search friend..."
+        placeholderTextColor="grey"
+        value={searchKeyword}
+        onChangeText={handleSearch} 
+      />
       <TouchableOpacity style={styles.addFriendButton} onPress={goToConnectPage}>
         <MaterialIcons name="person-add" size={12} color="white" />
         <Text style={styles.addFriendLink}>Connect...</Text>
       </TouchableOpacity>
       {friends.length > 0 ? (
-        <ScrollView>
-          {friends.map(friend => (
-            <View key={friend._id} style={styles.cardContainer}>
-              <View style={styles.profileContainer}>
-                {friend.profilePicture ? (
-                  <Image source={{ uri: friend.profilePicture }} style={styles.profilePicture} />
-                ) : (
-                  <View style={styles.profilePicturePlaceholder} />
-                )}
-                <View style={styles.profileInfo}>
-                  <Text style={styles.name}>{`${friend.firstName} ${friend.lastName}`}</Text>
-                  <Text style={styles.role}>{friend.role?.value}</Text>
-                  <TouchableOpacity
-                    style={styles.messageButton}
-                    onPress={() =>
-                      router.push({
-                        pathname: 'messages/messaging-screen',
-                        params: {
-                          id: friend._id,
-                          firstName: friend.firstName,
-                          lastName: friend.lastName,
-                          profilePicture: friend.profilePicture,
-                          email: friend.email,
-                          role: friend.role?.value,
-                          airline: friend.airline?.Name,
-                          homebase: `${friend.homebase?.IATA} - ${friend.homebase?.city}`
-                        }
-                      })
-                    }
-                  >
-                    <MaterialIcons name="message" size={12} color="white" />
-                    <Text style={styles.buttonText}>Message</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <TouchableOpacity onPress={() => toggleMenu(friend._id)}>
-                  <MaterialIcons name="more-vert" size={24} color="black" />
-                </TouchableOpacity>
-                {openUserId === friend._id && (
-                  <View style={styles.menuOptions}>
+        filteredFriends.length > 0 ? (
+          <ScrollView>
+            {filteredFriends.map((friend) => (
+              <View key={friend._id} style={styles.cardContainer}>
+                <View style={styles.profileContainer}>
+                  {/* Profile Picture */}
+                  {friend.profilePicture ? (
+                    <Image source={{ uri: friend.profilePicture }} style={styles.profilePicture} />
+                  ) : (
+                    <View style={styles.profilePictureSmall} />
+                  )}
+                  <View style={styles.profileInfo}>
+                    {/* Friend's Name */}
+                    <Text style={styles.name}>{`${friend.firstName} ${friend.lastName}`}</Text>
+                    {/* Friend's Role */}
+                    <Text style={styles.role}>{friend.role?.value}</Text>
+
+                    {/* Message Button */}
                     <TouchableOpacity
-                      style={[styles.menuButton, styles.menuItem]}
-                      onPress={e => {
-                        e.stopPropagation() // Prevent closing when clicking an option
-                        openProfileModal(friend)
-                        handleOptionClick('View Profile')
-                      }}
+                      style={styles.messageButton}
+                      onPress={() =>
+                        router.push({
+                          pathname: 'messages/messaging-screen',
+                          params: {
+                            id: friend._id,
+                            firstName: friend.firstName,
+                            lastName: friend.lastName,
+                            profilePicture: friend.profilePicture,
+                            email: friend.email,
+                            role: friend.role?.value,
+                            airline: friend.airline?.Name,
+                            homebase: `${friend.homebase?.IATA} - ${friend.homebase?.city}`,
+                          },
+                        })
+                      }
                     >
-                      <MaterialIcons style={styles.menuIcon} name="visibility" size={16} color="black" />
-                      <Text style={[styles.menuText, { color: 'black' }]}>View Profile</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.menuButton}
-                      onPress={e => {
-                        e.stopPropagation() // Prevent closing when clicking an option
-                        removeFriend(friend._id) // Call removeFriend with the friend's ID
-                        handleOptionClick('Remove Friend')
-                      }}
-                    >
-                      <MaterialIcons style={styles.menuIcon} name="delete" size={16} color="red" />
-                      <Text style={[styles.menuText, { color: 'red' }]}>Remove Friend</Text>
+                      <MaterialIcons name="message" size={12} color="white" />
+                      <Text style={styles.buttonText}>Message</Text>
                     </TouchableOpacity>
                   </View>
-                )}
+                </View>
+
+                {/* Friend Options */}
+                <View style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity onPress={() => toggleMenu(friend._id)}>
+                    <MaterialIcons name="more-vert" size={24} color="black" />
+                  </TouchableOpacity>
+                  {openUserId === friend._id && (
+                    <View style={styles.menuOptions}>
+                      <TouchableOpacity
+                        style={[styles.menuButton, styles.menuItem]}
+                        onPress={(e) => {
+                          e.stopPropagation(); // Prevent closing when clicking an option
+                          openProfileModal(friend);
+                          handleOptionClick('View Profile');
+                        }}
+                      >
+                        <MaterialIcons style={styles.menuIcon} name="visibility" size={16} color="black" />
+                        <Text style={[styles.menuText, { color: 'black' }]}>View Profile</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.menuButton}
+                        onPress={(e) => {
+                          e.stopPropagation(); // Prevent closing when clicking an option
+                          removeFriend(friend._id); // Call removeFriend with the friend's ID
+                          handleOptionClick('Remove Friend');
+                        }}
+                      >
+                        <MaterialIcons style={styles.menuIcon} name="delete" size={16} color="red" />
+                        <Text style={[styles.menuText, { color: 'red' }]}>Remove Friend</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
-          ))}
-        </ScrollView>
+            ))}
+          </ScrollView>
+        ) : (
+          // Case 2: Friends exist, but no matches
+          <View style={styles.noFriendsContainer}>
+            <Text style={styles.noFriendsText}>No friends found.</Text>
+          </View>
+        )
       ) : (
-        // Display message when there are no friends
+        // Case 1: No friends in the user's friend list
         <View style={styles.noFriendsContainer}>
-          <Text style={styles.noFriendsText}>You have no connection yet, go connect with people.</Text>
+          <Text style={styles.noFriendsText}>You have no connection yet. Go connect with people.</Text>
         </View>
       )}
+
       {openUserId && (
         <TouchableWithoutFeedback onPress={handleCloseMenu}>
           <View style={styles.overlay} />
@@ -311,7 +350,6 @@ const Connection = () => {
         <TouchableWithoutFeedback onPress={closeProfileModal}>
           <View style={styles.modalOverlay}>
             <View style={styles.profileModalContainer}>
-              {/* Modal Header */}
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={closeProfileModal} style={styles.closeButtonContainer}>
                   <View style={styles.closeButtonContent}>
@@ -334,7 +372,11 @@ const Connection = () => {
               {selectedUser && (
                 <>
                   <View style={styles.profileImageContainer}>
-                    <View style={styles.profilePictureLarge} />
+                    {selectedUser.profilePicture ? (
+                      <Image source={{ uri: selectedUser.profilePicture }} style={styles.viewProfilePicture} />
+                    ) : (
+                      <View style={styles.profilePictureLarge} />
+                    )}
                   </View>
                   <Text style={styles.profileName}>
                     {selectedUser.firstName} {selectedUser.lastName}
@@ -397,7 +439,7 @@ const Message = () => {
 
     try {
       const response = await axios.get(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/messages/conversations/${userId}`
       )
       setConversations(response.data)
     } catch (error) {
@@ -441,7 +483,7 @@ const Message = () => {
                   {otherUser.profilePicture ? (
                     <Image source={{ uri: otherUser.profilePicture }} style={styles.profilePicture} />
                   ) : (
-                    <View style={styles.profilePicturePlaceholder} />
+                    <View style={styles.profilePictureSmall} />
                   )}
                   <View style={styles.profileInfo}>
                     <Text style={styles.name}>{`${otherUser.firstName} ${otherUser.lastName}`}</Text>
@@ -473,7 +515,7 @@ const Request = () => {
     setUserId(userId)
     try {
       if (userId) {
-        const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/addFriend/${userId}`)
+        const response = await axios.get(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/addFriend/${userId}`)
         setRequests(response.data)
       }
     } catch (error) {
@@ -492,7 +534,7 @@ const Request = () => {
     }
 
     try {
-      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/acceptRequest`, {
+      const response = await fetch(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/acceptRequest`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -524,7 +566,7 @@ const Request = () => {
 
     try {
       const response = await fetch(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
@@ -562,7 +604,7 @@ const Request = () => {
                 {request.profilePicture ? (
                   <Image source={{ uri: request.profilePicture }} style={styles.profilePicture} />
                 ) : (
-                  <View style={styles.profilePicturePlaceholder} />
+                  <View style={styles.profilePictureSmall} />
                 )}
                 <View style={styles.profileInfo}>
                   <Text style={styles.name}>{`${request.firstName} ${request.lastName}`}</Text>
@@ -617,7 +659,9 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const [index, setIndex] = useState(0)
+  const { tab } = useLocalSearchParams(); 
+  const [index, setIndex] = useState(tab === 'connection' ? 0 : tab === 'message' ? 1 : 2); 
+  
   const [routes] = useState([
     { key: 'connection', title: 'Connection' },
     { key: 'message', title: 'Message' },
@@ -688,7 +732,14 @@ const styles = StyleSheet.create({
     width: 65,
     height: 65,
     borderRadius: 50,
-    backgroundColor: '#CCCCCC', // Placeholder color for profile picture
+    backgroundColor: '#CCCCCC', 
+    marginRight: 15
+  },
+  viewProfilePicture: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#CCCCCC',
     marginRight: 15
   },
   profileInfo: {
@@ -846,6 +897,12 @@ const styles = StyleSheet.create({
   profilePictureLarge: {
     width: 100,
     height: 100,
+    borderRadius: 50,
+    backgroundColor: '#CCCCCC' // Placeholder color for profile picture
+  },
+  profilePictureSmall: {
+    width: 65,
+    height: 65,
     borderRadius: 50,
     backgroundColor: '#CCCCCC' // Placeholder color for profile picture
   },

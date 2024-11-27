@@ -46,7 +46,7 @@ const EventsBookmark = () => {
         const source = axios.CancelToken.source()
 
         const response = await axios.get(
-          `https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
+          `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
           {
             params: { page, limit: 10, search: query },
             cancelToken: source.token
@@ -88,7 +88,7 @@ const EventsBookmark = () => {
           onPress: async () => {
             try {
               const userId = await SecureStore.getItemAsync('userId')
-              await axios.post('https://40c7-115-164-76-186.ngrok-free.app/api/bookmarks/unbookmark', {
+              await axios.post('https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/bookmarks/unbookmark', {
                 userId,
                 sourceType: 'EVENT_API',
                 eventId: item.eventId,

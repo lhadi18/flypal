@@ -3,25 +3,27 @@ import { Request, Response } from 'express'
 import mongoose from 'mongoose'
 
 // Create a new message
-export const createMessage = async (req: Request, res: Response) => {
-  const { sender, recipient, content } = req.body
+export const createMessage = async (req: Request, res: Response): Promise<void> => {
+  const { sender, recipient, content } = req.body;
 
   if (!sender || !recipient || !content) {
-    return res.status(400).json({ error: 'All fields are required.' })
+    res.status(400).json({ error: 'All fields are required.' });
+    return; // Ensure early exit
   }
 
   try {
     const message = await Message.create({
       sender,
       recipient,
-      content
-    })
+      content,
+    });
 
-    res.status(201).json(message)
+    res.status(201).json(message);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to send message.' })
+    console.error('Error creating message:', error);
+    res.status(500).json({ error: 'Failed to send message.' });
   }
-}
+};
 
 export const getConversations = async (req: Request, res: Response) => {
   const { userId } = req.params

@@ -220,7 +220,6 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     color: 'white',
-    fontFamily: 'Roboto-Regular',
     fontSize: 16,
     textAlign: 'center',
     fontWeight: 'bold'
