@@ -226,7 +226,7 @@ export const friendList = async (req: Request, res: Response) => {
   try {
     const user = await User.findById(userId).populate({
       path: 'friends',
-      select: 'firstName lastName email homebase airline role',
+      select: 'firstName lastName email homebase airline role profilePicture',
       populate: [
         { path: 'homebase', select: 'IATA ICAO city' },
         { path: 'airline', select: 'ICAO Name' },
