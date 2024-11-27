@@ -326,22 +326,22 @@ const Checklists = () => {
 }
 
 const EditChecklistForm = ({
-  checklist,
-  onItemChange,
-  onFlightRouteChange,
-  onAddChecklistItem,
-  onClose,
-  displayDatePicker,
-  handleConfirm,
-  hideDatePicker,
-  isDatePickerVisible,
-  newItemText,
-  setNewItemText,
-  onRemoveChecklistItem,
-  leftColumnItems,
-  rightColumnItems,
-  isLimitReached,
-  onUpdate
+  checklist = {},
+  onItemChange = () => {},
+  onFlightRouteChange = () => {},
+  onAddChecklistItem = () => {},
+  onClose = () => {},
+  displayDatePicker = () => {},
+  handleConfirm = () => {},
+  hideDatePicker = () => {},
+  isDatePickerVisible = false,
+  newItemText = "",
+  setNewItemText = () => {},
+  onRemoveChecklistItem = () => {},
+  leftColumnItems = [],
+  rightColumnItems = [],
+  isLimitReached = false,
+  onUpdate = () => {},
 }) => {
   const getLocalTime = time => {
     return moment(time).format('DD/MM/YYYY')
@@ -356,7 +356,7 @@ const EditChecklistForm = ({
             style={formStyles.title}
             placeholder="Enter title..."
             placeholderTextColor="grey"
-            value={checklist.title}
+            value={checklist.title || ''}
             onChangeText={onItemChange}
           />
           <Ionicons name="pencil" size={18} color="#000" />
@@ -366,7 +366,7 @@ const EditChecklistForm = ({
             style={formStyles.details}
             placeholder="Enter flight route..."
             placeholderTextColor="grey"
-            value={checklist.flightRoute}
+            value={checklist.flightRoute || ''}
             onChangeText={onFlightRouteChange}
           />
           <Ionicons name="pencil" size={18} color="#000" />
@@ -458,24 +458,24 @@ const EditChecklistForm = ({
 }
 
 const CreateItemChecklistForm = ({
-  newItem,
-  onItemChange,
-  flightRoute,
-  onFlightRouteChange,
-  travelDate,
-  displayDatePicker,
-  hideDatePicker,
-  isDatePickerVisible,
-  handleConfirm,
-  newItemText,
-  setNewItemText,
-  onAddChecklistItem,
-  onRemoveChecklistItem,
-  leftColumnItems,
-  rightColumnItems,
-  isLimitReached,
-  onClose,
-  onCreate
+  newItem = "",
+  onItemChange = () => {},
+  flightRoute = "",
+  onFlightRouteChange = () => {},
+  travelDate = "",
+  displayDatePicker = () => {},
+  hideDatePicker = () => {},
+  isDatePickerVisible = false,
+  handleConfirm = () => {},
+  newItemText = "",
+  setNewItemText = () => {},
+  onAddChecklistItem = () => {},
+  onRemoveChecklistItem = () => {},
+  leftColumnItems = [],
+  rightColumnItems = [],
+  isLimitReached = false,
+  onClose = () => {},
+  onCreate = () => {},
 }) => {
   const getLocalTime = time => {
     return moment(time).format('DD/MM/YYYY')

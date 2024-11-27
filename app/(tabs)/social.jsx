@@ -14,7 +14,8 @@ import {
 } from 'react-native'
 import { MenuProvider, Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu'
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view'
-import React, { useContext, useEffect, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useEffect, useState, useRef } from 'react'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as SecureStore from 'expo-secure-store'
 import { useRouter, useLocalSearchParams } from 'expo-router'
@@ -429,39 +430,99 @@ const Connection = () => {
 }
 
 const Message = () => {
-  const [conversations, setConversations] = useState([])
-  const [userId, setUserId] = useState(null)
-  const router = useRouter()
+  const [conversations, setConversations] = useState([]);
+  const [userId, setUserId] = useState(null);
+  const router = useRouter();
+  const ws = useRef(null);
 
   const fetchConversations = async () => {
-    const userId = await SecureStore.getItemAsync('userId')
-    setUserId(userId)
+    const userId = await SecureStore.getItemAsync('userId');
+    setUserId(userId);
 
     try {
       const response = await axios.get(
         `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/messages/conversations/${userId}`
-      )
-      setConversations(response.data)
+      );
+      const sortedConversations = response.data.sort(
+        (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
+      );
+      setConversations(sortedConversations);
     } catch (error) {
-      console.log('Error fetching conversations:', error)
+      console.log('Error fetching conversations:', error);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchConversations()
-  }, [])
+    // Fetch initial conversations
+    fetchConversations();
+
+    // Set up WebSocket
+    ws.current = new WebSocket('ws://192.168.0.6:8080');
+    ws.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'chat_message') {
+        // Update conversations
+        setConversations((prevConversations) => {
+          let conversationFound = false;
+
+          const updatedConversations = prevConversations.map((conversation) => {
+            if (
+              (conversation.sender._id === data.sender &&
+                conversation.recipient._id === data.recipient) ||
+              (conversation.sender._id === data.recipient &&
+                conversation.recipient._id === data.sender)
+            ) {
+              conversationFound = true;
+              return {
+                ...conversation,
+                lastMessage: data.content,
+                lastTimestamp: data.timestamp,
+              };
+            }
+            return conversation;
+          });
+
+          // If no matching conversation, add a new one
+          if (!conversationFound) {
+            const otherUser =
+              data.sender === userId ? data.recipientDetails : data.senderDetails;
+            updatedConversations.push({
+              sender: data.senderDetails,
+              recipient: data.recipientDetails,
+              lastMessage: data.content,
+              lastTimestamp: data.timestamp,
+            });
+          }
+
+          return updatedConversations.sort(
+            (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
+          );
+        });
+      }
+    };
+
+    return () => {
+      ws.current.close();
+    };
+  }, []);
+
+  // Refresh conversations when returning to this screen
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchConversations();
+    }, [])
+  );
 
   return (
     <View style={styles.tabContent}>
       {conversations.length > 0 ? (
-        <FlatList
-          data={conversations}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item }) => {
-            const otherUser = item.sender._id === userId ? item.recipient : item.sender
-
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          {conversations.map((item, index) => {
+            const otherUser =
+              item.sender._id === userId ? item.recipient : item.sender;
             return (
               <TouchableOpacity
+                key={index}
                 style={styles.cardContainer}
                 onPress={() =>
                   router.push({
@@ -474,14 +535,17 @@ const Message = () => {
                       email: otherUser.email,
                       role: otherUser.role?.value,
                       airline: otherUser.airline?.Name,
-                      homebase: `${otherUser.homebase?.IATA} - ${otherUser.homebase?.city}`
-                    }
+                      homebase: `${otherUser.homebase?.IATA} - ${otherUser.homebase?.city}`,
+                    },
                   })
                 }
               >
                 <View style={styles.profileContainer}>
                   {otherUser.profilePicture ? (
-                    <Image source={{ uri: otherUser.profilePicture }} style={styles.profilePicture} />
+                    <Image
+                      source={{ uri: otherUser.profilePicture }}
+                      style={styles.profilePicture}
+                    />
                   ) : (
                     <View style={styles.profilePictureSmall} />
                   )}
@@ -492,17 +556,17 @@ const Message = () => {
                   </View>
                 </View>
               </TouchableOpacity>
-            )
-          }}
-        />
+            );
+          })}
+        </ScrollView>
       ) : (
         <View style={styles.noFriendsContainer}>
           <Text style={styles.noFriendsText}>No conversations yet. Start a chat!</Text>
         </View>
       )}
     </View>
-  )
-}
+  );
+};
 
 const Request = () => {
   const [requests, setRequests] = useState([])
