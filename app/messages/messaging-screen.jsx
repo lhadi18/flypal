@@ -109,7 +109,15 @@ const MessagingScreen = () => {
       ws.current.onmessage = event => {
         const data = JSON.parse(event.data)
 
-        // Handle user status updates
+        if (data.type === 'online_users') {
+          data.users.forEach(user => {
+            // Update user statuses based on the online_users list
+            if (user.userId === recipientId) {
+              setUserStatus('online')
+            }
+          })
+        }
+
         if (data.type === 'status_change' && data.userId === recipientId) {
           setUserStatus(data.status)
         }

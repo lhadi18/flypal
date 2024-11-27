@@ -44,8 +44,31 @@ const PORT = process.env.PORT || 8080
 
 const httpServer = http.createServer(app)
 
+// Set up WebSocket server
+const { wss, cleanup } = setupWebSocketServer(httpServer)
+
 httpServer.listen(PORT, () => {
   console.log(`HTTP Server running on port ${PORT}`)
 })
 
-setupWebSocketServer(httpServer)
+// Graceful shutdown
+function shutdown() {
+  console.log('Shutting down server...')
+
+  httpServer.close(() => {
+    console.log('HTTP server closed')
+  })
+
+  cleanup(() => {
+    console.log('WebSocket server cleaned up')
+    process.exit(0) // Exit the process after cleanup
+  })
+
+  setTimeout(() => {
+    console.error('Forced shutdown')
+    process.exit(1)
+  }, 5000)
+}
+
+process.on('SIGINT', shutdown) // Catch Ctrl+C
+process.on('SIGTERM', shutdown) // Catch termination signal

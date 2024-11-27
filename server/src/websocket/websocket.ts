@@ -5,7 +5,7 @@ type ClientsMap = Map<string, any> // Map of connected clients
 const onlineUsers = new Set<string>() // Set to track online users
 const readCache: Map<string, Set<string>> = new Map()
 
-export function setupWebSocketServer(server: any): void {
+export function setupWebSocketServer(server: any) {
   const wss = new WebSocketServer({ server })
   const clients: ClientsMap = new Map()
 
@@ -30,6 +30,15 @@ export function setupWebSocketServer(server: any): void {
           clients.set(userId, ws)
           onlineUsers.add(userId) // Add user to online users
           console.log(`User registered: ${userId}`)
+
+          // Notify all clients, including the newly connected one, of online users
+          const onlineUsersList = Array.from(onlineUsers).map(id => ({
+            userId: id,
+            status: 'online'
+          }))
+
+          // Send the online users list to the new client
+          ws.send(JSON.stringify({ type: 'online_users', users: onlineUsersList }))
 
           // Notify other clients about this user's online status
           broadcastStatusChange(clients, userId, 'online')
@@ -124,7 +133,6 @@ export function setupWebSocketServer(server: any): void {
       console.log('Client disconnected')
       let disconnectedUserId
 
-      // Remove the disconnected client from the clients map and online users set
       clients.forEach((clientWs, userId) => {
         if (clientWs === ws) {
           disconnectedUserId = userId
@@ -133,7 +141,6 @@ export function setupWebSocketServer(server: any): void {
         }
       })
 
-      // Notify other clients about this user's offline status
       if (disconnectedUserId) {
         broadcastStatusChange(clients, disconnectedUserId, 'offline')
         console.log(`User disconnected: ${disconnectedUserId}`)
@@ -142,6 +149,17 @@ export function setupWebSocketServer(server: any): void {
   })
 
   console.log('WebSocket server setup complete')
+
+  // Cleanup function for graceful shutdown
+  function cleanup(callback: () => void) {
+    console.log('Cleaning up WebSocket server...')
+    wss.clients.forEach(client => {
+      client.close() // Close each client
+    })
+    wss.close(callback) // Close the WebSocket server
+  }
+
+  return { wss, cleanup }
 }
 
 // Broadcast a user's status change to all connected clients
