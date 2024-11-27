@@ -3,6 +3,7 @@ import { WebSocketServer } from 'ws'
 
 type ClientsMap = Map<string, any> // Map of connected clients
 const onlineUsers = new Set<string>() // Set to track online users
+const readCache: Map<string, Set<string>> = new Map()
 
 export function setupWebSocketServer(server: any): void {
   const wss = new WebSocketServer({ server })
@@ -75,6 +76,41 @@ export function setupWebSocketServer(server: any): void {
               clients.get(userId).send(JSON.stringify(chatMessage))
             }
           })
+          return
+        }
+
+        if (parsedData.type === 'read_receipt') {
+          const { senderId, recipientId, messageIds } = parsedData
+          const cacheKey = `${senderId}_${recipientId}`
+
+          if (!readCache.has(cacheKey)) {
+            readCache.set(cacheKey, new Set())
+          }
+
+          const cachedIds = readCache.get(cacheKey)!
+          messageIds.forEach((id: string) => cachedIds.add(id))
+
+          const readReceiptMessage = {
+            type: 'read_receipt',
+            senderId,
+            recipientId,
+            messageIds
+          }
+
+          ;[senderId, recipientId].forEach(userId => {
+            if (clients.has(userId)) {
+              clients.get(userId).send(JSON.stringify(readReceiptMessage))
+            }
+          })
+
+          setTimeout(async () => {
+            const idsToUpdate = Array.from(cachedIds)
+            await Message.updateMany(
+              { _id: { $in: idsToUpdate }, sender: recipientId, recipient: senderId, read: false },
+              { $set: { read: true } }
+            )
+            readCache.delete(cacheKey)
+          }, 5000)
           return
         }
 

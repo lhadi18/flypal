@@ -123,6 +123,12 @@ const MessagingScreen = () => {
             flatListRef.current?.scrollToEnd({ animated: true })
           }
         }
+
+        if (data.type === 'read_receipt') {
+          setMessages(prevMessages =>
+            prevMessages.map(message => (data.messageIds.includes(message._id) ? { ...message, read: true } : message))
+          )
+        }
       }
 
       ws.current.onclose = () => {
@@ -212,9 +218,37 @@ const MessagingScreen = () => {
     return (
       <View style={[styles.messageContainer, isMe ? styles.myMessageContainer : styles.theirMessageContainer]}>
         <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{message.content}</Text>
-        <Text style={styles.timestamp}>{format(new Date(message.timestamp), 'h:mm a')}</Text>
+        <Text style={styles.timestamp}>
+          {format(new Date(message.timestamp), 'h:mm a')}
+          {isMe && message.read && <Text style={styles.readIndicator}> ✓✓</Text>}
+        </Text>
       </View>
     )
+  }
+
+  const handleViewableItemsChanged = ({ viewableItems }) => {
+    const readMessageIds = viewableItems
+      .filter(item => item.type === 'message' && item.message.recipient === userId && !item.message.read)
+      .map(item => item.message._id)
+
+    if (readMessageIds.length > 0) {
+      ws.current.send(
+        JSON.stringify({
+          type: 'read_receipt',
+          senderId: userId,
+          recipientId,
+          messageIds: readMessageIds
+        })
+      )
+
+      setMessages(prevMessages =>
+        prevMessages.map(message => (readMessageIds.includes(message._id) ? { ...message, read: true } : message))
+      )
+    }
+  }
+
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50
   }
 
   const getFlatListData = () => {
@@ -287,6 +321,8 @@ const MessagingScreen = () => {
             }
           }}
           keyboardShouldPersistTaps="handled"
+          onViewableItemsChanged={handleViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
         />
 
         {/* Input Field */}
@@ -448,5 +484,10 @@ const styles = StyleSheet.create({
     borderColor: '#00000080', // Black with 50% opacity
     borderRadius: 10,
     backgroundColor: '#ffffff'
+  },
+  readIndicator: {
+    color: '#4CAF50',
+    marginLeft: 5,
+    fontSize: 12
   }
 })
