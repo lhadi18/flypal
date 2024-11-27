@@ -8,20 +8,48 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Keyboard
+  Image
 } from 'react-native'
 import React, { useState, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { useLocalSearchParams } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
+import { debounce } from 'lodash'
 
 const MessagingScreen = () => {
-  const { firstName, lastName, id: recipientId } = useLocalSearchParams()
+  const { firstName, lastName, id: recipientId, profilePicture } = useLocalSearchParams()
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
   const [userId, setUserId] = useState(null)
+  const [userStatus, setUserStatus] = useState('offline')
+  const [drafts, setDrafts] = useState({})
+  const [isAtBottom, setIsAtBottom] = useState(true) // Track if the user is viewing the bottom of the list
+
   const ws = useRef(null)
   const flatListRef = useRef(null)
+
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const savedDraft = await SecureStore.getItemAsync(`draft_${recipientId}`)
+        if (savedDraft) {
+          setInputText(savedDraft)
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error)
+      }
+    }
+
+    loadDraft()
+  }, [recipientId])
+
+  useEffect(() => {
+    return () => {
+      SecureStore.setItemAsync(`draft_${recipientId}`, inputText).catch(error =>
+        console.error('Error autosaving draft on unmount:', error)
+      )
+    }
+  }, [inputText, recipientId])
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -56,36 +84,58 @@ const MessagingScreen = () => {
 
     fetchMessages()
 
-    ws.current = new WebSocket('ws://localhost:8080')
+    const setupWebSocket = () => {
+      ws.current = new WebSocket('ws://localhost:8080')
 
-    ws.current.onopen = () => {
-      console.log('WebSocket connected')
-      ws.current.send(JSON.stringify({ type: 'register', userId }))
-    }
+      ws.current.onopen = () => {
+        console.log('WebSocket connected')
+        ws.current.send(JSON.stringify({ type: 'register', userId }))
+      }
 
-    ws.current.onmessage = event => {
-      console.log('Received message from WebSocket:', event.data)
-      const message = JSON.parse(event.data)
+      ws.current.onmessage = event => {
+        const data = JSON.parse(event.data)
 
-      setMessages(prevMessages => {
-        const exists = prevMessages.some(msg => msg._id === message._id)
-        if (exists) {
-          return prevMessages
+        // Handle user status updates
+        if (data.type === 'status_change' && data.userId === recipientId) {
+          setUserStatus(data.status)
         }
-        return [...prevMessages, message]
-      })
 
-      flatListRef.current?.scrollToEnd({ animated: true })
+        // Handle incoming chat messages
+        if (data.type === 'chat_message') {
+          setMessages(prevMessages => [...prevMessages, data])
+
+          // Auto-scroll only if the user is already at the bottom
+          if (isAtBottom) {
+            flatListRef.current?.scrollToEnd({ animated: true })
+          }
+        }
+      }
+
+      ws.current.onclose = () => {
+        console.log('WebSocket disconnected. Reconnecting...')
+        setTimeout(setupWebSocket, 3000) // Retry after 3 seconds
+      }
     }
 
-    ws.current.onclose = () => {
-      console.log('WebSocket disconnected')
-    }
+    setupWebSocket()
 
     return () => {
-      ws.current.close()
+      ws.current?.close()
     }
   }, [userId])
+
+  const handleInputChange = text => {
+    setInputText(text)
+    setDrafts(prevDrafts => ({
+      ...prevDrafts,
+      [recipientId]: text
+    }))
+    debouncedSaveDraft(`draft_${recipientId}`, text)
+  }
+
+  const debouncedSaveDraft = debounce((key, value) => {
+    SecureStore.setItemAsync(key, value).catch(error => console.error('Error saving draft:', error))
+  }, 300)
 
   const handleSendMessage = () => {
     if (inputText.trim()) {
@@ -97,15 +147,23 @@ const MessagingScreen = () => {
         timestamp: new Date().toISOString()
       }
 
-      console.log('Sending message:', message)
+      try {
+        ws.current.send(JSON.stringify({ ...message, type: 'chat_message' }))
+        setMessages(prevMessages => [...prevMessages, message])
+        flatListRef.current?.scrollToEnd({ animated: true })
 
-      setMessages(prevMessages => [...prevMessages, message])
+        setInputText('')
+        setDrafts(prevDrafts => ({
+          ...prevDrafts,
+          [recipientId]: ''
+        }))
 
-      flatListRef.current?.scrollToEnd({ animated: true })
-
-      ws.current.send(JSON.stringify(message))
-
-      setInputText('')
+        SecureStore.deleteItemAsync(`draft_${recipientId}`).catch(error =>
+          console.error('Error clearing draft:', error)
+        )
+      } catch (error) {
+        console.error('Failed to send message:', error)
+      }
     }
   }
 
@@ -166,9 +224,30 @@ const MessagingScreen = () => {
       >
         {/* Chat Header */}
         <View style={styles.header}>
-          <Text style={styles.headerText}>
-            Chatting with {firstName} {lastName}
-          </Text>
+          <TouchableOpacity style={styles.backButton}></TouchableOpacity>
+          <View style={styles.profileImageContainer}>
+            <Image
+              source={
+                profilePicture
+                  ? { uri: profilePicture }
+                  : { uri: 'https://avatars.githubusercontent.com/u/92809183?v=4' }
+              }
+              style={styles.profileImage}
+            />
+            {/* Status Dot */}
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: userStatus === 'online' ? '#4CAF50' : '#B0BEC5' } // Green for online, grey for offline
+              ]}
+            />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerText}>
+              {firstName} {lastName}
+            </Text>
+            <Text style={styles.statusText}>{userStatus === 'online' ? 'Online' : 'Offline'}</Text>
+          </View>
         </View>
 
         {/* Messages List */}
@@ -178,8 +257,15 @@ const MessagingScreen = () => {
           keyExtractor={(item, index) => (item.type === 'header' ? `header-${item.date}` : item.message._id)}
           renderItem={renderItem}
           contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onScroll={({ nativeEvent }) => {
+            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
+            setIsAtBottom(layoutMeasurement.height + contentOffset.y >= contentSize.height - 20)
+          }}
+          onContentSizeChange={() => {
+            if (isAtBottom) {
+              flatListRef.current?.scrollToEnd({ animated: true })
+            }
+          }}
           keyboardShouldPersistTaps="handled"
         />
 
@@ -189,9 +275,10 @@ const MessagingScreen = () => {
             style={styles.textInput}
             placeholder="Type your message..."
             value={inputText}
-            onChangeText={setInputText}
+            onChangeText={handleInputChange}
             onFocus={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />
+
           <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
             <Text style={styles.sendButtonText}>Send</Text>
           </TouchableOpacity>
@@ -212,14 +299,50 @@ const styles = StyleSheet.create({
     flex: 1
   },
   header: {
-    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     backgroundColor: '#045D91',
+    elevation: 4 // For subtle shadow effect on Android
+  },
+  headerContent: {
+    flexDirection: 'row',
     alignItems: 'center'
+  },
+  headerTextContainer: {
+    marginLeft: 10
   },
   headerText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold'
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 14,
+    marginTop: 2
+  },
+  profileImageContainer: {
+    position: 'relative', // Enable absolute positioning for the dot
+    width: 40,
+    height: 40
+  },
+  profileImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#e1e1e1'
+  },
+  statusDot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2, // To create a border around the dot
+    borderColor: '#fff', // Matches the background color of the profile image container
+    bottom: 0,
+    right: 0
   },
   messagesList: {
     flexGrow: 1,

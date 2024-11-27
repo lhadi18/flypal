@@ -100,3 +100,23 @@ export const getMessages = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch messages.' })
   }
 }
+
+export const markMessagesAsRead = async (req: Request, res: Response) => {
+  const { senderId, recipientId } = req.params
+
+  try {
+    const result = await Message.updateMany(
+      {
+        sender: senderId,
+        recipient: recipientId,
+        read: false
+      },
+      { $set: { read: true } }
+    )
+
+    res.status(200).json({ success: true, updatedCount: result.modifiedCount })
+  } catch (error) {
+    console.error('Error marking messages as read:', error)
+    res.status(500).json({ error: 'Failed to mark messages as read.' })
+  }
+}
