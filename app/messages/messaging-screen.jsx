@@ -17,6 +17,8 @@ import { useLocalSearchParams } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { debounce } from 'lodash'
 
+const READ_RECEIPT_ICON = require('../../assets/icons/read-receipt.png')
+
 const MessagingScreen = () => {
   const {
     id: recipientId,
@@ -39,8 +41,6 @@ const MessagingScreen = () => {
 
   const ws = useRef(null)
   const flatListRef = useRef(null)
-
-  console.log(homebase)
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -133,7 +133,7 @@ const MessagingScreen = () => {
 
       ws.current.onclose = () => {
         console.log('WebSocket disconnected. Reconnecting...')
-        setTimeout(setupWebSocket, 3000) // Retry after 3 seconds
+        setTimeout(setupWebSocket, 3000)
       }
     }
 
@@ -207,6 +207,13 @@ const MessagingScreen = () => {
     return Object.entries(grouped).map(([date, messages]) => ({ date, messages }))
   }
 
+  const TimestampWithReadReceipt = ({ timestamp, isRead }) => (
+    <View style={styles.timestampContainer}>
+      {isRead && <Image source={READ_RECEIPT_ICON} style={styles.readReceiptIcon} />}
+      <Text style={styles.timestamp}>{format(new Date(timestamp), 'h:mm a')}</Text>
+    </View>
+  )
+
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
       return <Text style={styles.dateHeader}>{item.date}</Text>
@@ -218,10 +225,7 @@ const MessagingScreen = () => {
     return (
       <View style={[styles.messageContainer, isMe ? styles.myMessageContainer : styles.theirMessageContainer]}>
         <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{message.content}</Text>
-        <Text style={styles.timestamp}>
-          {format(new Date(message.timestamp), 'h:mm a')}
-          {isMe && message.read && <Text style={styles.readIndicator}> ✓✓</Text>}
-        </Text>
+        <TimestampWithReadReceipt timestamp={message.timestamp} isRead={isMe && message.read} />
       </View>
     )
   }
@@ -442,8 +446,18 @@ const styles = StyleSheet.create({
   timestamp: {
     fontSize: 10,
     color: '#aaa',
-    marginTop: 5,
     textAlign: 'right'
+  },
+  timestampContainer: {
+    flexDirection: 'row-reverse',
+    alignSelf: 'flex-end',
+    alignItems: 'center',
+    marginTop: 5
+  },
+  readReceiptIcon: {
+    width: 16,
+    height: 16,
+    marginLeft: 5
   },
   inputContainer: {
     flexDirection: 'row',
@@ -481,13 +495,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: '#00000080', // Black with 50% opacity
+    borderColor: '#00000080',
     borderRadius: 10,
     backgroundColor: '#ffffff'
-  },
-  readIndicator: {
-    color: '#4CAF50',
-    marginLeft: 5,
-    fontSize: 12
   }
 })
