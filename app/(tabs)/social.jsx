@@ -9,7 +9,8 @@ import {
   Modal,
   ScrollView,
   FlatList,
-  Pressable
+  Pressable,
+  Image
 } from 'react-native'
 import { MenuProvider, Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu'
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view'
@@ -177,7 +178,11 @@ const Connection = () => {
             nonFriends.map(user => (
               <View key={user._id} style={styles.cardContainer}>
                 <View style={styles.profileContainer}>
-                  <View style={styles.profilePicture} />
+                  {user.profilePicture ? (
+                    <Image source={{ uri: user.profilePicture }} style={styles.profilePicture} />
+                  ) : (
+                    <View style={styles.profilePicturePlaceholder} />
+                  )}
                   <View style={styles.profileInfo}>
                     <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
                     <Text style={styles.role}>{user.role?.value}</Text>
@@ -221,7 +226,11 @@ const Connection = () => {
           {friends.map(friend => (
             <View key={friend._id} style={styles.cardContainer}>
               <View style={styles.profileContainer}>
-                <View style={styles.profilePicture} />
+                {friend.profilePicture ? (
+                  <Image source={{ uri: friend.profilePicture }} style={styles.profilePicture} />
+                ) : (
+                  <View style={styles.profilePicturePlaceholder} />
+                )}
                 <View style={styles.profileInfo}>
                   <Text style={styles.name}>{`${friend.firstName} ${friend.lastName}`}</Text>
                   <Text style={styles.role}>{friend.role?.value}</Text>
@@ -429,7 +438,11 @@ const Message = () => {
                 }
               >
                 <View style={styles.profileContainer}>
-                  <View style={styles.profilePicture} />
+                  {otherUser.profilePicture ? (
+                    <Image source={{ uri: otherUser.profilePicture }} style={styles.profilePicture} />
+                  ) : (
+                    <View style={styles.profilePicturePlaceholder} />
+                  )}
                   <View style={styles.profileInfo}>
                     <Text style={styles.name}>{`${otherUser.firstName} ${otherUser.lastName}`}</Text>
                     <Text style={styles.role}>{item.lastMessage}</Text>
@@ -546,7 +559,11 @@ const Request = () => {
           {requests.map(request => (
             <View key={request._id} style={styles.cardContainer}>
               <View style={styles.profileContainer}>
-                <View style={styles.profilePicture} />
+                {request.profilePicture ? (
+                  <Image source={{ uri: request.profilePicture }} style={styles.profilePicture} />
+                ) : (
+                  <View style={styles.profilePicturePlaceholder} />
+                )}
                 <View style={styles.profileInfo}>
                   <Text style={styles.name}>{`${request.firstName} ${request.lastName}`}</Text>
                   <Text style={styles.role}>{request.role?.value}</Text>

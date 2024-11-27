@@ -257,7 +257,7 @@ export const addFriend = async (req: Request, res: Response) => {
   try {
     const user = await User.findById(userId).populate({
       path: 'friendRequests',
-      select: 'firstName lastName email homebase airline role',
+      select: 'firstName lastName email homebase airline role profilePicture',
       populate: [
         { path: 'homebase', select: 'IATA ICAO city' },
         { path: 'airline', select: 'ICAO Name' },
@@ -391,7 +391,7 @@ export const getNonFriends = async (req: Request, res: Response): Promise<void> 
     const nonFriends = await User.find({
       _id: { $nin: [userId, ...currentUser.friends, ...currentUser.friendRequests] }
     })
-      .select('firstName lastName role email homebase airline')
+      .select('firstName lastName role email homebase airline profilePicture')
       .populate({
         path: 'role',
         select: 'value'
