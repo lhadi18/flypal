@@ -233,7 +233,12 @@ const Connection = () => {
                         params: {
                           id: friend._id,
                           firstName: friend.firstName,
-                          lastName: friend.lastName
+                          lastName: friend.lastName,
+                          profilePicture: friend.profilePicture,
+                          email: friend.email,
+                          role: friend.role?.value,
+                          airline: friend.airline?.Name,
+                          homebase: `${friend.homebase?.IATA} - ${friend.homebase?.city}`
                         }
                       })
                     }
@@ -413,7 +418,12 @@ const Message = () => {
                     params: {
                       id: otherUser._id,
                       firstName: otherUser.firstName,
-                      lastName: otherUser.lastName
+                      lastName: otherUser.lastName,
+                      profilePicture: otherUser.profilePicture,
+                      email: otherUser.email,
+                      role: otherUser.role?.value,
+                      airline: otherUser.airline?.Name,
+                      homebase: `${otherUser.homebase?.IATA} - ${otherUser.homebase?.city}`
                     }
                   })
                 }

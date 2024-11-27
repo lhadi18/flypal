@@ -12,21 +12,35 @@ import {
 } from 'react-native'
 import React, { useState, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
+import ProfileModal from '@/components/profile-modal'
 import { useLocalSearchParams } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { debounce } from 'lodash'
 
 const MessagingScreen = () => {
-  const { firstName, lastName, id: recipientId, profilePicture } = useLocalSearchParams()
+  const {
+    id: recipientId,
+    firstName,
+    lastName,
+    profilePicture,
+    email,
+    role,
+    airline,
+    homebase
+  } = useLocalSearchParams()
   const [messages, setMessages] = useState([])
   const [inputText, setInputText] = useState('')
   const [userId, setUserId] = useState(null)
   const [userStatus, setUserStatus] = useState('offline')
   const [drafts, setDrafts] = useState({})
-  const [isAtBottom, setIsAtBottom] = useState(true) // Track if the user is viewing the bottom of the list
+  const [isAtBottom, setIsAtBottom] = useState(true)
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
 
   const ws = useRef(null)
   const flatListRef = useRef(null)
+
+  console.log(homebase)
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -215,6 +229,16 @@ const MessagingScreen = () => {
     return flatData
   }
 
+  const openProfileModal = () => {
+    setSelectedUser({ firstName, lastName, profilePicture, email: 'example@example.com' })
+    setIsProfileModalVisible(true)
+  }
+
+  const closeProfileModal = () => {
+    setSelectedUser(null)
+    setIsProfileModalVisible(false)
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -224,24 +248,20 @@ const MessagingScreen = () => {
       >
         {/* Chat Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton}></TouchableOpacity>
-          <View style={styles.profileImageContainer}>
-            <Image
-              source={
-                profilePicture
-                  ? { uri: profilePicture }
-                  : { uri: 'https://avatars.githubusercontent.com/u/92809183?v=4' }
-              }
-              style={styles.profileImage}
-            />
-            {/* Status Dot */}
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: userStatus === 'online' ? '#4CAF50' : '#B0BEC5' } // Green for online, grey for offline
-              ]}
-            />
-          </View>
+          <TouchableOpacity onPress={openProfileModal}>
+            <View style={styles.profileImageContainer}>
+              <Image
+                source={
+                  profilePicture
+                    ? { uri: profilePicture }
+                    : { uri: 'https://avatars.githubusercontent.com/u/92809183?v=4' }
+                }
+                style={styles.profileImage}
+              />
+              <View style={[styles.statusDot, { backgroundColor: userStatus === 'online' ? '#4CAF50' : '#B0BEC5' }]} />
+            </View>
+          </TouchableOpacity>
+
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerText}>
               {firstName} {lastName}
@@ -284,6 +304,19 @@ const MessagingScreen = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <ProfileModal
+        visible={isProfileModalVisible}
+        user={{
+          firstName,
+          lastName,
+          profilePicture,
+          email,
+          role,
+          airline,
+          homebase
+        }}
+        onClose={closeProfileModal}
+      />
     </SafeAreaView>
   )
 }
