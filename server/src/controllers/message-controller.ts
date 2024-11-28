@@ -4,26 +4,26 @@ import mongoose from 'mongoose'
 
 // Create a new message
 export const createMessage = async (req: Request, res: Response): Promise<void> => {
-  const { sender, recipient, content } = req.body;
+  const { sender, recipient, content } = req.body
 
   if (!sender || !recipient || !content) {
-    res.status(400).json({ error: 'All fields are required.' });
-    return; // Ensure early exit
+    res.status(400).json({ error: 'All fields are required.' })
+    return // Ensure early exit
   }
 
   try {
     const message = await Message.create({
       sender,
       recipient,
-      content,
-    });
+      content
+    })
 
-    res.status(201).json(message);
+    res.status(201).json(message)
   } catch (error) {
-    console.error('Error creating message:', error);
-    res.status(500).json({ error: 'Failed to send message.' });
+    console.error('Error creating message:', error)
+    res.status(500).json({ error: 'Failed to send message.' })
   }
-};
+}
 
 export const getConversations = async (req: Request, res: Response) => {
   const { userId } = req.params
@@ -65,10 +65,84 @@ export const getConversations = async (req: Request, res: Response) => {
         }
       },
       {
+        $lookup: {
+          from: 'airports',
+          localField: 'senderDetails.homebase',
+          foreignField: '_id',
+          as: 'senderHomebaseDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'airports',
+          localField: 'recipientDetails.homebase',
+          foreignField: '_id',
+          as: 'recipientHomebaseDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'senderDetails.role',
+          foreignField: '_id',
+          as: 'senderRoleDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'recipientDetails.role',
+          foreignField: '_id',
+          as: 'recipientRoleDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'airlines',
+          localField: 'senderDetails.airline',
+          foreignField: '_id',
+          as: 'senderAirlineDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'airlines',
+          localField: 'recipientDetails.airline',
+          foreignField: '_id',
+          as: 'recipientAirlineDetails'
+        }
+      },
+      {
         $project: {
           _id: 0,
-          sender: { $arrayElemAt: ['$senderDetails', 0] },
-          recipient: { $arrayElemAt: ['$recipientDetails', 0] },
+          sender: {
+            _id: { $arrayElemAt: ['$senderDetails._id', 0] },
+            airline: { $arrayElemAt: ['$senderAirlineDetails', 0] },
+            email: { $arrayElemAt: ['$senderDetails.email', 0] },
+            firstName: { $arrayElemAt: ['$senderDetails.firstName', 0] },
+            homebase: { $arrayElemAt: ['$senderHomebaseDetails', 0] },
+            lastName: { $arrayElemAt: ['$senderDetails.lastName', 0] },
+            profilePicture: { $arrayElemAt: ['$senderDetails.profilePicture', 0] },
+            role: {
+              _id: { $arrayElemAt: ['$senderRoleDetails._id', 0] },
+              label: { $arrayElemAt: ['$senderRoleDetails.label', 0] },
+              value: { $arrayElemAt: ['$senderRoleDetails.value', 0] }
+            }
+          },
+          recipient: {
+            _id: { $arrayElemAt: ['$recipientDetails._id', 0] },
+            airline: { $arrayElemAt: ['$recipientAirlineDetails', 0] },
+            email: { $arrayElemAt: ['$recipientDetails.email', 0] },
+            firstName: { $arrayElemAt: ['$recipientDetails.firstName', 0] },
+            homebase: { $arrayElemAt: ['$recipientHomebaseDetails', 0] },
+            lastName: { $arrayElemAt: ['$recipientDetails.lastName', 0] },
+            profilePicture: { $arrayElemAt: ['$recipientDetails.profilePicture', 0] },
+            role: {
+              _id: { $arrayElemAt: ['$recipientRoleDetails._id', 0] },
+              label: { $arrayElemAt: ['$recipientRoleDetails.label', 0] },
+              value: { $arrayElemAt: ['$recipientRoleDetails.value', 0] }
+            }
+          },
           lastMessage: 1,
           lastTimestamp: 1
         }
