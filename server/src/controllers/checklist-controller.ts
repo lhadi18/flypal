@@ -1,17 +1,19 @@
-import { Request, Response } from 'express';
+import { Request, Response, RequestHandler } from 'express';
 import mongoose from 'mongoose';
 import Checklist from '../models/checklist-model';
 
 // Create a new checklist
-export const createChecklist = async (req: Request, res: Response) => {
+export const createChecklist: RequestHandler = async (req: Request, res: Response) => {
   const { userId, title, flightRoute, travelDate, items } = req.body;
 
   if (!userId || !title) {
-    return res.status(400).json({ message: 'User ID and title are required' });
+    res.status(400).json({ message: 'User ID and title are required' });
+    return;
   }
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ message: 'Invalid User ID' });
+    res.status(400).json({ message: 'Invalid User ID' });
+    return;
   }
 
   try {
@@ -24,7 +26,6 @@ export const createChecklist = async (req: Request, res: Response) => {
     });
 
     await checklist.save();
-
     res.status(201).json(checklist);
   } catch (error) {
     console.error('Error creating checklist:', error);
@@ -33,42 +34,44 @@ export const createChecklist = async (req: Request, res: Response) => {
 };
 
 // Get all checklists for a user
-export const getChecklist = async (req: Request, res: Response) => {
-    const { userId } = req.query 
-    console.log('Received userId:', userId);
+export const getChecklist: RequestHandler = async (req: Request, res: Response) => {
+  const { userId } = req.query;
 
-    if (typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Invalid User ID' });
+  if (typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
+    res.status(400).json({ message: 'Invalid User ID' });
+    return;
   }
-  
-    try {
-      const checklists = await Checklist.find({ userId });
-  
-      if (!checklists || checklists.length === 0) {
-        return res.status(404).json({ message: 'No checklists found for this user' });
-      }
-  
-      res.status(200).json(checklists);
-    } catch (error) {
-      console.error('Error fetching checklists:', error);
-      res.status(500).json({ message: 'Server error' });
+
+  try {
+    const checklists = await Checklist.find({ userId });
+
+    if (!checklists || checklists.length === 0) {
+      res.status(404).json({ message: 'No checklists found for this user' });
+      return;
     }
-  };
-  
+
+    res.status(200).json(checklists);
+  } catch (error) {
+    console.error('Error fetching checklists:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 // Delete a checklist
-export const deleteChecklist = async (req: Request, res: Response) => {
+export const deleteChecklist: RequestHandler = async (req: Request, res: Response) => {
   const { checklistId } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(checklistId)) {
-    return res.status(400).json({ error: 'Invalid Checklist ID' })
+    res.status(400).json({ error: 'Invalid Checklist ID' });
+    return;
   }
 
   try {
     const checklist = await Checklist.findByIdAndDelete(checklistId);
 
     if (!checklist) {
-      return res.status(404).json({ message: 'Checklist not found' });
+      res.status(404).json({ message: 'Checklist not found' });
+      return;
     }
 
     res.status(200).json({ message: 'Checklist deleted successfully' });
@@ -79,19 +82,21 @@ export const deleteChecklist = async (req: Request, res: Response) => {
 };
 
 // Update a checklist
-export const updateChecklist = async (req: Request, res: Response) => {
+export const updateChecklist: RequestHandler = async (req: Request, res: Response) => {
   const { checklistId } = req.params;
   const { title, flightRoute, travelDate, items } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(checklistId)) {
-    return res.status(400).json({ message: 'Invalid Checklist ID' });
+    res.status(400).json({ message: 'Invalid Checklist ID' });
+    return;
   }
 
   try {
     const checklist = await Checklist.findById(checklistId);
 
     if (!checklist) {
-      return res.status(404).json({ message: 'Checklist not found' });
+      res.status(404).json({ message: 'Checklist not found' });
+      return;
     }
 
     checklist.title = title || checklist.title;
@@ -100,7 +105,6 @@ export const updateChecklist = async (req: Request, res: Response) => {
     checklist.items = items || checklist.items;
 
     await checklist.save();
-
     res.status(200).json(checklist);
   } catch (error) {
     console.error('Error updating checklist:', error);

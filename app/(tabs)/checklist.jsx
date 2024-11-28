@@ -112,7 +112,11 @@ const Checklists = () => {
       })
       setChecklists(response.data)
     } catch (error) {
-      console.error('Error fetching checklists:', error)
+      if (error.response && error.response.status === 404) {
+        setChecklists([])
+      } else {
+        console.error('Error fetching checklists:', error)
+      }
     }
   }
 
@@ -311,7 +315,7 @@ const Checklists = () => {
             </View>
           ))
         ) : (
-          <Text>No checklists available.</Text>
+          <Text style={styles.noChecklist}>No checklists available.</Text>
         )}
       </View>
     </ScrollView>
@@ -319,22 +323,22 @@ const Checklists = () => {
 }
 
 const EditChecklistForm = ({
-  checklist,
-  onItemChange,
-  onFlightRouteChange,
-  onAddChecklistItem,
-  onClose,
-  displayDatePicker,
-  handleConfirm,
-  hideDatePicker,
-  isDatePickerVisible,
-  newItemText,
-  setNewItemText,
-  onRemoveChecklistItem,
-  leftColumnItems,
-  rightColumnItems,
-  isLimitReached,
-  onUpdate
+  checklist = {},
+  onItemChange = () => {},
+  onFlightRouteChange = () => {},
+  onAddChecklistItem = () => {},
+  onClose = () => {},
+  displayDatePicker = () => {},
+  handleConfirm = () => {},
+  hideDatePicker = () => {},
+  isDatePickerVisible = false,
+  newItemText = '',
+  setNewItemText = () => {},
+  onRemoveChecklistItem = () => {},
+  leftColumnItems = [],
+  rightColumnItems = [],
+  isLimitReached = false,
+  onUpdate = () => {}
 }) => {
   const getLocalTime = time => {
     return moment(time).format('DD/MM/YYYY')
@@ -349,7 +353,7 @@ const EditChecklistForm = ({
             style={formStyles.title}
             placeholder="Enter title..."
             placeholderTextColor="grey"
-            value={checklist.title}
+            value={checklist.title || ''}
             onChangeText={onItemChange}
           />
           <Ionicons name="pencil" size={18} color="#000" />
@@ -359,7 +363,7 @@ const EditChecklistForm = ({
             style={formStyles.details}
             placeholder="Enter flight route..."
             placeholderTextColor="grey"
-            value={checklist.flightRoute}
+            value={checklist.flightRoute || ''}
             onChangeText={onFlightRouteChange}
           />
           <Ionicons name="pencil" size={18} color="#000" />
@@ -393,7 +397,7 @@ const EditChecklistForm = ({
               ))}
               {!isLimitReached && leftColumnItems.length < 10 && (
                 <View style={formStyles.inputBox}>
-                  <Ionicons name="add-circle" size={18} color="grey" />
+                  <Ionicons name="add-circle" size={18} color="grey" style={{ marginRight: 8 }} />
                   <TextInput
                     style={[formStyles.input, { fontStyle: 'normal' }]}
                     placeholder="Add item..."
@@ -420,7 +424,7 @@ const EditChecklistForm = ({
               ))}
               {!isLimitReached && rightColumnItems.length < 10 && leftColumnItems.length === 10 && (
                 <View style={formStyles.inputBox}>
-                  <Ionicons name="add-circle" size={18} color="grey" />
+                  <Ionicons name="add-circle" size={18} color="grey" style={{ marginRight: 8 }} />
                   <TextInput
                     style={[formStyles.input, { fontStyle: 'normal' }]}
                     placeholder="Add item..."
@@ -451,24 +455,24 @@ const EditChecklistForm = ({
 }
 
 const CreateItemChecklistForm = ({
-  newItem,
-  onItemChange,
-  flightRoute,
-  onFlightRouteChange,
-  travelDate,
-  displayDatePicker,
-  hideDatePicker,
-  isDatePickerVisible,
-  handleConfirm,
-  newItemText,
-  setNewItemText,
-  onAddChecklistItem,
-  onRemoveChecklistItem,
-  leftColumnItems,
-  rightColumnItems,
-  isLimitReached,
-  onClose,
-  onCreate
+  newItem = '',
+  onItemChange = () => {},
+  flightRoute = '',
+  onFlightRouteChange = () => {},
+  travelDate = '',
+  displayDatePicker = () => {},
+  hideDatePicker = () => {},
+  isDatePickerVisible = false,
+  handleConfirm = () => {},
+  newItemText = '',
+  setNewItemText = () => {},
+  onAddChecklistItem = () => {},
+  onRemoveChecklistItem = () => {},
+  leftColumnItems = [],
+  rightColumnItems = [],
+  isLimitReached = false,
+  onClose = () => {},
+  onCreate = () => {}
 }) => {
   const getLocalTime = time => {
     return moment(time).format('DD/MM/YYYY')
@@ -527,7 +531,7 @@ const CreateItemChecklistForm = ({
               ))}
               {!isLimitReached && leftColumnItems.length < 10 && (
                 <View style={formStyles.inputBox}>
-                  <Ionicons name="add-circle" size={18} color="grey" />
+                  <Ionicons name="add-circle" size={18} color="grey" style={{ marginRight: 8 }} />
                   <TextInput
                     style={[formStyles.input, { fontStyle: 'normal' }]}
                     placeholder="Add item..."
@@ -597,6 +601,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     padding: 15
   },
+  noChecklist: {
+    marginLeft: 15
+  },
   button: {
     position: 'absolute',
     width: 60,
@@ -632,7 +639,7 @@ const styles = StyleSheet.create({
     fontSize: 12
   },
   headerDetails: {
-    fontWeight: 600
+    fontWeight: '600'
   },
   icon: {
     marginLeft: 'auto',
@@ -662,32 +669,34 @@ const formStyles = StyleSheet.create({
   header: {
     fontSize: 18,
     fontWeight: '600',
-    paddingHorizontal: 30,
+    paddingHorizontal: 20,
     paddingVertical: 15
   },
   title: {
+    height: 20,
     marginBottom: 10,
-    paddingBottom: 3,
+    paddingBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: '#5F5F5F',
     fontSize: 12,
     alignItems: 'stretch'
   },
   details: {
+    height: 20,
     marginBottom: 10,
-    paddingBottom: 3,
+    paddingBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: '#5F5F5F',
     fontSize: 12
   },
   inputBox: {
     flexDirection: 'row',
-    alignItems: 'stretch'
+    alignItems: 'center' // Ensures vertical alignment of children
   },
   input: {
-    paddingLeft: 8,
     width: '80%',
-    fontSize: 12
+    fontSize: 12,
+    textAlignVertical: 'center' // Ensures text is vertically aligned in TextInput
   },
   dateButton: {
     backgroundColor: '#045D91',
@@ -719,7 +728,7 @@ const formStyles = StyleSheet.create({
   },
   checklistTitle: {
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: '600',
     marginBottom: 5,
     color: '#6A6A6A'
   },

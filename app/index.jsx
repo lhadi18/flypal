@@ -41,10 +41,17 @@ const App = () => {
           const isValid = await validateUserId(userId)
           if (isValid) {
             router.replace('/roster')
+          } else {
+            // If invalid, navigate to sign-in
+            router.replace('/sign-in')
           }
+        } else {
+          // If no userId is stored, navigate to sign-in
+          router.replace('/sign-in')
         }
-      } catch (error) {
-        console.error('Failed to re-authenticate', error)
+      } catch {
+        // Do nothing on error and keep the user signed out
+        router.replace('/sign-in')
       }
     }
 
