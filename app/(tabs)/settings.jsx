@@ -39,7 +39,7 @@ const Settings = () => {
   const [userDetails, setUserDetails] = useState({
     firstName: '',
     lastName: '',
-    role: {value: ''},
+    role: { value: '' },
     homebase: { IATA: '', city: '', ICAO: '' },
     airline: { ICAO: '', Name: '' },
     email: ''
@@ -69,8 +69,7 @@ const Settings = () => {
     setLoading(true)
     try {
       const userId = await SecureStore.getItemAsync('userId')
-      console.log(userId)
-      const response = await axios.get(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/getUserId`, {
+      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/getUserId`, {
         params: {
           userId
         }
@@ -80,7 +79,6 @@ const Settings = () => {
         response.data.profilePicture ||
           'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
       )
-      console.log('Response Data:', response.data)
     } catch (error) {
       console.error('Error fetching user details:', error)
     } finally {
@@ -129,14 +127,11 @@ const Settings = () => {
       airline: currentUserDetails.airline
     }
 
-    console.log('Updated user data to be sent:', updatedUserData)
-
     try {
       const response = await axios.put(
-        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
-      console.log('User profile updated:', response.data)
       // handleEditUserDetails(response.data);
       fetchUserDetails()
       setCurrentScreen('UserProfile')
@@ -158,7 +153,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -183,7 +178,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/deleteUser/${userId}`)
+              await axios.delete(`https://40c7-115-164-76-186.ngrok-free.app/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -298,7 +293,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -544,23 +539,36 @@ const Settings = () => {
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>Role</Text>
-                <View style={styles.roleField}>
+                <View style={styles.pickerContainer}>
                   {loadingRoles ? (
                     <ActivityIndicator size="small" color="#0000ff" />
                   ) : (
                     <RNPickerSelect
-                      style={pickerSelectStyles}
                       onValueChange={value => {
-                        const selectedRole = roles.find(role => role.value === value) || null;
-                        setCurrentUserDetails({ ...currentUserDetails, role: selectedRole });
+                        const selectedRole = roles.find(role => role.value === value) || null
+                        setCurrentUserDetails({
+                          ...currentUserDetails,
+                          role: selectedRole
+                        })
                       }}
                       items={roles}
-                      value={currentUserDetails?.role?.value || ''}
-                      placeholder={{
-                        label: currentUserDetails?.role?.value || 'Select your role', // Show user's role name if available
-                        value: null,
-                        color: 'grey',
+                      style={{
+                        ...pickerSelectStyles,
+                        inputIOS: {
+                          ...pickerSelectStyles.inputIOS,
+                          color: currentUserDetails?.role?.value ? 'black' : 'grey'
+                        },
+                        inputAndroid: {
+                          ...pickerSelectStyles.inputAndroid,
+                          color: currentUserDetails?.role?.value ? 'black' : 'grey'
+                        }
                       }}
+                      placeholder={{
+                        label: 'Select your role',
+                        value: null,
+                        color: 'grey'
+                      }}
+                      value={currentUserDetails?.role?.value || null}
                     />
                   )}
                 </View>
@@ -691,26 +699,34 @@ const Settings = () => {
 }
 const pickerSelectStyles = StyleSheet.create({
   inputIOS: {
-    fontSize: 12,
-    paddingHorizontal: 5,
+    fontSize: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
+    borderColor: 'grey',
+    borderRadius: 5,
     color: 'black',
+    paddingRight: 30,
+    backgroundColor: 'white',
+    height: 40
   },
   inputAndroid: {
-    fontSize: 12,
-    paddingHorizontal: 5,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
+    fontSize: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 0.5,
+    borderColor: 'grey',
+    borderRadius: 5,
     color: 'black',
+    paddingRight: 30,
+    backgroundColor: 'white',
+    height: 40
   },
   placeholder: {
     color: 'grey',
-  },
-});
-
+    fontSize: 14
+  }
+})
 
 const styles = StyleSheet.create({
   roleField: {
@@ -891,6 +907,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold'
   },
+  infoStyles: {
+    width: '100%',
+    height: 40,
+    padding: 10,
+    marginVertical: 5,
+    backgroundColor: 'white',
+    color: 'black',
+    borderRadius: 5,
+    borderColor: '#ADADAD',
+    borderWidth: 1
+  },
   infoContainer: {
     margin: 20
   },
@@ -950,16 +977,20 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     alignItems: 'center',
-    marginTop: -50,
-    zIndex: 1
+    justifyContent: 'center', // Ensure the container centers the avatar vertically
+    marginTop: -50, // Adjust this if necessary to properly position the avatar
+    zIndex: 1,
+    width: '100%' // Ensure the container spans the full width
   },
   avatar: {
     width: 130,
     height: 130,
     borderRadius: 65,
     borderWidth: 4,
-    borderColor: 'white'
+    borderColor: 'white',
+    alignSelf: 'center' // Ensure the avatar centers itself inside the container
   },
+
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
