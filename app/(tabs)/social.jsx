@@ -9,7 +9,6 @@ import {
   Modal,
   ScrollView,
   FlatList,
-  Pressable,
   Image
 } from 'react-native'
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view'
@@ -26,7 +25,7 @@ const Connection = () => {
   const [selectedUser, setSelectedUser] = useState(null)
   const [currentUserId, setCurrentUserId] = useState(null)
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false)
-  const [currentPage, setCurrentPage] = useState('connections')
+  const [currentScreen, setCurrentScreen] = useState('connections')
   const [nonFriends, setNonFriends] = useState([])
   const [sentFriendRequests, setSentFriendRequests] = useState([])
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -129,10 +128,10 @@ const Connection = () => {
   }
 
   useEffect(() => {
-    if (currentPage === 'connect') {
+    if (currentScreen === 'connect') {
       fetchNonFriends()
     }
-  }, [currentPage])
+  }, [currentScreen])
 
   const handleSendFriendRequest = async recipientId => {
     if (!currentUserId) {
@@ -199,7 +198,7 @@ const Connection = () => {
   const goToConnectPage = () => {
     setSearchKeyword(''); 
     setFilteredFriends(friends); 
-    setCurrentPage('connect');
+    setCurrentScreen('connect');
   };
   
   const goToConnectionsPage = () => {
@@ -207,10 +206,10 @@ const Connection = () => {
     setFilteredNonFriends(nonFriends); 
     setSearchKeyword(''); 
     setFilteredFriends(friends); 
-    setCurrentPage('connections');
+    setCurrentScreen('connections');
   };
 
-  if (currentPage === 'connect') {
+  if (currentScreen === 'connect') {
     return (
       <View style={styles.tabContent}>
         <TouchableOpacity onPress={goToConnectionsPage} style={styles.backButton}>
@@ -226,9 +225,11 @@ const Connection = () => {
         />
         {nonFriends.length > 0 ? (
           filteredNonFriends.length > 0 ? (
-            <ScrollView>
-              {filteredNonFriends.map(user => (
-                <View key={user._id} style={styles.cardContainer}>
+            <FlatList
+              data={filteredNonFriends}
+              keyExtractor={user => user._id}
+              renderItem={({ item: user }) => (
+                <View style={styles.cardContainer}>
                   <View style={styles.profileContainer}>
                     {user.profilePicture ? (
                       <Image source={{ uri: user.profilePicture }} style={styles.profilePicture} />
@@ -255,8 +256,8 @@ const Connection = () => {
                     </View>
                   </View>
                 </View>
-              ))}
-            </ScrollView>
+              )}
+            />
           ) : (
             <View style={styles.noFriendsContainer}>
               <Text style={styles.noFriendsText}>No users found.</Text>
@@ -268,8 +269,8 @@ const Connection = () => {
           </View>
         )}
       </View>
-    )
-  }
+    );
+  }  
 
   return (
     <View style={styles.tabContent}>
