@@ -96,14 +96,18 @@ const Dining = () => {
         }
       } else if (selectedTab === 'Crew Picks' && selectedAirport && !hasFetchedCrewPicks) {
         try {
+          const userId = await SecureStore.getItemAsync('userId')
           const crewData = await fetchCrewPicks(
             selectedAirport.objectId || selectedAirport.id || selectedAirport.value,
             selectedDietaryOption
           )
+
           const updatedCrewPicks = crewData.map(pick => ({
             ...pick,
-            bookmarked: bookmarks.includes(pick._id)
+            bookmarked: bookmarks.includes(pick._id),
+            userHasLiked: pick.likedBy.includes(userId)
           }))
+
           setCrewPicks(updatedCrewPicks)
           setHasFetchedCrewPicks(true)
         } catch (error) {
@@ -128,9 +132,6 @@ const Dining = () => {
     latitude,
     longitude
   ) => {
-    console.log(latitude)
-    console.log(longitude)
-
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const isBookmarked = bookmarks.includes(id)
@@ -161,13 +162,22 @@ const Dining = () => {
       const updatedBookmarks = isBookmarked ? bookmarks.filter(bid => bid !== id) : [...bookmarks, id]
       setBookmarks(updatedBookmarks)
 
-      // Update places and crewPicks arrays to reflect bookmark change
+      // Update places
       setPlaces(prevPlaces =>
         prevPlaces.map(place => (place.place_id === id ? { ...place, bookmarked: !isBookmarked } : place))
       )
 
+      // Update crewPicks, preserving the like status
       setCrewPicks(prevCrewPicks =>
-        prevCrewPicks.map(pick => (pick._id === id ? { ...pick, bookmarked: !isBookmarked } : pick))
+        prevCrewPicks.map(pick =>
+          pick._id === id
+            ? {
+                ...pick,
+                bookmarked: !isBookmarked,
+                userHasLiked: pick.userHasLiked // Preserve like status
+              }
+            : pick
+        )
       )
     } catch (error) {
       console.error('Failed to update bookmark:', error)
@@ -270,7 +280,17 @@ const Dining = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const updatedPick = await likeRecommendation(id, userId)
-      setCrewPicks(crewPicks.map(pick => (pick._id === id ? updatedPick : pick)))
+
+      setCrewPicks(prevCrewPicks =>
+        prevCrewPicks.map(pick =>
+          pick._id === id
+            ? {
+                ...updatedPick,
+                bookmarked: bookmarks.includes(updatedPick._id)
+              }
+            : pick
+        )
+      )
     } catch (error) {
       console.error('Failed to update likes:', error)
     }
