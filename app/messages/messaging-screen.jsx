@@ -88,7 +88,7 @@ const MessagingScreen = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/messages/${userId}/${recipientId}`)
+        const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/messages/${userId}/${recipientId}`)
         const data = await response.json()
         setMessages(data)
       } catch (error) {
@@ -99,7 +99,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://192.168.0.6:8080')
+      ws.current = new WebSocket('ws://172.20.10.2:8080')
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -222,6 +222,21 @@ const MessagingScreen = () => {
     </View>
   )
 
+  const parseBoldText = text => {
+    const parts = text.split(/(\*\*.*?\*\*)/)
+
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <Text key={index} style={{ fontWeight: 'bold' }}>
+            {part.slice(2, -2)}
+          </Text>
+        )
+      }
+      return part
+    })
+  }
+
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
       return <Text style={styles.dateHeader}>{item.date}</Text>
@@ -232,7 +247,7 @@ const MessagingScreen = () => {
 
     return (
       <View style={[styles.messageContainer, isMe ? styles.myMessageContainer : styles.theirMessageContainer]}>
-        <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{message.content}</Text>
+        <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{parseBoldText(message.content)}</Text>
         <TimestampWithReadReceipt timestamp={message.timestamp} isRead={isMe && message.read} />
       </View>
     )

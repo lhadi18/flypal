@@ -32,6 +32,7 @@ import NetInfo from '@react-native-community/netinfo'
 import { CalendarList } from 'react-native-calendars'
 import { DUTY_TYPES } from '../../constants/duties'
 import * as Notifications from 'expo-notifications'
+import ShareModal from '@/components/share-modal'
 import * as SecureStore from 'expo-secure-store'
 import { Ionicons } from '@expo/vector-icons'
 import Toast from '@/components/toast'
@@ -73,6 +74,7 @@ const Roster = () => {
   const [uploadingRoster, setUploadingRoster] = useState(false)
   const [selectedEntryIndex, setSelectedEntryIndex] = useState(null)
   const [homebaseTZ, setHomebaseTZ] = useState('')
+  const [showShareModal, setShowShareModal] = useState(false)
 
   const [toastVisible, setToastVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
@@ -125,6 +127,8 @@ const Roster = () => {
         setEditMode(false)
         clearInputs()
         clearOriginAndDestination()
+      } else if (route.params.action === 'showShareModal') {
+        setShowShareModal(true)
       }
       navigation.setParams({ action: null })
     }
@@ -460,6 +464,28 @@ const Roster = () => {
         })
       }
     }
+  }
+
+  const handleShare = async selectedConnections => {
+    // await axios.post('https://your-api.com/api/share/roster', {
+    //   recipients: selectedConnections,
+    // });
+  }
+
+  const getSelectedMonthRoster = () => {
+    const selectedMonth = moment(selectedDate).month() // Month from selectedDate
+    const selectedYear = moment(selectedDate).year() // Year from selectedDate
+
+    // Filter roster entries by the selected month and year
+    const selectedMonthEntries = Object.entries(rosterEntries).reduce((acc, [date, entries]) => {
+      const momentDate = moment(date)
+      if (momentDate.month() === selectedMonth && momentDate.year() === selectedYear) {
+        acc[date] = entries
+      }
+      return acc
+    }, {})
+
+    return selectedMonthEntries
   }
 
   const renderEventItem = ({ item, index }) => {
@@ -1535,6 +1561,13 @@ const Roster = () => {
           </View>
         </SafeAreaView>
       </Modal>
+
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        onShare={handleShare}
+        selectedMonthRoster={getSelectedMonthRoster()}
+      />
 
       <Toast visible={toastVisible} message={toastMessage} duration={3000} onHide={() => setToastVisible(false)} />
     </SafeAreaView>

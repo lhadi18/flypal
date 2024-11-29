@@ -14,11 +14,11 @@ import {
 } from 'react-native'
 import { MenuProvider, Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu'
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view'
-import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import React, { useEffect, useState, useRef } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as SecureStore from 'expo-secure-store'
-import { useRouter, useLocalSearchParams } from 'expo-router'
 import axios from 'axios'
 
 const Connection = () => {
@@ -30,8 +30,8 @@ const Connection = () => {
   const [currentPage, setCurrentPage] = useState('connections')
   const [nonFriends, setNonFriends] = useState([])
   const [sentFriendRequests, setSentFriendRequests] = useState([])
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [filteredFriends, setFilteredFriends] = useState([]);
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [filteredFriends, setFilteredFriends] = useState([])
 
   const router = useRouter()
 
@@ -67,9 +67,9 @@ const Connection = () => {
     setCurrentUserId(userId)
 
     try {
-      const response = await axios.get(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/friendList/${userId}`)
+      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/friendList/${userId}`)
       setFriends(response.data)
-      setFilteredFriends(response.data);
+      setFilteredFriends(response.data)
     } catch (error) {
       console.log('error retrieving friends', error)
     }
@@ -81,7 +81,7 @@ const Connection = () => {
 
   const removeFriend = async friendId => {
     try {
-      const response = await fetch(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/removeFriend`, {
+      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/removeFriend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -110,7 +110,7 @@ const Connection = () => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -135,7 +135,7 @@ const Connection = () => {
     }
 
     try {
-      const response = await fetch(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/friendRequest`, {
+      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/friendRequest`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -161,21 +161,19 @@ const Connection = () => {
     }
   }
 
-  const handleSearch = (text) => {
-    setSearchKeyword(text);
-  
+  const handleSearch = text => {
+    setSearchKeyword(text)
+
     if (text.trim() === '') {
       // Reset filteredFriends to the full friends list if search is empty
-      setFilteredFriends(friends);
+      setFilteredFriends(friends)
     } else {
       // Filter friends based on the search input
       setFilteredFriends(
-        friends.filter((friend) =>
-          `${friend.firstName} ${friend.lastName}`.toLowerCase().includes(text.toLowerCase())
-        )
-      );
+        friends.filter(friend => `${friend.firstName} ${friend.lastName}`.toLowerCase().includes(text.toLowerCase()))
+      )
     }
-  };
+  }
 
   const goToConnectPage = () => {
     setCurrentPage('connect')
@@ -240,7 +238,7 @@ const Connection = () => {
         placeholder="Search friend..."
         placeholderTextColor="grey"
         value={searchKeyword}
-        onChangeText={handleSearch} 
+        onChangeText={handleSearch}
       />
       <TouchableOpacity style={styles.addFriendButton} onPress={goToConnectPage}>
         <MaterialIcons name="person-add" size={12} color="white" />
@@ -249,7 +247,7 @@ const Connection = () => {
       {friends.length > 0 ? (
         filteredFriends.length > 0 ? (
           <ScrollView>
-            {filteredFriends.map((friend) => (
+            {filteredFriends.map(friend => (
               <View key={friend._id} style={styles.cardContainer}>
                 <View style={styles.profileContainer}>
                   {/* Profile Picture */}
@@ -278,8 +276,8 @@ const Connection = () => {
                             email: friend.email,
                             role: friend.role?.value,
                             airline: friend.airline?.Name,
-                            homebase: `${friend.homebase?.IATA} - ${friend.homebase?.city}`,
-                          },
+                            homebase: `${friend.homebase?.IATA} - ${friend.homebase?.city}`
+                          }
                         })
                       }
                     >
@@ -298,10 +296,10 @@ const Connection = () => {
                     <View style={styles.menuOptions}>
                       <TouchableOpacity
                         style={[styles.menuButton, styles.menuItem]}
-                        onPress={(e) => {
-                          e.stopPropagation(); // Prevent closing when clicking an option
-                          openProfileModal(friend);
-                          handleOptionClick('View Profile');
+                        onPress={e => {
+                          e.stopPropagation() // Prevent closing when clicking an option
+                          openProfileModal(friend)
+                          handleOptionClick('View Profile')
                         }}
                       >
                         <MaterialIcons style={styles.menuIcon} name="visibility" size={16} color="black" />
@@ -309,10 +307,10 @@ const Connection = () => {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.menuButton}
-                        onPress={(e) => {
-                          e.stopPropagation(); // Prevent closing when clicking an option
-                          removeFriend(friend._id); // Call removeFriend with the friend's ID
-                          handleOptionClick('Remove Friend');
+                        onPress={e => {
+                          e.stopPropagation() // Prevent closing when clicking an option
+                          removeFriend(friend._id) // Call removeFriend with the friend's ID
+                          handleOptionClick('Remove Friend')
                         }}
                       >
                         <MaterialIcons style={styles.menuIcon} name="delete" size={16} color="red" />
@@ -430,96 +428,88 @@ const Connection = () => {
 }
 
 const Message = () => {
-  const [conversations, setConversations] = useState([]);
-  const [userId, setUserId] = useState(null);
-  const router = useRouter();
-  const ws = useRef(null);
+  const [conversations, setConversations] = useState([])
+  const [userId, setUserId] = useState(null)
+  const router = useRouter()
+  const ws = useRef(null)
 
   const fetchConversations = async () => {
-    const userId = await SecureStore.getItemAsync('userId');
-    setUserId(userId);
+    const userId = await SecureStore.getItemAsync('userId')
+    setUserId(userId)
 
     try {
       const response = await axios.get(
-        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/messages/conversations/${userId}`
-      );
-      const sortedConversations = response.data.sort(
-        (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
-      );
-      setConversations(sortedConversations);
+        `https://40c7-115-164-76-186.ngrok-free.app/api/messages/conversations/${userId}`
+      )
+      const sortedConversations = response.data.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp))
+      setConversations(sortedConversations)
     } catch (error) {
-      console.log('Error fetching conversations:', error);
+      console.log('Error fetching conversations:', error)
     }
-  };
+  }
 
   useEffect(() => {
     // Fetch initial conversations
-    fetchConversations();
+    fetchConversations()
 
     // Set up WebSocket
-    ws.current = new WebSocket('ws://192.168.0.6:8080');
-    ws.current.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    ws.current = new WebSocket('ws://172.20.10.2:8080')
+    ws.current.onmessage = event => {
+      const data = JSON.parse(event.data)
       if (data.type === 'chat_message') {
         // Update conversations
-        setConversations((prevConversations) => {
-          let conversationFound = false;
+        setConversations(prevConversations => {
+          let conversationFound = false
 
-          const updatedConversations = prevConversations.map((conversation) => {
+          const updatedConversations = prevConversations.map(conversation => {
             if (
-              (conversation.sender._id === data.sender &&
-                conversation.recipient._id === data.recipient) ||
-              (conversation.sender._id === data.recipient &&
-                conversation.recipient._id === data.sender)
+              (conversation.sender._id === data.sender && conversation.recipient._id === data.recipient) ||
+              (conversation.sender._id === data.recipient && conversation.recipient._id === data.sender)
             ) {
-              conversationFound = true;
+              conversationFound = true
               return {
                 ...conversation,
                 lastMessage: data.content,
-                lastTimestamp: data.timestamp,
-              };
+                lastTimestamp: data.timestamp
+              }
             }
-            return conversation;
-          });
+            return conversation
+          })
 
           // If no matching conversation, add a new one
           if (!conversationFound) {
-            const otherUser =
-              data.sender === userId ? data.recipientDetails : data.senderDetails;
+            const otherUser = data.sender === userId ? data.recipientDetails : data.senderDetails
             updatedConversations.push({
               sender: data.senderDetails,
               recipient: data.recipientDetails,
               lastMessage: data.content,
-              lastTimestamp: data.timestamp,
-            });
+              lastTimestamp: data.timestamp
+            })
           }
 
-          return updatedConversations.sort(
-            (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
-          );
-        });
+          return updatedConversations.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp))
+        })
       }
-    };
+    }
 
     return () => {
-      ws.current.close();
-    };
-  }, []);
+      ws.current.close()
+    }
+  }, [])
 
   // Refresh conversations when returning to this screen
   useFocusEffect(
     React.useCallback(() => {
-      fetchConversations();
+      fetchConversations()
     }, [])
-  );
+  )
 
   return (
     <View style={styles.tabContent}>
       {conversations.length > 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
           {conversations.map((item, index) => {
-            const otherUser =
-              item.sender._id === userId ? item.recipient : item.sender;
+            const otherUser = item.sender._id === userId ? item.recipient : item.sender
             return (
               <TouchableOpacity
                 key={index}
@@ -535,17 +525,14 @@ const Message = () => {
                       email: otherUser.email,
                       role: otherUser.role?.value,
                       airline: otherUser.airline?.Name,
-                      homebase: `${otherUser.homebase?.IATA} - ${otherUser.homebase?.city}`,
-                    },
+                      homebase: `${otherUser.homebase?.IATA} - ${otherUser.homebase?.city}`
+                    }
                   })
                 }
               >
                 <View style={styles.profileContainer}>
                   {otherUser.profilePicture ? (
-                    <Image
-                      source={{ uri: otherUser.profilePicture }}
-                      style={styles.profilePicture}
-                    />
+                    <Image source={{ uri: otherUser.profilePicture }} style={styles.profilePicture} />
                   ) : (
                     <View style={styles.profilePictureSmall} />
                   )}
@@ -556,7 +543,7 @@ const Message = () => {
                   </View>
                 </View>
               </TouchableOpacity>
-            );
+            )
           })}
         </ScrollView>
       ) : (
@@ -565,8 +552,8 @@ const Message = () => {
         </View>
       )}
     </View>
-  );
-};
+  )
+}
 
 const Request = () => {
   const [requests, setRequests] = useState([])
@@ -579,7 +566,7 @@ const Request = () => {
     setUserId(userId)
     try {
       if (userId) {
-        const response = await axios.get(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/addFriend/${userId}`)
+        const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/addFriend/${userId}`)
         setRequests(response.data)
       }
     } catch (error) {
@@ -598,7 +585,7 @@ const Request = () => {
     }
 
     try {
-      const response = await fetch(`https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/acceptRequest`, {
+      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/acceptRequest`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -630,7 +617,7 @@ const Request = () => {
 
     try {
       const response = await fetch(
-        `https://7ce4-2001-e68-5472-cb83-3412-5ea7-c09e-97c5.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://40c7-115-164-76-186.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
@@ -723,9 +710,9 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const { tab } = useLocalSearchParams(); 
-  const [index, setIndex] = useState(tab === 'connection' ? 0 : tab === 'message' ? 1 : 2); 
-  
+  const { tab } = useLocalSearchParams()
+  const [index, setIndex] = useState(tab === 'connection' ? 0 : tab === 'message' ? 1 : 2)
+
   const [routes] = useState([
     { key: 'connection', title: 'Connection' },
     { key: 'message', title: 'Message' },
@@ -796,7 +783,7 @@ const styles = StyleSheet.create({
     width: 65,
     height: 65,
     borderRadius: 50,
-    backgroundColor: '#CCCCCC', 
+    backgroundColor: '#CCCCCC',
     marginRight: 15
   },
   viewProfilePicture: {
