@@ -9,7 +9,8 @@ import {
   Modal,
   ScrollView,
   FlatList,
-  Image
+  Image, 
+  Alert
 } from 'react-native'
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view'
 import { useFocusEffect } from '@react-navigation/native'
@@ -469,81 +470,117 @@ const Connection = () => {
 }
 
 const Message = () => {
-  const [conversations, setConversations] = useState([])
-  const [userId, setUserId] = useState(null)
-  const router = useRouter()
-  const ws = useRef(null)
+  const [conversations, setConversations] = useState([]);
+  const [userId, setUserId] = useState(null);
+  const [openUserId, setOpenUserId] = useState(null); // Tracks which menu is open
+  const router = useRouter();
+  const ws = useRef(null);
+
+  const toggleMenu = (userId) => {
+    setOpenUserId((prev) => (prev === userId ? null : userId)); // Toggle menu visibility
+  };
 
   const fetchConversations = async () => {
-    const userId = await SecureStore.getItemAsync('userId')
-    setUserId(userId)
+    const userId = await SecureStore.getItemAsync('userId');
+    setUserId(userId);
 
     try {
       const response = await axios.get(
         `https://d9c6-2001-e68-5472-cb83-c431-d935-eca7-1ca0.ngrok-free.app/api/messages/conversations/${userId}`
-      )
-      const sortedConversations = response.data.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp))
-      setConversations(sortedConversations)
+      );
+      const sortedConversations = response.data.sort(
+        (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
+      );
+      setConversations(sortedConversations);
     } catch (error) {
-      console.log('Error fetching conversations:', error)
+      console.log('Error fetching conversations:', error);
     }
-  }
+  };
+
+  const deleteConversation = async (otherUserId) => {
+    try {
+      const response = await axios.delete(
+        'https://d9c6-2001-e68-5472-cb83-c431-d935-eca7-1ca0.ngrok-free.app/api/messages/delete',
+        {
+          data: {
+            userId, // Logged-in user ID
+            otherUserId, // ID of the other user in the conversation
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        // Remove deleted conversation from local state
+        setConversations((prev) =>
+          prev.filter(
+            (conversation) =>
+              conversation.sender._id !== otherUserId &&
+              conversation.recipient._id !== otherUserId
+          )
+        );
+        Alert.alert('Success', 'Conversation deleted successfully');
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      Alert.alert('Error', 'Failed to delete conversation');
+    }
+  };
 
   useEffect(() => {
-    // Fetch initial conversations
-    fetchConversations()
+    fetchConversations();
 
-    // Set up WebSocket
-    ws.current = new WebSocket('ws://192.168.0.6:8080')
-    ws.current.onmessage = event => {
-      const data = JSON.parse(event.data)
+    ws.current = new WebSocket('ws://192.168.0.6:8080');
+    ws.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
       if (data.type === 'chat_message') {
-        // Update conversations
-        setConversations(prevConversations => {
-          let conversationFound = false
+        setConversations((prevConversations) => {
+          let conversationFound = false;
 
-          const updatedConversations = prevConversations.map(conversation => {
+          const updatedConversations = prevConversations.map((conversation) => {
             if (
-              (conversation.sender._id === data.sender && conversation.recipient._id === data.recipient) ||
-              (conversation.sender._id === data.recipient && conversation.recipient._id === data.sender)
+              (conversation.sender._id === data.sender &&
+                conversation.recipient._id === data.recipient) ||
+              (conversation.sender._id === data.recipient &&
+                conversation.recipient._id === data.sender)
             ) {
-              conversationFound = true
+              conversationFound = true;
               return {
                 ...conversation,
                 lastMessage: data.content,
-                lastTimestamp: data.timestamp
-              }
+                lastTimestamp: data.timestamp,
+              };
             }
-            return conversation
-          })
+            return conversation;
+          });
 
-          // If no matching conversation, add a new one
           if (!conversationFound) {
-            const otherUser = data.sender === userId ? data.recipientDetails : data.senderDetails
+            const otherUser =
+              data.sender === userId ? data.recipientDetails : data.senderDetails;
             updatedConversations.push({
               sender: data.senderDetails,
               recipient: data.recipientDetails,
               lastMessage: data.content,
-              lastTimestamp: data.timestamp
-            })
+              lastTimestamp: data.timestamp,
+            });
           }
 
-          return updatedConversations.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp))
-        })
+          return updatedConversations.sort(
+            (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
+          );
+        });
       }
-    }
+    };
 
     return () => {
-      ws.current.close()
-    }
-  }, [])
+      ws.current.close();
+    };
+  }, []);
 
-  // Refresh conversations when returning to this screen
   useFocusEffect(
     React.useCallback(() => {
-      fetchConversations()
+      fetchConversations();
     }, [])
-  )
+  );
 
   return (
     <View style={styles.tabContent}>
@@ -552,7 +589,12 @@ const Message = () => {
           data={conversations}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item }) => {
-            const otherUser = item.sender._id === userId ? item.recipient : item.sender
+            const isRecipientLoggedInUser = item.recipient._id === userId;
+            const otherUser = isRecipientLoggedInUser ? item.sender : item.recipient;
+
+            const messageText = isRecipientLoggedInUser
+              ? `You: ${item.lastMessage}`
+              : item.lastMessage;
 
             return (
               <TouchableOpacity
@@ -568,25 +610,60 @@ const Message = () => {
                       email: otherUser.email,
                       role: otherUser.role?.value,
                       airline: otherUser.airline?.Name,
-                      homebase: `${otherUser.homebase?.IATA} - ${otherUser.homebase?.city}`
-                    }
+                      homebase: `${otherUser.homebase?.IATA} - ${otherUser.homebase?.city}`,
+                    },
                   })
                 }
               >
                 <View style={styles.profileContainer}>
                   {otherUser.profilePicture ? (
-                    <Image source={{ uri: otherUser.profilePicture }} style={styles.profilePicture} />
+                    <Image
+                      source={{ uri: otherUser.profilePicture }}
+                      style={styles.profilePicture}
+                    />
                   ) : (
                     <View style={styles.profilePictureSmall} />
                   )}
                   <View style={styles.profileInfo}>
                     <Text style={styles.name}>{`${otherUser.firstName} ${otherUser.lastName}`}</Text>
-                    <Text style={styles.role}>{item.lastMessage}</Text>
-                    <Text style={styles.timestamp}>{new Date(item.lastTimestamp).toLocaleString()}</Text>
+                    <Text style={styles.role}>{messageText}</Text>
+                    <Text style={styles.timestamp}>
+                      {new Date(item.lastTimestamp).toLocaleString()}
+                    </Text>
                   </View>
                 </View>
+                <View style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity onPress={() => toggleMenu(otherUser._id)}>
+                    <MaterialIcons name="more-vert" size={24} color="black" />
+                  </TouchableOpacity>
+                  {openUserId === otherUser._id && (
+                    <View style={styles.menuOptions}>
+                      <TouchableOpacity
+                        style={styles.menuButton}
+                        onPress={() => {
+                          setOpenUserId(null); // Close menu
+                          Alert.alert(
+                            'Delete Conversation',
+                            'Are you sure you want to delete this conversation?',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: () => deleteConversation(otherUser._id),
+                              },
+                            ]
+                          );
+                        }}
+                      >
+                        <MaterialIcons style={styles.menuIcon} name="delete" size={16} color="red" />
+                        <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
-            )
+            );
           }}
         />
       ) : (
@@ -595,8 +672,8 @@ const Message = () => {
         </View>
       )}
     </View>
-  )
-}
+  );
+};
 
 const Request = () => {
   const [requests, setRequests] = useState([])
