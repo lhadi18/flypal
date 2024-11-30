@@ -69,7 +69,7 @@ const Settings = () => {
     setLoading(true)
     try {
       const userId = await SecureStore.getItemAsync('userId')
-      const response = await axios.get(`https://d9c6-2001-e68-5472-cb83-c431-d935-eca7-1ca0.ngrok-free.app/api/users/getUserId`, {
+      const response = await axios.get(`https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/getUserId`, {
         params: {
           userId
         }
@@ -129,7 +129,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://d9c6-2001-e68-5472-cb83-c431-d935-eca7-1ca0.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       // handleEditUserDetails(response.data);
@@ -153,7 +153,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://d9c6-2001-e68-5472-cb83-c431-d935-eca7-1ca0.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -178,7 +178,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://d9c6-2001-e68-5472-cb83-c431-d935-eca7-1ca0.ngrok-free.app/api/users/deleteUser/${userId}`)
+              await axios.delete(`https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -293,7 +293,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://d9c6-2001-e68-5472-cb83-c431-d935-eca7-1ca0.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }

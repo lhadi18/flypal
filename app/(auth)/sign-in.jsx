@@ -98,7 +98,10 @@ const SignIn = () => {
                       </TouchableOpacity>
                     </View>
                     {touched.password && errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-                    <TouchableOpacity style={styles.forgotPasswordButton}>
+                    <TouchableOpacity
+                      style={styles.forgotPasswordButton}
+                      onPress={() => router.push('/forgot-password')}
+                    >
                       <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                     </TouchableOpacity>
                   </View>

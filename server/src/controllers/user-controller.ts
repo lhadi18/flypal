@@ -9,6 +9,7 @@ import Roster from '../models/roster-model'
 import DiningRecommendation from '../models/dining-recommendation-model'
 import Checklist from '../models/checklist-model'
 import Bookmark from '../models/bookmark-model'
+import bcrypt from 'bcrypt'
 
 const DEFAULT_PROFILE_PICTURE_URL = 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
 
@@ -646,3 +647,27 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
   }
 };
 
+// Update user password
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  const { email, newPassword } = req.body;
+
+  try {
+    // Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    if (newPassword) {
+      user.password = newPassword;
+      await user.save();
+      res.json({ message: 'Password updated successfully' });
+    } else {
+      res.status(400).json({ message: 'Password is required' });
+    }
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({ message: 'Failed to reset password' });
+  }
+}

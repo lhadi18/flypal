@@ -17,7 +17,8 @@ import {
   declineRequest,
   getNonFriends,
   upload,
-  uploadProfilePicture
+  uploadProfilePicture,
+  forgotPassword
 } from '../controllers/user-controller'
 import express from 'express'
 
@@ -41,5 +42,6 @@ router.post('/removeFriend', removeFriend)
 router.post('/declineRequest', declineRequest)
 router.get('/nonFriends/:id', getNonFriends)
 router.put('/updateProfilePicture/:userId', upload.single('profilePicture'), uploadProfilePicture)
+router.post('/forgotPassword', forgotPassword)
 
 export default router
