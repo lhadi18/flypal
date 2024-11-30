@@ -16,13 +16,15 @@ import { Ionicons } from '@expo/vector-icons'
 import moment from 'moment-timezone'
 import axios from 'axios'
 
-const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster }) => {
+const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMonthYear }) => {
   const [connections, setConnections] = useState([])
   const [filteredConnections, setFilteredConnections] = useState([])
   const [selectedConnections, setSelectedConnections] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [currentUserId, setCurrentUserId] = useState(null)
   const [loading, setLoading] = useState(false)
+
+  console.log(currentMonthYear)
 
   const ws = useRef(null)
 
@@ -101,8 +103,19 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster }) => {
         DEFAULT: '📌' // Fallback emoji
       }
 
-      // Format the selected month's roster into a well-structured message
-      const formattedRoster = Object.entries(selectedMonthRoster)
+      // Filter the roster based on the currentMonthYear
+      const filteredRoster = Object.entries(selectedMonthRoster).filter(([date]) => {
+        const entryMonthYear = moment(date).format('YYYY-MM')
+        return entryMonthYear === currentMonthYear
+      })
+
+      if (filteredRoster.length === 0) {
+        Alert.alert('No Data', 'No roster entries available for the selected month.')
+        return
+      }
+
+      // Format the filtered roster into a well-structured message
+      const formattedRoster = filteredRoster
         .map(([date, entries]) => {
           const formattedDate = moment(date).format('MMMM D, YYYY') // Format the date
           const formattedEntries = entries
@@ -115,7 +128,7 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster }) => {
         })
         .join('\n\n') // Separate different days
 
-      const messageContent = `📋 **Here is my roster:**\n\n${formattedRoster}`
+      const messageContent = `📋 **Here is my roster for ${moment(currentMonthYear, 'YYYY-MM').format('MMMM YYYY')}:**\n\n${formattedRoster}`
 
       // Iterate through each selected recipient and send the message individually
       selectedConnections.forEach(recipientId => {

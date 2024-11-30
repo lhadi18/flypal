@@ -75,6 +75,7 @@ const Roster = () => {
   const [selectedEntryIndex, setSelectedEntryIndex] = useState(null)
   const [homebaseTZ, setHomebaseTZ] = useState('')
   const [showShareModal, setShowShareModal] = useState(false)
+  const [currentMonthYear, setCurrentMonthYear] = useState(moment().format('YYYY-MM')) // Default to current month and year
 
   const [toastVisible, setToastVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
@@ -1011,6 +1012,13 @@ const Roster = () => {
     if (destinationRef.current) destinationRef.current.clearSelection()
   }
 
+  const handleVisibleMonthsChange = months => {
+    if (months && months.length > 0) {
+      const visibleMonth = months[0].dateString // First visible month
+      setCurrentMonthYear(moment(visibleMonth).format('YYYY-MM'))
+    }
+  }
+
   const confirmClearInputs = () => {
     Alert.alert(
       'Confirm Clear',
@@ -1100,6 +1108,7 @@ const Roster = () => {
               horizontal
               pagingEnabled
               showScrollIndicator={false}
+              onVisibleMonthsChange={handleVisibleMonthsChange}
               theme={{
                 'stylesheet.calendar.header': {
                   header: {
@@ -1567,6 +1576,7 @@ const Roster = () => {
         onClose={() => setShowShareModal(false)}
         onShare={handleShare}
         selectedMonthRoster={getSelectedMonthRoster()}
+        currentMonthYear={currentMonthYear}
       />
 
       <Toast visible={toastVisible} message={toastMessage} duration={3000} onHide={() => setToastVisible(false)} />
