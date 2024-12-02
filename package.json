@@ -76,6 +76,7 @@
     "react-native-element-dropdown": "^2.12.0",
     "react-native-elements": "^3.4.3",
     "react-native-gesture-handler": "~2.16.1",
+    "react-native-get-random-values": "^1.11.0",
     "react-native-google-places-autocomplete": "^2.5.6",
     "react-native-heroicons": "^4.0.0",
     "react-native-maps": "^1.15.6",
@@ -95,6 +96,8 @@
     "react-native-web": "~0.19.10",
     "request": "^2.88.2",
     "ts-node": "^10.9.2",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1",
     "uuid": "^10.0.0",
     "yup": "^1.4.0",
     "zustand": "^4.5.2"

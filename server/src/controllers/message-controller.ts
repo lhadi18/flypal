@@ -4,26 +4,27 @@ import mongoose from 'mongoose'
 
 // Create a new message
 export const createMessage = async (req: Request, res: Response): Promise<void> => {
-  const { sender, recipient, content } = req.body
+  const { sender, recipient, message, nonce } = req.body; // Updated field name
 
-  if (!sender || !recipient || !content) {
-    res.status(400).json({ error: 'All fields are required.' })
-    return // Ensure early exit
+  if (!sender || !recipient || !message || !nonce) {
+    res.status(400).json({ error: 'All fields (sender, recipient, message, nonce) are required.' });
+    return; // Early exit
   }
 
   try {
-    const message = await Message.create({
+    const newMessage = await Message.create({
       sender,
       recipient,
-      content
-    })
+      content: message, // Save `message` as `content` in the schema
+      nonce,
+    });
 
-    res.status(201).json(message)
+    res.status(201).json(newMessage);
   } catch (error) {
-    console.error('Error creating message:', error)
-    res.status(500).json({ error: 'Failed to send message.' })
+    console.error('Error creating message:', error);
+    res.status(500).json({ error: 'Failed to send message.' });
   }
-}
+};
 
 export const getConversations = async (req: Request, res: Response) => {
   const { userId } = req.params

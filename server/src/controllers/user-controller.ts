@@ -9,21 +9,32 @@ import Roster from '../models/roster-model'
 import DiningRecommendation from '../models/dining-recommendation-model'
 import Checklist from '../models/checklist-model'
 import Bookmark from '../models/bookmark-model'
-import bcrypt from 'bcrypt'
+import Key from '../models/keys-model'; // Replace with the actual path to your Key model
+import nacl from 'tweetnacl';
+import naclUtil from 'tweetnacl-util';
 
 const DEFAULT_PROFILE_PICTURE_URL = 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
 
+const generateKeyPair = () => {
+  const keyPair = nacl.box.keyPair();
+  return {
+    publicKey: naclUtil.encodeBase64(keyPair.publicKey),
+    privateKey: naclUtil.encodeBase64(keyPair.secretKey),
+  };
+};
+
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
-  const { firstName, lastName, email, password, homebase, airline, role } = req.body
+  const { firstName, lastName, email, password, homebase, airline, role } = req.body;
 
   try {
-    const userExists = await User.findOne({ email })
-
+    // Check if the user already exists
+    const userExists = await User.findOne({ email });
     if (userExists) {
-      res.status(400).json({ message: 'User already exists' })
-      return
+      res.status(400).json({ message: 'User already exists' });
+      return;
     }
 
+    // Create the user
     const user = new User({
       firstName,
       lastName,
@@ -31,11 +42,23 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       password,
       homebase,
       airline,
-      role
-    })
+      role,
+    });
+    await user.save();
 
-    await user.save()
+    // Generate a key pair for the user
+    const { publicKey, privateKey } = generateKeyPair();
 
+    // Save the public key in the KeyModel
+    await Key.create({
+      userId: user._id,
+      publicKey,
+    });
+
+    // Log the private key for secure storage (replace this with secure handling)
+    console.log(`Private Key for user ${user._id}:`, privateKey);
+
+    // Respond with user data
     res.status(201).json({
       _id: user._id,
       firstName: user.firstName,
@@ -43,21 +66,41 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
       email: user.email,
       homebase: user.homebase,
       airline: user.airline,
-      role: user.role
-    })
+      role: user.role,
+    });
   } catch (error) {
-    console.error('Error registering user:', error)
-    res.status(500).json({ message: 'Server error' })
+    console.error('Error registering user:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-}
+};
 
 export const loginUser = async (req: Request, res: Response) => {
-  const { email, password } = req.body
+  const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email }).populate('homebase').populate('airline').populate('role', 'value')
+    const user = await User.findOne({ email })
+      .populate('homebase')
+      .populate('airline')
+      .populate('role', 'value');
 
     if (user && (await user.matchPassword(password))) {
+      // Check if the user already has a key pair
+      let userKey = await Key.findOne({ userId: user._id });
+
+      if (!userKey) {
+        // Generate a new key pair
+        const { publicKey, privateKey } = generateKeyPair();
+
+        // Save the public key to the database
+        userKey = await Key.create({
+          userId: user._id,
+          publicKey,
+        });
+
+        // Log the private key for secure handling (replace this with proper storage mechanism)
+        console.log(`Generated private key for user ${user._id}:`, privateKey);
+      }
+
       res.status(200).json({
         _id: user._id,
         firstName: user.firstName,
@@ -65,15 +108,17 @@ export const loginUser = async (req: Request, res: Response) => {
         email: user.email,
         homebase: user.homebase,
         airline: user.airline,
-        role: user.role
-      })
+        role: user.role,
+        publicKey: userKey.publicKey, // Include the public key in the response
+      });
     } else {
-      res.status(401).json({ message: 'Invalid email or password' })
+      res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Server error' })
+    console.error('Error logging in user:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-}
+};
 
 export const validateUserId = async (req: Request, res: Response): Promise<void> => {
   const { userId } = req.body

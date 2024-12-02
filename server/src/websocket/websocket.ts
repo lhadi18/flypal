@@ -58,35 +58,48 @@ export function setupWebSocketServer(server: any) {
         }
 
         // Handle chat messages
-        const { sender, recipient, content } = parsedData
         if (parsedData.type === 'chat_message') {
-          if (!sender || !recipient || !content) {
-            console.error('Missing fields in chat message:', parsedData)
-            return
+          const { sender, recipient, message, nonce, timestamp } = parsedData;
+        
+          // Validate fields
+          if (!sender || !sender._id || !recipient || !message || !nonce) {
+            console.error('Missing fields in chat message:', parsedData);
+            return;
           }
-
-          // Save the message to the database
-          const message = await Message.create({ sender, recipient, content })
-          console.log('Message saved:', message)
-
-          // Prepare the message for sending
-          const chatMessage = {
-            type: 'chat_message',
-            _id: message._id,
-            sender: message.sender,
-            recipient: message.recipient,
-            content: message.content,
-            timestamp: message.timestamp
+        
+          try {
+            // Save the message to the database
+            const savedMessage = await Message.create({
+              sender: sender._id, // Extract sender ID
+              recipient,
+              content: message, // Map `message` to `content`
+              nonce,
+              timestamp,
+            });
+        
+            console.log('Message saved:', savedMessage);
+        
+            // Prepare the message for broadcasting
+            const chatMessage = {
+              type: 'chat_message',
+              _id: savedMessage._id,
+              sender: savedMessage.sender,
+              recipient: savedMessage.recipient,
+              content: savedMessage.content,
+              timestamp: savedMessage.timestamp,
+            };
+        
+            // Send the message to both sender and recipient if connected
+            [sender._id, recipient].forEach((userId) => {
+              if (clients.has(userId)) {
+                clients.get(userId).send(JSON.stringify(chatMessage));
+              }
+            });
+          } catch (error) {
+            console.error('Error saving or sending chat message:', error);
           }
-
-          // Send the message to both sender and recipient if connected
-          ;[sender, recipient].forEach(userId => {
-            if (clients.has(userId)) {
-              clients.get(userId).send(JSON.stringify(chatMessage))
-            }
-          })
-          return
-        }
+          return;
+        }        
 
         if (parsedData.type === 'read_receipt') {
           const { senderId, recipientId, messageIds } = parsedData

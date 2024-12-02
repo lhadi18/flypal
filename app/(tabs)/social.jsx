@@ -19,8 +19,12 @@ import { MaterialIcons } from '@expo/vector-icons'
 import * as SecureStore from 'expo-secure-store'
 import { useRouter } from 'expo-router'
 import axios from 'axios'
+import {
+  encryptMessage,
+  decryptMessage,
+} from '@/server/src/utils/encryption';
 
-const Connection = () => {
+const Connection = ({ triggerRefresh }) => {
   const [friends, setFriends] = useState([])
   const [openUserId, setOpenUserId] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
@@ -79,7 +83,7 @@ const Connection = () => {
 
   useEffect(() => {
     fetchFriends()
-  }, [])
+  }, [triggerRefresh])
 
   const removeFriend = async friendId => {
     try {
@@ -675,7 +679,7 @@ const Message = () => {
   );
 };
 
-const Request = () => {
+const Request = ({ setTriggerRefresh }) => {
   const [requests, setRequests] = useState([])
   const [userId, setUserId] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
@@ -727,6 +731,8 @@ const Request = () => {
       if (response.ok) {
         console.log('Friend request accepted successfully')
         setModalVisible(true)
+        setFriendName(friendName);
+        setTriggerRefresh((prev) => !prev);
         await fetchRequests()
       }
     } catch (error) {
@@ -835,17 +841,24 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const [index, setIndex] = useState(0)
-
+  const [index, setIndex] = useState(0);
   const [routes] = useState([
     { key: 'connection', title: 'Connection' },
     { key: 'message', title: 'Message' },
-    { key: 'request', title: 'Request' }
-  ])
+    { key: 'request', title: 'Request' },
+  ]);
+  const [triggerRefresh, setTriggerRefresh] = useState(false); // Shared state to trigger refresh
 
-  const renderTabBar = props => (
+  const renderTabBar = (props) => (
     <TabBar {...props} style={styles.tabBar} labelStyle={styles.tabLabel} indicatorStyle={styles.tabIndicator} />
-  )
+  );
+
+  // Pass `triggerRefresh` and `setTriggerRefresh` to child functions
+  const renderScene = SceneMap({
+    connection: () => <Connection triggerRefresh={triggerRefresh} />,
+    message: Message,
+    request: () => <Request setTriggerRefresh={setTriggerRefresh} />,
+  });
 
   return (
     <View style={styles.container}>
@@ -857,8 +870,8 @@ const Social = () => {
         renderTabBar={renderTabBar}
       />
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

@@ -16,6 +16,11 @@ import ProfileModal from '@/components/profile-modal'
 import { useLocalSearchParams } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { debounce } from 'lodash'
+import {
+  encryptMessage,
+  decryptMessage,
+} from '@/server/src/utils/encryption';
+
 
 const READ_RECEIPT_ICON = require('../../assets/icons/read-receipt.png')
 
@@ -81,6 +86,36 @@ const MessagingScreen = () => {
 
     fetchUserId()
   }, [])
+  
+
+  const fetchRecipientPublicKey = async (recipientId) => {
+    try {
+      const response = await fetch(`https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/keys/${recipientId}`);
+      const { publicKey } = await response.json();
+      if (!publicKey) {
+        throw new Error('Recipient public key is missing from server response');
+      }
+      return publicKey;
+    } catch (error) {
+      console.error('Failed to fetch recipient public key:', error);
+      throw error;
+    }
+  };
+  
+  
+  const fetchSenderPublicKey = async (senderId) => {
+    try {
+      const response = await fetch(`https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/keys/${senderId}`);
+      const { publicKey } = await response.json();
+      if (!publicKey) {
+        throw new Error('Sender public key is missing from server response');
+      }
+      return publicKey;
+    } catch (error) {
+      console.error('Failed to fetch sender public key:', error);
+      throw error;
+    }
+  };
 
   // Fetch message history and setup WebSocket
   useEffect(() => {
@@ -88,57 +123,124 @@ const MessagingScreen = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/messages/${userId}/${recipientId}`)
-        const data = await response.json()
-        setMessages(data)
+        const response = await fetch(
+          `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/messages/${userId}/${recipientId}`
+        );
+        const data = await response.json();
+    
+        const decryptedMessages = await Promise.all(
+          data.map(async (msg) => {
+            try {
+              if (!msg.content || !msg.nonce || !msg.sender || !msg.sender._id) {
+                console.warn('Skipping message due to missing fields:', msg);
+                return { ...msg, content: 'Failed to decrypt' };
+              }
+    
+              // Determine whether the message is incoming or outgoing
+              const isIncoming = msg.sender._id !== userId;
+    
+              // Fetch the correct private key based on the direction of the message
+              const recipientPrivateKey = isIncoming
+                ? await fetchRecipientPublicKey(userId) // Use logged-in user's private key
+                : await fetchRecipientPublicKey(recipientId); // Use the other user's private key
+    
+              // Fetch the sender's public key
+              const senderPublicKey = await fetchSenderPublicKey(
+                isIncoming ? msg.sender._id : userId // If incoming, fetch the sender's key
+              );
+    
+              // Decrypt the message
+              const decryptedContent = decryptMessage(
+                msg.content,
+                msg.nonce,
+                senderPublicKey,
+                recipientPrivateKey
+              );
+    
+              return {
+                ...msg,
+                content: decryptedContent || 'Failed to decrypt',
+              };
+            } catch (error) {
+              console.error('Failed to decrypt a message:', error);
+              return { ...msg, content: 'Failed to decrypt' };
+            }
+          })
+        );
+    
+        setMessages(decryptedMessages);
       } catch (error) {
-        console.error('Failed to fetch messages:', error)
+        console.error('Failed to fetch messages:', error);
       }
-    }
-
+    };    
+    
     fetchMessages()
 
     const setupWebSocket = () => {
       ws.current = new WebSocket('ws://192.168.0.6:8080')
 
-      ws.current.onopen = () => {
-        console.log('WebSocket connected')
-        ws.current.send(JSON.stringify({ type: 'register', userId }))
-      }
-
-      ws.current.onmessage = event => {
-        const data = JSON.parse(event.data)
-
-        if (data.type === 'online_users') {
-          data.users.forEach(user => {
-            // Update user statuses based on the online_users list
-            if (user.userId === recipientId) {
-              setUserStatus('online')
-            }
-          })
-        }
-
-        if (data.type === 'status_change' && data.userId === recipientId) {
-          setUserStatus(data.status)
-        }
-
-        // Handle incoming chat messages
+      ws.current.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+      
         if (data.type === 'chat_message') {
-          setMessages(prevMessages => [...prevMessages, data])
-
-          // Auto-scroll only if the user is already at the bottom
-          if (isAtBottom) {
-            flatListRef.current?.scrollToEnd({ animated: true })
+          try {
+            const recipientPrivateKey = await fetchRecipientPublicKey(recipientId);
+            if (!recipientPrivateKey) {
+              throw new Error('Recipient private key not found');
+            }
+      
+            if (!data.content || !data.nonce || !data.sender || !data.sender._id) {
+              throw new Error('Incomplete chat message data');
+            }
+      
+            const senderPublicKey = await fetchSenderPublicKey(data.sender._id);
+            if (!senderPublicKey) {
+              throw new Error('Sender public key not found');
+            }
+      
+            const decryptedMessage = decryptMessage(
+              data.content,
+              data.nonce,
+              senderPublicKey,
+              recipientPrivateKey
+            );
+      
+            if (!decryptedMessage) {
+              throw new Error('Decryption failed');
+            }
+      
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                ...data,
+                content: decryptedMessage,
+              },
+            ]);
+      
+            if (isAtBottom) {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }
+          } catch (error) {
+            console.error('Decryption failed:', error.message);
+      
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                ...data,
+                content: 'Failed to decrypt',
+              },
+            ]);
           }
-        }
-
+        }      
+      
         if (data.type === 'read_receipt') {
-          setMessages(prevMessages =>
-            prevMessages.map(message => (data.messageIds.includes(message._id) ? { ...message, read: true } : message))
-          )
+          setMessages((prevMessages) =>
+            prevMessages.map((message) =>
+              data.messageIds.includes(message._id) ? { ...message, read: true } : message
+            )
+          );
         }
-      }
-
+      };
       ws.current.onclose = () => {
         console.log('WebSocket disconnected. Reconnecting...')
         setTimeout(setupWebSocket, 3000)
@@ -163,37 +265,62 @@ const MessagingScreen = () => {
 
   const debouncedSaveDraft = debounce((key, value) => {
     SecureStore.setItemAsync(key, value).catch(error => console.error('Error saving draft:', error))
-  }, 300)
+  }, 300) 
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (inputText.trim()) {
-      const message = {
-        _id: Date.now().toString(),
-        sender: { _id: userId },
-        recipient: recipientId,
-        content: inputText,
-        timestamp: new Date().toISOString()
-      }
-
       try {
-        ws.current.send(JSON.stringify({ ...message, type: 'chat_message' }))
-        setMessages(prevMessages => [...prevMessages, message])
-        flatListRef.current?.scrollToEnd({ animated: true })
+        const senderPrivateKey = await fetchSenderPublicKey(userId);
+        if (!senderPrivateKey) {
+          throw new Error('Sender private key not found');
+        }
+  
+        const recipientPublicKey = await fetchRecipientPublicKey(recipientId);
+        if (!recipientPublicKey) {
+          throw new Error('Recipient public key not found');
+        }
+  
+        const { message: encryptedMessage, nonce } = encryptMessage(
+          inputText,
+          recipientPublicKey,
+          senderPrivateKey
+        );
 
-        setInputText('')
-        setDrafts(prevDrafts => ({
-          ...prevDrafts,
-          [recipientId]: ''
-        }))
-
-        SecureStore.deleteItemAsync(`draft_${recipientId}`).catch(error =>
-          console.error('Error clearing draft:', error)
-        )
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            _id: Date.now().toString(),
+            sender: { _id: userId },
+            recipient: recipientId,
+            content: inputText, // Add the original plain text here
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+  
+        if (!encryptedMessage || !nonce) {
+          throw new Error('Encryption failed: Missing encrypted message or nonce');
+        }
+  
+        const payload = {
+          _id: Date.now().toString(),
+          sender: { _id: userId },
+          recipient: recipientId,
+          message: encryptedMessage,
+          nonce,
+          timestamp: new Date().toISOString(),
+          type: 'chat_message',
+        };
+  
+        ws.current.send(JSON.stringify(payload));
+  
+        setInputText('');
+        await SecureStore.deleteItemAsync(`draft_${recipientId}`);
       } catch (error) {
-        console.error('Failed to send message:', error)
+        console.error('Failed to send encrypted message:', error.message);
       }
     }
-  }
+  };
+  
 
   const groupMessagesByDate = messages => {
     const grouped = {}
@@ -224,7 +351,7 @@ const MessagingScreen = () => {
 
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
-      return <Text style={styles.dateHeader}>{item.date}</Text>
+      return <Text style={styles.dateHeader}>{item.date}</Text>;
     }
 
     const { message } = item
@@ -235,8 +362,9 @@ const MessagingScreen = () => {
         <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{message.content}</Text>
         <TimestampWithReadReceipt timestamp={message.timestamp} isRead={isMe && message.read} />
       </View>
-    )
-  }
+    );
+  };
+  
 
   const handleViewableItemsChanged = ({ viewableItems }) => {
     const readMessageIds = viewableItems

@@ -5,6 +5,7 @@ export interface IMessage extends Document {
   recipient: mongoose.Schema.Types.ObjectId
   content: string
   timestamp: Date
+  nonce: string
   read: boolean
 }
 
@@ -13,6 +14,7 @@ const messageSchema: Schema<IMessage> = new mongoose.Schema({
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   content: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
+  nonce: { type: String, required: true },
   read: { type: Boolean, default: false }
 })
 
