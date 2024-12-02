@@ -1,6 +1,6 @@
+import 'react-native-get-random-values';
 import nacl from 'tweetnacl';
 import naclUtil from 'tweetnacl-util';
-import 'react-native-get-random-values';
 
 // Encrypt a message
 export const encryptMessage = (

@@ -72,7 +72,7 @@ const Connection = ({ triggerRefresh }) => {
 
     try {
       const response = await axios.get(
-        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/friendList/${userId}`
+        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/friendList/${userId}`
       )
       setFriends(response.data)
       setFilteredFriends(response.data)
@@ -88,7 +88,7 @@ const Connection = ({ triggerRefresh }) => {
   const removeFriend = async friendId => {
     try {
       const response = await fetch(
-        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/removeFriend`,
+        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/removeFriend`,
         {
           method: 'POST',
           headers: {
@@ -119,7 +119,7 @@ const Connection = ({ triggerRefresh }) => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -146,7 +146,7 @@ const Connection = ({ triggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/friendRequest`,
+        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/friendRequest`,
         {
           method: 'POST',
           headers: {
@@ -490,7 +490,7 @@ const Message = () => {
 
     try {
       const response = await axios.get(
-        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/messages/conversations/${userId}`
       );
       const sortedConversations = response.data.sort(
         (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
@@ -504,7 +504,7 @@ const Message = () => {
   const deleteConversation = async (otherUserId) => {
     try {
       const response = await axios.delete(
-        'https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/messages/delete',
+        'https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/messages/delete',
         {
           data: {
             userId, // Logged-in user ID
@@ -691,7 +691,7 @@ const Request = ({ setTriggerRefresh }) => {
     try {
       if (userId) {
         const response = await axios.get(
-          `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/addFriend/${userId}`
+          `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/addFriend/${userId}`
         )
         setRequests(response.data)
       }
@@ -712,7 +712,7 @@ const Request = ({ setTriggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/acceptRequest`,
+        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/acceptRequest`,
         {
           method: 'POST',
           headers: {
@@ -748,7 +748,7 @@ const Request = ({ setTriggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
