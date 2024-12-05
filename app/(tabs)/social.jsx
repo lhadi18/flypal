@@ -72,7 +72,7 @@ const Connection = ({ triggerRefresh }) => {
 
     try {
       const response = await axios.get(
-        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/friendList/${userId}`
+        `https://028d-103-18-0-19.ngrok-free.app/api/users/friendList/${userId}`
       )
       setFriends(response.data)
       setFilteredFriends(response.data)
@@ -88,7 +88,7 @@ const Connection = ({ triggerRefresh }) => {
   const removeFriend = async friendId => {
     try {
       const response = await fetch(
-        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/removeFriend`,
+        `https://028d-103-18-0-19.ngrok-free.app/api/users/removeFriend`,
         {
           method: 'POST',
           headers: {
@@ -119,7 +119,7 @@ const Connection = ({ triggerRefresh }) => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://028d-103-18-0-19.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -146,7 +146,7 @@ const Connection = ({ triggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/friendRequest`,
+        `https://028d-103-18-0-19.ngrok-free.app/api/users/friendRequest`,
         {
           method: 'POST',
           headers: {
@@ -484,27 +484,94 @@ const Message = () => {
     setOpenUserId((prev) => (prev === userId ? null : userId)); // Toggle menu visibility
   };
 
-  const fetchConversations = async () => {
-    const userId = await SecureStore.getItemAsync('userId');
-    setUserId(userId);
-
+  const fetchRecipientPublicKey = async (recipientId) => {
     try {
+      const response = await fetch(`https://028d-103-18-0-19.ngrok-free.app/api/keys/${recipientId}`);
+      const { publicKey } = await response.json();
+      if (!publicKey) {
+        throw new Error('Recipient public key is missing from server response');
+      }
+      return publicKey;
+    } catch (error) {
+      console.error('Failed to fetch recipient public key:', error);
+      throw error;
+    }
+  };
+  
+  
+  const fetchSenderPublicKey = async (senderId) => {
+    try {
+      const response = await fetch(`https://028d-103-18-0-19.ngrok-free.app/api/keys/${senderId}`);
+      const { publicKey } = await response.json();
+      if (!publicKey) {
+        throw new Error('Sender public key is missing from server response');
+      }
+      return publicKey;
+    } catch (error) {
+      console.error('Failed to fetch sender public key:', error);
+      throw error;
+    }
+  };
+
+  // Fetch conversations and decrypt their last messages
+  const fetchConversations = async () => {
+    try {
+      const userId = await SecureStore.getItemAsync('userId');
+      setUserId(userId);
+
       const response = await axios.get(
-        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://028d-103-18-0-19.ngrok-free.app/api/messages/conversations/${userId}`
       );
       const sortedConversations = response.data.sort(
         (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
       );
-      setConversations(sortedConversations);
+
+      // Decrypt each conversation's last message
+      const decryptedConversations = await Promise.all(
+        sortedConversations.map(async (conversation) => {
+          try {
+            if (!conversation.lastMessage || !conversation.lastNonce || !conversation.sender || !conversation.sender._id) {
+              console.warn('Skipping message due to missing fields:', conversation);
+              return { ...conversation, lastMessage: 'Failed to decrypt' };
+            }
+
+            const isIncoming = conversation.sender._id !== userId;
+
+            // Always fetch the logged-in user's private key
+            const recipientPrivateKey = await fetchRecipientPublicKey(userId);
+      
+            // Fetch the other user's public key
+            const senderPublicKey = await fetchSenderPublicKey(
+              isIncoming ? conversation.sender._id : conversation.recipient._id
+            );
+      
+            // Decrypt based on whether the logged-in user is the sender or recipient
+            const decryptedMessage = isIncoming
+              ? decryptMessage(conversation.lastMessage, conversation.lastNonce, recipientPrivateKey, senderPublicKey)  // Incoming
+              : decryptMessage(conversation.lastMessage, conversation.lastNonce, senderPublicKey, recipientPrivateKey); // Outgoing
+      
+            console.log('Decrypted Message:', decryptedMessage);
+            return {
+              ...conversation,
+              lastMessage: decryptedMessage || 'Failed to decrypt',
+            };
+          } catch (error) {
+            console.error('Failed to decrypt a message:', error);
+            return { ...msg, content: 'Failed to decrypt' };
+          }
+        })
+      );
+
+      setConversations(decryptedConversations);
     } catch (error) {
-      console.log('Error fetching conversations:', error);
+      console.error('Error fetching conversations:', error);
     }
   };
 
   const deleteConversation = async (otherUserId) => {
     try {
       const response = await axios.delete(
-        'https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/messages/delete',
+        'https://028d-103-18-0-19.ngrok-free.app/api/messages/delete',
         {
           data: {
             userId, // Logged-in user ID
@@ -534,44 +601,65 @@ const Message = () => {
     fetchConversations();
 
     ws.current = new WebSocket('ws://192.168.0.6:8080');
-    ws.current.onmessage = (event) => {
+    ws.current.onmessage = async (event) => {
       const data = JSON.parse(event.data);
+      console.log(data)
+
       if (data.type === 'chat_message') {
-        setConversations((prevConversations) => {
-          let conversationFound = false;
+        try {
+          const isRecipient = data.recipient === userId;
+          const senderId = isRecipient ? data.sender : data.recipient;
 
-          const updatedConversations = prevConversations.map((conversation) => {
-            if (
-              (conversation.sender._id === data.sender &&
-                conversation.recipient._id === data.recipient) ||
-              (conversation.sender._id === data.recipient &&
-                conversation.recipient._id === data.sender)
-            ) {
-              conversationFound = true;
-              return {
-                ...conversation,
-                lastMessage: data.content,
-                lastTimestamp: data.timestamp,
-              };
-            }
-            return conversation;
-          });
+          // Fetch public keys
+          const senderPublicKey = await fetchSenderPublicKey(senderId);
+          const recipientPrivateKey = await fetchRecipientPublicKey(userId);
 
-          if (!conversationFound) {
-            const otherUser =
-              data.sender === userId ? data.recipientDetails : data.senderDetails;
-            updatedConversations.push({
-              sender: data.senderDetails,
-              recipient: data.recipientDetails,
-              lastMessage: data.content,
-              lastTimestamp: data.timestamp,
-            });
-          }
-
-          return updatedConversations.sort(
-            (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
+          // Decrypt incoming message
+          const decryptedContent = decryptMessage(
+            data.content,
+            data.nonce,
+            senderPublicKey,
+            recipientPrivateKey
           );
-        });
+
+          setConversations((prevConversations) => {
+            let conversationFound = false;
+
+            const updatedConversations = prevConversations.map((conversation) => {
+              if (
+                (conversation.sender._id === data.sender &&
+                  conversation.recipient._id === data.recipient) ||
+                (conversation.sender._id === data.recipient &&
+                  conversation.recipient._id === data.sender)
+              ) {
+                conversationFound = true;
+                return {
+                  ...conversation,
+                  lastMessage: decryptedContent || 'Failed to decrypt',
+                  lastTimestamp: data.timestamp,
+                };
+              }
+              return conversation;
+            });
+
+            if (!conversationFound) {
+              const otherUser =
+                data.sender === userId ? data.recipientDetails : data.senderDetails;
+              updatedConversations.push({
+                sender: data.senderDetails,
+                recipient: data.recipientDetails,
+                lastMessage: decryptedContent || 'Failed to decrypt',
+                lastTimestamp: data.timestamp,
+              });
+            }
+
+            return updatedConversations.sort(
+              (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
+            );
+          });
+        } catch (error) {
+          console.error('Error decrypting message from WebSocket:', error);
+        }
       }
     };
 
@@ -691,7 +779,7 @@ const Request = ({ setTriggerRefresh }) => {
     try {
       if (userId) {
         const response = await axios.get(
-          `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/addFriend/${userId}`
+          `https://028d-103-18-0-19.ngrok-free.app/api/users/addFriend/${userId}`
         )
         setRequests(response.data)
       }
@@ -712,7 +800,7 @@ const Request = ({ setTriggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/acceptRequest`,
+        `https://028d-103-18-0-19.ngrok-free.app/api/users/acceptRequest`,
         {
           method: 'POST',
           headers: {
@@ -748,7 +836,7 @@ const Request = ({ setTriggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://028d-103-18-0-19.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {

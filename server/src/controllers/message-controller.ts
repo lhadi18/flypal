@@ -46,7 +46,8 @@ export const getConversations = async (req: Request, res: Response) => {
             ]
           },
           lastMessage: { $last: '$content' },
-          lastTimestamp: { $last: '$timestamp' }
+          lastTimestamp: { $last: '$timestamp' },
+          lastNonce: { $last: '$nonce' }
         }
       },
       {
@@ -145,7 +146,8 @@ export const getConversations = async (req: Request, res: Response) => {
             }
           },
           lastMessage: 1,
-          lastTimestamp: 1
+          lastTimestamp: 1,
+          lastNonce: 1
         }
       }
     ])

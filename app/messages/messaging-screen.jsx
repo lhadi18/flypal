@@ -91,7 +91,7 @@ const MessagingScreen = () => {
 
   const fetchRecipientPublicKey = async (recipientId) => {
     try {
-      const response = await fetch(`https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/keys/${recipientId}`);
+      const response = await fetch(`https://028d-103-18-0-19.ngrok-free.app/api/keys/${recipientId}`);
       const { publicKey } = await response.json();
       if (!publicKey) {
         throw new Error('Recipient public key is missing from server response');
@@ -106,7 +106,7 @@ const MessagingScreen = () => {
   
   const fetchSenderPublicKey = async (senderId) => {
     try {
-      const response = await fetch(`https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/keys/${senderId}`);
+      const response = await fetch(`https://028d-103-18-0-19.ngrok-free.app/api/keys/${senderId}`);
       const { publicKey } = await response.json();
       if (!publicKey) {
         throw new Error('Sender public key is missing from server response');
@@ -125,7 +125,7 @@ const MessagingScreen = () => {
     const fetchMessages = async () => {
       try {
         const response = await fetch(
-          `https://7d17-2001-e68-5472-cb83-c4f6-c7c0-affd-aecd.ngrok-free.app/api/messages/${userId}/${recipientId}`
+          `https://028d-103-18-0-19.ngrok-free.app/api/messages/${userId}/${recipientId}`
         );
         const data = await response.json();
     
