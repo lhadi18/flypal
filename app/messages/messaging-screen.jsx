@@ -91,7 +91,7 @@ const MessagingScreen = () => {
 
   const fetchRecipientPublicKey = async (recipientId) => {
     try {
-      const response = await fetch(`https://028d-103-18-0-19.ngrok-free.app/api/keys/${recipientId}`);
+      const response = await fetch(`https://4690-103-18-0-19.ngrok-free.app/api/keys/${recipientId}`);
       const { publicKey } = await response.json();
       if (!publicKey) {
         throw new Error('Recipient public key is missing from server response');
@@ -106,7 +106,7 @@ const MessagingScreen = () => {
   
   const fetchSenderPublicKey = async (senderId) => {
     try {
-      const response = await fetch(`https://028d-103-18-0-19.ngrok-free.app/api/keys/${senderId}`);
+      const response = await fetch(`https://4690-103-18-0-19.ngrok-free.app/api/keys/${senderId}`);
       const { publicKey } = await response.json();
       if (!publicKey) {
         throw new Error('Sender public key is missing from server response');
@@ -125,7 +125,7 @@ const MessagingScreen = () => {
     const fetchMessages = async () => {
       try {
         const response = await fetch(
-          `https://028d-103-18-0-19.ngrok-free.app/api/messages/${userId}/${recipientId}`
+          `https://4690-103-18-0-19.ngrok-free.app/api/messages/${userId}/${recipientId}`
         );
         const data = await response.json();
     
@@ -144,7 +144,7 @@ const MessagingScreen = () => {
               const recipientPrivateKey = isIncoming
                 ? await fetchRecipientPublicKey(userId) // Use logged-in user's private key
                 : await fetchRecipientPublicKey(recipientId); // Use the other user's private key
-    
+
               // Fetch the sender's public key
               const senderPublicKey = await fetchSenderPublicKey(
                 isIncoming ? msg.sender._id : userId // If incoming, fetch the sender's key
@@ -178,7 +178,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://192.168.0.6:8080')
+      ws.current = new WebSocket('ws://10.171.59.126:8080')
 
       ws.current.onmessage = async (event) => {
         const data = JSON.parse(event.data);
@@ -343,6 +343,75 @@ const MessagingScreen = () => {
     return Object.entries(grouped).map(([date, messages]) => ({ date, messages }))
   }
 
+  const handleViewableItemsChanged = async ({ viewableItems }) => {
+    const readMessageIds = viewableItems
+    .filter((item) => {
+      console.log("Processing Item:", item); // Log each viewable item
+      return (
+        item.item.type === 'message' && 
+        item.item.message.recipient._id === userId && 
+        !item.item.message.read
+      );
+    })
+    .map((item) => item.item.message._id);
+      
+      console.log('Viewable Items:', viewableItems);
+      // console.log('Test:', JSON.stringify(viewableItems, null, 2));
+      console.log('Read Message IDs:', readMessageIds);      
+
+      if (readMessageIds.length > 0) {
+        try {
+          // Notify the server about the read messages
+          const response = await fetch(
+            `https://4690-103-18-0-19.ngrok-free.app/api/messages/read/${recipientId}/${userId}`, 
+            {
+              method: 'PATCH', // Ensure you match your router method (PATCH in this case)
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ messageIds: readMessageIds }),
+            }
+          );
+      
+          // Parse the server response
+          const result = await response.json();
+          console.log('Server Response:', result);
+      
+          console.log('Sending read receipt:', {
+            messageIds: readMessageIds,
+            recipientId,
+            userId,
+          });
+      
+          // Update local state to mark the messages as read
+          setMessages((prevMessages) =>
+            prevMessages.map((message) =>
+              readMessageIds.includes(message._id) ? { ...message, read: true } : message
+            )
+          );
+          console.log('Updated Messages:', messages);
+      
+          // Send WebSocket notification for read receipt
+          ws.current.send(
+            JSON.stringify({
+              type: 'read_receipt',
+              senderId: userId,
+              recipientId,
+              messageIds: readMessageIds,
+            })
+          );
+          console.log('Sending WebSocket Read Receipt:', {
+            type: 'read_receipt',
+            senderId: userId,
+            recipientId,
+            messageIds: readMessageIds,
+          });
+        } catch (error) {
+          console.error('Failed to mark messages as read:', error);
+        }
+      }      
+    };
+
   const TimestampWithReadReceipt = ({ timestamp, isRead }) => (
     <View style={styles.timestampContainer}>
       {isRead && <Image source={READ_RECEIPT_ICON} style={styles.readReceiptIcon} />}
@@ -366,30 +435,8 @@ const MessagingScreen = () => {
     );
   };
   
-
-  const handleViewableItemsChanged = ({ viewableItems }) => {
-    const readMessageIds = viewableItems
-      .filter(item => item.type === 'message' && item.message.recipient === userId && !item.message.read)
-      .map(item => item.message._id)
-
-    if (readMessageIds.length > 0) {
-      ws.current.send(
-        JSON.stringify({
-          type: 'read_receipt',
-          senderId: userId,
-          recipientId,
-          messageIds: readMessageIds
-        })
-      )
-
-      setMessages(prevMessages =>
-        prevMessages.map(message => (readMessageIds.includes(message._id) ? { ...message, read: true } : message))
-      )
-    }
-  }
-
   const viewabilityConfig = {
-    itemVisiblePercentThreshold: 50
+    itemVisiblePercentThreshold: 100
   }
 
   const getFlatListData = () => {
@@ -400,6 +447,8 @@ const MessagingScreen = () => {
       flatData.push({ type: 'header', date })
       messages.forEach(message => flatData.push({ type: 'message', message }))
     })
+
+    // console.log(flatData)
 
     return flatData
   }

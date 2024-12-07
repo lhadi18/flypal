@@ -72,7 +72,7 @@ const Connection = ({ triggerRefresh }) => {
 
     try {
       const response = await axios.get(
-        `https://028d-103-18-0-19.ngrok-free.app/api/users/friendList/${userId}`
+        `https://4690-103-18-0-19.ngrok-free.app/api/users/friendList/${userId}`
       )
       setFriends(response.data)
       setFilteredFriends(response.data)
@@ -88,7 +88,7 @@ const Connection = ({ triggerRefresh }) => {
   const removeFriend = async friendId => {
     try {
       const response = await fetch(
-        `https://028d-103-18-0-19.ngrok-free.app/api/users/removeFriend`,
+        `https://4690-103-18-0-19.ngrok-free.app/api/users/removeFriend`,
         {
           method: 'POST',
           headers: {
@@ -119,7 +119,7 @@ const Connection = ({ triggerRefresh }) => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://028d-103-18-0-19.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://4690-103-18-0-19.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -146,7 +146,7 @@ const Connection = ({ triggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://028d-103-18-0-19.ngrok-free.app/api/users/friendRequest`,
+        `https://4690-103-18-0-19.ngrok-free.app/api/users/friendRequest`,
         {
           method: 'POST',
           headers: {
@@ -486,7 +486,7 @@ const Message = () => {
 
   const fetchRecipientPublicKey = async (recipientId) => {
     try {
-      const response = await fetch(`https://028d-103-18-0-19.ngrok-free.app/api/keys/${recipientId}`);
+      const response = await fetch(`https://4690-103-18-0-19.ngrok-free.app/api/keys/${recipientId}`);
       const { publicKey } = await response.json();
       if (!publicKey) {
         throw new Error('Recipient public key is missing from server response');
@@ -501,7 +501,7 @@ const Message = () => {
   
   const fetchSenderPublicKey = async (senderId) => {
     try {
-      const response = await fetch(`https://028d-103-18-0-19.ngrok-free.app/api/keys/${senderId}`);
+      const response = await fetch(`https://4690-103-18-0-19.ngrok-free.app/api/keys/${senderId}`);
       const { publicKey } = await response.json();
       if (!publicKey) {
         throw new Error('Sender public key is missing from server response');
@@ -516,62 +516,76 @@ const Message = () => {
   // Fetch conversations and decrypt their last messages
   const fetchConversations = async () => {
     try {
-      const userId = await SecureStore.getItemAsync('userId');
+      const userId = await SecureStore.getItemAsync('userId'); // Fetch logged-in user's ID
       setUserId(userId);
-
+  
+      // Fetch conversations from API
       const response = await axios.get(
-        `https://028d-103-18-0-19.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://4690-103-18-0-19.ngrok-free.app/api/messages/conversations/${userId}`
       );
+  
       const sortedConversations = response.data.sort(
-        (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
+        (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp) // Sort by most recent
       );
-
+  
       // Decrypt each conversation's last message
       const decryptedConversations = await Promise.all(
         sortedConversations.map(async (conversation) => {
           try {
-            if (!conversation.lastMessage || !conversation.lastNonce || !conversation.sender || !conversation.sender._id) {
-              console.warn('Skipping message due to missing fields:', conversation);
+            const { lastMessage, lastNonce, sender, recipient } = conversation;
+  
+            // Check for missing required fields
+            if (!lastMessage || !lastNonce || !sender || !recipient) {
+              console.warn('Skipping conversation due to missing fields:', conversation);
               return { ...conversation, lastMessage: 'Failed to decrypt' };
             }
-
-            const isIncoming = conversation.sender._id !== userId;
-
-            // Always fetch the logged-in user's private key
-            const recipientPrivateKey = await fetchRecipientPublicKey(userId);
-      
-            // Fetch the other user's public key
-            const senderPublicKey = await fetchSenderPublicKey(
-              isIncoming ? conversation.sender._id : conversation.recipient._id
+  
+            // Determine if the message is incoming or outgoing
+            const isIncoming = sender._id !== userId;
+            console.log(isIncoming)
+  
+            // Fetch the correct keys
+            const recipientPrivateKey = await fetchRecipientPublicKey(
+              isIncoming ? userId : recipient._id // Logged-in user key for incoming, recipient key for outgoing
             );
-      
-            // Decrypt based on whether the logged-in user is the sender or recipient
-            const decryptedMessage = isIncoming
-              ? decryptMessage(conversation.lastMessage, conversation.lastNonce, recipientPrivateKey, senderPublicKey)  // Incoming
-              : decryptMessage(conversation.lastMessage, conversation.lastNonce, senderPublicKey, recipientPrivateKey); // Outgoing
-      
-            console.log('Decrypted Message:', decryptedMessage);
+  
+            const senderPublicKey = await fetchSenderPublicKey(
+              isIncoming ? sender._id : userId // Sender key for incoming, logged-in user key for outgoing
+            );
+
+            const test = isIncoming ? userId : recipient._id
+            const test2 = isIncoming ? sender._id : userId
+  
+            // Decrypt the message based on direction
+            const decryptedMessage = decryptMessage(
+              lastMessage,
+              lastNonce,
+              senderPublicKey,
+              recipientPrivateKey,
+            );
+  
+            // Return the conversation with decrypted message
             return {
               ...conversation,
               lastMessage: decryptedMessage || 'Failed to decrypt',
             };
           } catch (error) {
             console.error('Failed to decrypt a message:', error);
-            return { ...msg, content: 'Failed to decrypt' };
+            return { ...conversation, lastMessage: 'Failed to decrypt' };
           }
         })
       );
-
+  
       setConversations(decryptedConversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
     }
-  };
+  };  
 
   const deleteConversation = async (otherUserId) => {
     try {
       const response = await axios.delete(
-        'https://028d-103-18-0-19.ngrok-free.app/api/messages/delete',
+        'https://4690-103-18-0-19.ngrok-free.app/api/messages/delete',
         {
           data: {
             userId, // Logged-in user ID
@@ -600,10 +614,9 @@ const Message = () => {
   useEffect(() => {
     fetchConversations();
 
-    ws.current = new WebSocket('ws://192.168.0.6:8080');
+    ws.current = new WebSocket('ws://10.171.59.126:8080');
     ws.current.onmessage = async (event) => {
       const data = JSON.parse(event.data);
-      console.log(data)
 
       if (data.type === 'chat_message') {
         try {
@@ -681,11 +694,15 @@ const Message = () => {
           data={conversations}
           keyExtractor={(item, index) => index.toString()}
           renderItem={({ item }) => {
-            const isRecipientLoggedInUser = item.recipient._id === userId;
-            const otherUser = isRecipientLoggedInUser ? item.sender : item.recipient;
-
-            const messageText = isRecipientLoggedInUser
-              ? `You: ${item.lastMessage}`
+            // Check if the logged-in user is the sender
+            const isMessageSentByUser = item.sender._id === userId;
+          
+            // Identify the other user (friend in conversation)
+            const otherUser = isMessageSentByUser ? item.recipient : item.sender;
+          
+            // Set message text conditionally
+            const messageText = isMessageSentByUser
+              ? `You: ${item.lastMessage}` // Add "You:" only if logged-in user is the sender
               : item.lastMessage;
 
             return (
@@ -779,7 +796,7 @@ const Request = ({ setTriggerRefresh }) => {
     try {
       if (userId) {
         const response = await axios.get(
-          `https://028d-103-18-0-19.ngrok-free.app/api/users/addFriend/${userId}`
+          `https://4690-103-18-0-19.ngrok-free.app/api/users/addFriend/${userId}`
         )
         setRequests(response.data)
       }
@@ -800,7 +817,7 @@ const Request = ({ setTriggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://028d-103-18-0-19.ngrok-free.app/api/users/acceptRequest`,
+        `https://4690-103-18-0-19.ngrok-free.app/api/users/acceptRequest`,
         {
           method: 'POST',
           headers: {
@@ -836,7 +853,7 @@ const Request = ({ setTriggerRefresh }) => {
 
     try {
       const response = await fetch(
-        `https://028d-103-18-0-19.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://4690-103-18-0-19.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {

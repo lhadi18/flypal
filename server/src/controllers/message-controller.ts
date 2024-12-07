@@ -27,14 +27,20 @@ export const createMessage = async (req: Request, res: Response): Promise<void> 
 };
 
 export const getConversations = async (req: Request, res: Response) => {
-  const { userId } = req.params
+  const { userId } = req.params;
 
   try {
     const conversations = await Message.aggregate([
       {
         $match: {
-          $or: [{ sender: new mongoose.Types.ObjectId(userId) }, { recipient: new mongoose.Types.ObjectId(userId) }]
-        }
+          $or: [
+            { sender: new mongoose.Types.ObjectId(userId) },
+            { recipient: new mongoose.Types.ObjectId(userId) },
+          ],
+        },
+      },
+      {
+        $sort: { timestamp: -1 }, // Sort messages by timestamp descending
       },
       {
         $group: {
@@ -42,122 +48,63 @@ export const getConversations = async (req: Request, res: Response) => {
             $cond: [
               { $lt: ['$sender', '$recipient'] },
               { sender: '$sender', recipient: '$recipient' },
-              { sender: '$recipient', recipient: '$sender' }
-            ]
+              { sender: '$recipient', recipient: '$sender' },
+            ],
           },
-          lastMessage: { $last: '$content' },
-          lastTimestamp: { $last: '$timestamp' },
-          lastNonce: { $last: '$nonce' }
-        }
+          lastMessage: { $first: '$content' },
+          lastNonce: { $first: '$nonce' },
+          lastTimestamp: { $first: '$timestamp' },
+          senderId: { $first: '$sender' }, // Capture sender ID of the last message
+          recipientId: { $first: '$recipient' }, // Capture recipient ID
+        },
       },
       {
         $lookup: {
           from: 'users',
-          localField: '_id.sender',
+          localField: 'senderId',
           foreignField: '_id',
-          as: 'senderDetails'
-        }
+          as: 'senderDetails',
+        },
       },
       {
         $lookup: {
           from: 'users',
-          localField: '_id.recipient',
+          localField: 'recipientId',
           foreignField: '_id',
-          as: 'recipientDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'airports',
-          localField: 'senderDetails.homebase',
-          foreignField: '_id',
-          as: 'senderHomebaseDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'airports',
-          localField: 'recipientDetails.homebase',
-          foreignField: '_id',
-          as: 'recipientHomebaseDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'roles',
-          localField: 'senderDetails.role',
-          foreignField: '_id',
-          as: 'senderRoleDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'roles',
-          localField: 'recipientDetails.role',
-          foreignField: '_id',
-          as: 'recipientRoleDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'airlines',
-          localField: 'senderDetails.airline',
-          foreignField: '_id',
-          as: 'senderAirlineDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'airlines',
-          localField: 'recipientDetails.airline',
-          foreignField: '_id',
-          as: 'recipientAirlineDetails'
-        }
+          as: 'recipientDetails',
+        },
       },
       {
         $project: {
           _id: 0,
           sender: {
             _id: { $arrayElemAt: ['$senderDetails._id', 0] },
-            airline: { $arrayElemAt: ['$senderAirlineDetails', 0] },
-            email: { $arrayElemAt: ['$senderDetails.email', 0] },
             firstName: { $arrayElemAt: ['$senderDetails.firstName', 0] },
-            homebase: { $arrayElemAt: ['$senderHomebaseDetails', 0] },
             lastName: { $arrayElemAt: ['$senderDetails.lastName', 0] },
             profilePicture: { $arrayElemAt: ['$senderDetails.profilePicture', 0] },
-            role: {
-              _id: { $arrayElemAt: ['$senderRoleDetails._id', 0] },
-              label: { $arrayElemAt: ['$senderRoleDetails.label', 0] },
-              value: { $arrayElemAt: ['$senderRoleDetails.value', 0] }
-            }
           },
           recipient: {
             _id: { $arrayElemAt: ['$recipientDetails._id', 0] },
-            airline: { $arrayElemAt: ['$recipientAirlineDetails', 0] },
-            email: { $arrayElemAt: ['$recipientDetails.email', 0] },
             firstName: { $arrayElemAt: ['$recipientDetails.firstName', 0] },
-            homebase: { $arrayElemAt: ['$recipientHomebaseDetails', 0] },
             lastName: { $arrayElemAt: ['$recipientDetails.lastName', 0] },
             profilePicture: { $arrayElemAt: ['$recipientDetails.profilePicture', 0] },
-            role: {
-              _id: { $arrayElemAt: ['$recipientRoleDetails._id', 0] },
-              label: { $arrayElemAt: ['$recipientRoleDetails.label', 0] },
-              value: { $arrayElemAt: ['$recipientRoleDetails.value', 0] }
-            }
           },
           lastMessage: 1,
+          lastNonce: 1,
           lastTimestamp: 1,
-          lastNonce: 1
-        }
-      }
-    ])
+        },
+      },
+      { $sort: { lastTimestamp: -1 } }, // Sort final conversations by last message timestamp
+    ]);
 
-    res.status(200).json(conversations)
+    res.status(200).json(conversations);
   } catch (error) {
-    console.error('Error fetching conversations:', error)
-    res.status(500).json({ error: 'Failed to fetch conversations.' })
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch conversations.' });
   }
-}
+};
+
+
 
 // Get all messages between two users
 export const getMessages = async (req: Request, res: Response) => {

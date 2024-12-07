@@ -42,7 +42,7 @@ const DiningBookmark = () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         const response = await axios.get(
-          `https://028d-103-18-0-19.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
+          `https://4690-103-18-0-19.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
           { params: { page, limit: 10, search: query } }
         )
 
@@ -119,7 +119,7 @@ const DiningBookmark = () => {
           onPress: async () => {
             try {
               const userId = await SecureStore.getItemAsync('userId')
-              const response = await axios.post('https://028d-103-18-0-19.ngrok-free.app/api/bookmarks/unbookmark', {
+              const response = await axios.post('https://4690-103-18-0-19.ngrok-free.app/api/bookmarks/unbookmark', {
                 userId,
                 sourceType,
                 diningId,
