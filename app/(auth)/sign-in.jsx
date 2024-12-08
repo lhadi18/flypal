@@ -1,5 +1,5 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground, Alert } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import ConnectivityService from '@/services/utils/connectivity-service'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { loginUser } from '../../services/apis/user-api'
 import * as SecureStore from 'expo-secure-store'
@@ -32,7 +32,7 @@ const SignIn = () => {
       await SecureStore.setItemAsync('homebaseTZDatabase', homebaseTZDatabase)
 
       Alert.alert('Login Successful', `Welcome back, ${email}`)
-      router.push('/roster')
+      router.replace('/roster')
     } catch (error) {
       Alert.alert('Login Failed', error.message || 'Invalid email or password')
     }
@@ -103,7 +103,7 @@ const SignIn = () => {
                     </View>
                     {touched.password && errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
                     <TouchableOpacity style={styles.forgotPasswordButton}>
-                      <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                      {/* <Text style={styles.forgotPasswordText}>Forgot Password?</Text> */}
                     </TouchableOpacity>
                   </View>
                   <TouchableOpacity style={styles.loginButton} onPress={handleSubmit}>

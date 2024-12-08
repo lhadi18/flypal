@@ -453,7 +453,7 @@ const Message = () => {
     fetchConversations()
 
     // Set up WebSocket
-    ws.current = new WebSocket('ws://172.20.10.2:8080')
+    ws.current = new WebSocket('ws://10.164.238.244:8080')
     ws.current.onmessage = event => {
       const data = JSON.parse(event.data)
       if (data.type === 'chat_message') {

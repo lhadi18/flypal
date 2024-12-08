@@ -187,9 +187,10 @@ export const addRosterEntry = async entry => {
   }
 }
 
-export const getAllRosterEntries = async () => {
+export const getAllRosterEntries = async userId => {
   try {
-    const rows = await db.getAllAsync(`
+    const rows = await db.getAllAsync(
+      `
       SELECT roster_entries.*, 
              airports1.objectId AS originObjectId, airports1.IATA AS originIATA, airports1.ICAO AS originICAO, airports1.name AS originName, airports1.city AS originCity, airports1.country AS originCountry, airports1.tz_database AS originTz, 
              airports2.objectId AS destinationObjectId, airports2.IATA AS destinationIATA, airports2.ICAO AS destinationICAO, airports2.name AS destinationName, airports2.city AS destinationCity, airports2.country AS destinationCountry, airports2.tz_database AS destinationTz,
@@ -199,8 +200,10 @@ export const getAllRosterEntries = async () => {
       LEFT JOIN airports AS airports1 ON roster_entries.origin = airports1.objectId
       LEFT JOIN airports AS airports2 ON roster_entries.destination = airports2.objectId
       LEFT JOIN aircrafts ON roster_entries.aircraftType = aircrafts.objectId 
-      WHERE pendingDeletion = 0;
-    `)
+      WHERE roster_entries.userId = ? AND pendingDeletion = 0;
+      `,
+      [userId]
+    )
 
     const data = (rows || []).map(row => ({
       ...row,
@@ -234,7 +237,7 @@ export const getAllRosterEntries = async () => {
 
     return data
   } catch (error) {
-    console.error('Error fetching roster entries from SQLite:', error)
+    console.error('Error fetching roster entries for userId from SQLite:', error)
     return []
   }
 }

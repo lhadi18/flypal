@@ -422,7 +422,7 @@ export const getUsers = async (req: Request, res: Response) => {
   const { page = 1, limit = 5, search = '' } = req.query
 
   try {
-    const query = {
+    const matchStage = {
       $or: [
         { firstName: { $regex: search, $options: 'i' } },
         { lastName: { $regex: search, $options: 'i' } },
@@ -433,17 +433,89 @@ export const getUsers = async (req: Request, res: Response) => {
       ]
     }
 
-    const users = await User.find(query)
-      .populate('homebase', 'name')
-      .populate('airline', 'Name')
-      .populate('role', 'value')
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
+    const aggregationPipeline = [
+      // Perform lookups for role, homebase, and airline
+      {
+        $lookup: {
+          from: 'roles', // collection name for Role
+          localField: 'role',
+          foreignField: '_id',
+          as: 'role'
+        }
+      },
+      {
+        $lookup: {
+          from: 'airports', // collection name for Airport
+          localField: 'homebase',
+          foreignField: '_id',
+          as: 'homebase'
+        }
+      },
+      {
+        $lookup: {
+          from: 'airlines', // collection name for Airline
+          localField: 'airline',
+          foreignField: '_id',
+          as: 'airline'
+        }
+      },
+      // Unwind arrays to get single documents
+      { $unwind: { path: '$role', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$homebase', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$airline', preserveNullAndEmptyArrays: true } },
+      // Match the search query
+      { $match: matchStage },
+      // Pagination
+      { $skip: (Number(page) - 1) * Number(limit) },
+      { $limit: Number(limit) }
+    ]
 
-    const count = await User.countDocuments(query)
+    const users = await User.aggregate(aggregationPipeline)
 
-    res.status(200).json({ users, totalPages: Math.ceil(count / Number(limit)), currentPage: Number(page) })
+    // Count the total number of matching documents
+    const countPipeline = [
+      // Add lookups for proper matching
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'role',
+          foreignField: '_id',
+          as: 'role'
+        }
+      },
+      {
+        $lookup: {
+          from: 'airports',
+          localField: 'homebase',
+          foreignField: '_id',
+          as: 'homebase'
+        }
+      },
+      {
+        $lookup: {
+          from: 'airlines',
+          localField: 'airline',
+          foreignField: '_id',
+          as: 'airline'
+        }
+      },
+      { $unwind: { path: '$role', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$homebase', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$airline', preserveNullAndEmptyArrays: true } },
+      { $match: matchStage },
+      { $count: 'total' }
+    ]
+
+    const countResult = await User.aggregate(countPipeline)
+    const totalDocuments = countResult.length > 0 ? countResult[0].total : 0
+
+    res.status(200).json({
+      users,
+      totalPages: Math.ceil(totalDocuments / Number(limit)),
+      currentPage: Number(page)
+    })
   } catch (error) {
+    console.error(error)
     res.status(500).json({ message: 'Server error' })
   }
 }
@@ -482,6 +554,11 @@ export const createUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, password, homebase, airline, role } = req.body
 
   try {
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already exists' })
+    }
+
     const user = new User({
       firstName,
       lastName,
@@ -511,7 +588,7 @@ export const createUser = async (req: Request, res: Response) => {
 // Update an existing user by ID
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params
-  const { firstName, lastName, email, homebase, airline, role } = req.body
+  const { firstName, lastName, email, homebase, airline, role, password } = req.body
 
   try {
     const user = await User.findById(id)
@@ -521,12 +598,22 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       return
     }
 
+    const existingUser = await User.findOne({ email, _id: { $ne: id } })
+    if (existingUser) {
+      res.status(400).json({ message: 'Email already exists' })
+      return
+    }
+
     user.firstName = firstName
     user.lastName = lastName
     user.email = email
     user.homebase = homebase
     user.airline = airline
     user.role = role
+
+    if (password) {
+      user.password = password
+    }
 
     await user.save()
 
@@ -540,6 +627,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
       role: user.role
     })
   } catch (error) {
+    console.error('Error updating user:', error)
     res.status(500).json({ message: 'Server error' })
   }
 }

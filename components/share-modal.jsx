@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import React, { useState, useEffect, useRef } from 'react'
 import * as SecureStore from 'expo-secure-store'
+import { DUTY_TYPES } from '@/constants/duties'
 import { Ionicons } from '@expo/vector-icons'
 import moment from 'moment-timezone'
 import axios from 'axios'
@@ -24,12 +25,10 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
   const [currentUserId, setCurrentUserId] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  console.log(currentMonthYear)
-
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://172.20.10.2:8080')
+    ws.current = new WebSocket('ws://10.164.238.244:8080')
 
     ws.current.onopen = () => {
       console.log('WebSocket connected')
@@ -86,6 +85,11 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
     setFilteredConnections(filtered)
   }
 
+  const getDutyLabel = type => {
+    const duty = DUTY_TYPES.find(duty => duty.value === type)
+    return duty ? duty.label : type
+  }
+
   const handleShare = () => {
     if (selectedConnections.length === 0) {
       Alert.alert('No Selection', 'Please select at least one connection.')
@@ -93,17 +97,15 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
     }
 
     try {
-      // Map for entry types to emojis
       const typeEmojis = {
         FLIGHT_DUTY: '✈️',
         GROUND_DUTY: '🚐',
         TRAINING: '📘',
         LEAVE: '🌴',
         MEETING: '📅',
-        DEFAULT: '📌' // Fallback emoji
+        DEFAULT: '📌'
       }
 
-      // Filter the roster based on the currentMonthYear
       const filteredRoster = Object.entries(selectedMonthRoster).filter(([date]) => {
         const entryMonthYear = moment(date).format('YYYY-MM')
         return entryMonthYear === currentMonthYear
@@ -114,33 +116,31 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
         return
       }
 
-      // Format the filtered roster into a well-structured message
       const formattedRoster = filteredRoster
         .map(([date, entries]) => {
-          const formattedDate = moment(date).format('MMMM D, YYYY') // Format the date
+          const formattedDate = moment(date).format('MMMM D, YYYY')
           const formattedEntries = entries
             .map(entry => {
-              const emoji = typeEmojis[entry.type] || typeEmojis.DEFAULT // Get emoji for type
-              return `${emoji} **${entry.type}**\n   ✈️ ${entry.origin?.IATA || 'N/A'} ➡️ ${entry.destination?.IATA || 'N/A'}\n   🕒 ${moment(entry.departureTime).format('HH:mm')} - ${moment(entry.arrivalTime).format('HH:mm')}`
+              const emoji = typeEmojis[entry.type] || typeEmojis.DEFAULT
+              const dutyLabel = getDutyLabel(entry.type) // Use the label
+              return `${emoji} **${dutyLabel}**\n   ✈️ ${entry.origin?.IATA || 'N/A'} ➡️ ${entry.destination?.IATA || 'N/A'}\n   🕒 ${moment(entry.departureTime).format('HH:mm')} - ${moment(entry.arrivalTime).format('HH:mm')}`
             })
-            .join('\n\n') // Add extra spacing between entries
-          return `📅 **${formattedDate}**\n${formattedEntries}` // Add emoji and bold date
+            .join('\n\n')
+          return `📅 **${formattedDate}**\n${formattedEntries}`
         })
-        .join('\n\n') // Separate different days
+        .join('\n\n')
 
       const messageContent = `📋 **Here is my roster for ${moment(currentMonthYear, 'YYYY-MM').format('MMMM YYYY')}:**\n\n${formattedRoster}`
 
-      // Iterate through each selected recipient and send the message individually
       selectedConnections.forEach(recipientId => {
         const messagePayload = {
           type: 'chat_message',
           sender: currentUserId,
-          recipient: recipientId, // Send to one recipient at a time
+          recipient: recipientId,
           content: messageContent,
           timestamp: new Date().toISOString()
         }
 
-        // Check WebSocket state before sending
         if (ws.current.readyState === WebSocket.OPEN) {
           ws.current.send(JSON.stringify(messagePayload))
           console.log(`Message sent to recipient: ${recipientId}`)
@@ -150,7 +150,7 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
       })
 
       Alert.alert('Success', 'Roster shared successfully!')
-      setSelectedConnections([]) // Clear selections after sharing
+      setSelectedConnections([])
       onClose()
     } catch (error) {
       console.error('Error sharing roster:', error)
@@ -217,7 +217,7 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
           )}
           <View style={styles.modalActions}>
             <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}>
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.modalButton, styles.shareButton]} onPress={handleShare}>
               <Text style={styles.buttonText}>Share</Text>
@@ -306,23 +306,43 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    width: '100%',
     marginTop: 20
   },
   modalButton: {
-    padding: 15,
-    borderRadius: 10,
-    marginHorizontal: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
+    borderRadius: 10,
+    padding: 10,
+    elevation: 2,
+    width: '48%',
+    justifyContent: 'center',
+
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+
+    elevation: 5
   },
   cancelButton: {
-    backgroundColor: '#FF5C5C'
+    backgroundColor: 'white',
+    borderColor: 'grey',
+    borderWidth: 1
   },
   shareButton: {
     backgroundColor: '#045D91'
   },
   buttonText: {
+    fontWeight: 'bold',
     color: 'white',
+    fontSize: 16
+  },
+  cancelButtonText: {
+    color: 'grey',
     fontWeight: 'bold',
     fontSize: 16
   },

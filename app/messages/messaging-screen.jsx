@@ -99,7 +99,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://172.20.10.2:8080')
+      ws.current = new WebSocket('ws://10.164.238.244:8080')
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')

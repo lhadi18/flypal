@@ -8,6 +8,7 @@ import {
   ImageBackground,
   StyleSheet
 } from 'react-native'
+import ConnectivityService from '../services/utils/connectivity-service'
 import { initializeDatabase } from '../services/utils/database'
 import { validateUserId } from '../services/apis/user-api'
 import * as Notifications from 'expo-notifications'
@@ -19,7 +20,7 @@ const App = () => {
   const router = useRouter()
 
   useEffect(() => {
-    // Initialize database
+    ConnectivityService.initialize()
     initializeDatabase()
 
     // Check for notification permissions on app launch
@@ -37,25 +38,27 @@ const App = () => {
     const reAuthenticate = async () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
+        const isConnected = await ConnectivityService.checkConnection()
+
+        if (userId && !isConnected) {
+          router.replace('/roster')
+        }
+
         if (userId) {
           const isValid = await validateUserId(userId)
           if (isValid) {
             router.replace('/roster')
           } else {
-            // If invalid, navigate to sign-in
             router.replace('/sign-in')
           }
         } else {
-          // If no userId is stored, navigate to sign-in
           router.replace('/sign-in')
         }
       } catch {
-        // Do nothing on error and keep the user signed out
         router.replace('/sign-in')
       }
     }
 
-    // Execute both functions
     checkNotificationPermissions()
     reAuthenticate()
   }, [])

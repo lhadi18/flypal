@@ -15,7 +15,6 @@ const Destination = () => {
   const setSelectedAirport = useGlobalStore(state => state.setSelectedAirport)
 
   const handleSelectAirport = airport => {
-    console.log(airport)
     if (airport) {
       setSelectedAirport(airport)
       router.push('destinations/events')
@@ -30,32 +29,19 @@ const Destination = () => {
         return
       }
 
-      // const response = await axios.get(
-      //   'https://40c7-115-164-76-186.ngrok-free.app/api/roster/getNext30DaysRoster',
-      //   {
-      //     params: { userId }
-      //   }
-      // )
-      // setRoster(response.data)
-
-      // Fetch data for the next 30 days from SQLite
       const startOfToday = moment().startOf('day').toISOString()
       const endOf30Days = moment().startOf('day').add(30, 'days').toISOString()
 
-      const allRosterEntries = await getAllRosterEntries()
+      const allRosterEntries = await getAllRosterEntries(userId)
 
-      // Filter entries in one pass
       const uniqueDestinations = new Set()
       const filteredRoster = allRosterEntries.filter(entry => {
         const departureTime = moment(entry.departureTime).toISOString()
 
-        // Check date range
         const isWithin30Days = departureTime >= startOfToday && departureTime <= endOf30Days
 
-        // Check for valid object IDs
         const hasValidObjectIds = entry.origin.objectId && entry.destination.objectId
 
-        // Ensure destination uniqueness
         const destinationKey = entry.destination.objectId
         const isUniqueDestination = !uniqueDestinations.has(destinationKey)
 
@@ -66,15 +52,11 @@ const Destination = () => {
 
         return false
       })
-
-      console.log(filteredRoster)
       setRoster(filteredRoster)
     } catch (error) {
       console.error('Error fetching roster data from SQLite:', error)
     }
   }
-
-  // Fetch the roster every time the screen is focused
   useFocusEffect(
     useCallback(() => {
       fetchRoster()

@@ -193,7 +193,7 @@ const Settings = () => {
   const handleLogout = async () => {
     try {
       await SecureStore.deleteItemAsync('userId')
-      router.push('/sign-in')
+      router.replace('/sign-in')
     } catch (error) {
       console.error('Error logging out:', error)
     }

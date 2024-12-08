@@ -21,14 +21,13 @@ import {
   getAircraftsFromDatabase
 } from '../../services/utils/database'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { fetchAircraftTypes } from '../../services/apis/aircraft-api'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { useNavigation, useRoute } from '@react-navigation/native'
+import eventEmitter from '@/services/utils/event-emitter'
 import AirportSearch from '@/components/airport-search'
 import RNPickerSelect from 'react-native-picker-select'
 import * as DocumentPicker from 'expo-document-picker'
-import NetInfo from '@react-native-community/netinfo'
 import { CalendarList } from 'react-native-calendars'
 import { DUTY_TYPES } from '../../constants/duties'
 import * as Notifications from 'expo-notifications'
@@ -118,6 +117,19 @@ const Roster = () => {
       console.error('Error loading settings:', error)
     }
   }
+
+  useEffect(() => {
+    const handleSettingsChange = settings => {
+      setNotificationsEnabled(settings.notificationsEnabled)
+      setCustomReminderHour(settings.customReminderHour)
+      setRedEyeReminderTime(settings.redEyeReminderTime)
+    }
+    eventEmitter.on('settingsChanged', handleSettingsChange)
+
+    return () => {
+      eventEmitter.off('settingsChanged', handleSettingsChange)
+    }
+  }, [])
 
   useLayoutEffect(() => {
     if (route.params?.action) {
@@ -216,7 +228,8 @@ const Roster = () => {
 
   const fetchRosterEntries = async startDate => {
     try {
-      const offlineEntries = await getAllRosterEntries()
+      const userId = await SecureStore.getItemAsync('userId')
+      const offlineEntries = await getAllRosterEntries(userId)
       const processedOfflineEntries = processEntries(offlineEntries)
 
       setRosterEntries(processedOfflineEntries)
@@ -344,11 +357,13 @@ const Roster = () => {
     const permissionGranted = await requestNotificationPermission()
     if (!permissionGranted) return
 
-    const timezone = event.origin?.tz_database || homebaseTZ
-    const eventStartTime = event.departureTime ? moment.tz(event.departureTime, timezone) : null
-    const eventEndTime = event.arrivalTime ? moment.tz(event.arrivalTime, timezone) : null
+    const eventStartTime = event.departureTime
+      ? moment.tz(event.departureTime, event.origin?.tz_database || homebaseTZ)
+      : null
+    const eventEndTime = event.arrivalTime
+      ? moment.tz(event.arrivalTime, event.destination?.tz_database || homebaseTZ)
+      : null
 
-    // Common validation
     if (!eventStartTime || !eventStartTime.isValid()) {
       console.warn('Invalid or missing start time for event:', event)
       return
@@ -360,7 +375,6 @@ const Roster = () => {
       let notificationTitle = 'Upcoming Event Reminder'
       let notificationBody = ''
 
-      // Notification configuration based on event type
       switch (event.type) {
         case 'STANDBY':
           notificationTitle = 'Standby Duty Reminder'
@@ -413,17 +427,12 @@ const Roster = () => {
           date: new Date(reminderTime)
         }
       })
+      console.log(await Notifications.getAllScheduledNotificationsAsync())
     }
 
-    // Notification for end time, if applicable
-    if (eventEndTime && eventEndTime.isAfter(moment())) {
-      let endNotificationTitle = `${event.type} End Reminder`
-      let endNotificationBody = `Your ${event.type.toLowerCase()} ends soon.`
-
-      if (event.type === 'STANDBY') {
-        endNotificationTitle = 'Standby Duty End Reminder'
-        endNotificationBody = 'Your standby duty has ended.'
-      }
+    if (['STANDBY', 'OFF_DUTY', 'LAYOVER'].includes(event.type) && eventEndTime && eventEndTime.isAfter(moment())) {
+      const endNotificationTitle = `${event.type} End Reminder`
+      const endNotificationBody = `Your ${event.type.toLowerCase()} ends soon.`
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -433,7 +442,7 @@ const Roster = () => {
           badge: 1
         },
         trigger: {
-          date: new Date(eventEndTime)
+          date: new Date(eventEndTime.clone().subtract(30, 'minutes'))
         }
       })
     }
@@ -467,17 +476,10 @@ const Roster = () => {
     }
   }
 
-  const handleShare = async selectedConnections => {
-    // await axios.post('https://your-api.com/api/share/roster', {
-    //   recipients: selectedConnections,
-    // });
-  }
-
   const getSelectedMonthRoster = () => {
-    const selectedMonth = moment(selectedDate).month() // Month from selectedDate
-    const selectedYear = moment(selectedDate).year() // Year from selectedDate
+    const selectedMonth = moment(selectedDate).month()
+    const selectedYear = moment(selectedDate).year()
 
-    // Filter roster entries by the selected month and year
     const selectedMonthEntries = Object.entries(rosterEntries).reduce((acc, [date, entries]) => {
       const momentDate = moment(date)
       if (momentDate.month() === selectedMonth && momentDate.year() === selectedYear) {
@@ -531,13 +533,13 @@ const Roster = () => {
               <View style={styles.eventRow}>
                 <Ionicons name="time-outline" size={18} color="#045D91" />
                 <Text style={[styles.eventText, styles.importantText]}>
-                  Start: {getLocalTime(item.departureTime, homebaseTZ)}
+                  Start: {getLocalTime(item.departureTime, item.origin?.tz_database || homebaseTZ)}
                 </Text>
               </View>
               <View style={styles.eventRow}>
                 <Ionicons name="time-outline" size={18} color="#045D91" />
                 <Text style={[styles.eventText, styles.importantText]}>
-                  End: {getLocalTime(item.arrivalTime, homebaseTZ)}
+                  End: {getLocalTime(item.arrivalTime, item.origin?.tz_database || homebaseTZ)}
                 </Text>
               </View>
             </>
@@ -586,21 +588,21 @@ const Roster = () => {
           ) : item.type === 'LAYOVER' ? (
             <>
               <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  Start: {getLocalTime(item.departureTime, item.origin?.tz_database || homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
+                <Ionicons name="time-outline" size={18} color="#045D91" />
+                <Text style={[styles.eventText, styles.importantText]}>
+                  End: {getLocalTime(item.arrivalTime, item.origin?.tz_database || homebaseTZ)}
+                </Text>
+              </View>
+              <View style={styles.eventRow}>
                 <Ionicons name="location-outline" size={18} color="#045D91" />
                 <Text style={styles.eventText}>
-                  Origin: {item.origin.name} ({item.origin.city}, {item.origin.country})
-                </Text>
-              </View>
-              <View style={styles.eventRow}>
-                <Ionicons name="time-outline" size={18} color="#045D91" />
-                <Text style={[styles.eventText, styles.importantText]}>
-                  Start: {getLocalTime(item.departureTime, homebaseTZ)}
-                </Text>
-              </View>
-              <View style={styles.eventRow}>
-                <Ionicons name="time-outline" size={18} color="#045D91" />
-                <Text style={[styles.eventText, styles.importantText]}>
-                  End: {getLocalTime(item.arrivalTime, homebaseTZ)}
+                  {item.origin.name} ({item.origin.city}, {item.origin.country})
                 </Text>
               </View>
               {item.notes && (
@@ -714,6 +716,27 @@ const Roster = () => {
     setModalVisible(true)
   }
 
+  const hasTimeOverlap = (newEntry, existingEntries) => {
+    const newStartTime = moment(newEntry.departureTime)
+    const newEndTime = moment(newEntry.arrivalTime)
+
+    for (const entry of existingEntries) {
+      const existingStartTime = moment(entry.departureTime)
+      const existingEndTime = moment(entry.arrivalTime)
+
+      // Check if the new entry overlaps with an existing entry
+      if (
+        newStartTime.isBetween(existingStartTime, existingEndTime, null, '[)') ||
+        newEndTime.isBetween(existingStartTime, existingEndTime, null, '(]') ||
+        (newStartTime.isSameOrBefore(existingStartTime) && newEndTime.isSameOrAfter(existingEndTime))
+      ) {
+        return true
+      }
+    }
+
+    return false
+  }
+
   const handleAddEvent = async () => {
     if (!newEventTitle) {
       Alert.alert('Validation Error', 'Duty type is required')
@@ -721,18 +744,16 @@ const Roster = () => {
     }
 
     // Only check for origin when required
-    if (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'MEDICAL_CHECK', 'MEETING'].includes(newEventTitle) && !newEventOrigin) {
+    if (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'MEETING', 'MEDICAL_CHECK'].includes(newEventTitle) && !newEventOrigin) {
       Alert.alert('Validation Error', 'Origin is required')
       return
     }
 
-    // Check for required fields for standby
     if (newEventTitle === 'STANDBY' && (!newEventDepartureTime || !newEventArrivalTime)) {
       Alert.alert('Validation Error', 'Start and end times are required for standby duty.')
       return
     }
 
-    // Check for destination when required
     if (
       !['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER', 'MEDICAL_CHECK', 'MEETING'].includes(newEventTitle) &&
       !newEventDestination
@@ -742,12 +763,14 @@ const Roster = () => {
     }
 
     if (!newEventDepartureTime) {
-      Alert.alert('Validation Error', 'Start time is required')
+      const timeLabel = newEventTitle === 'FLIGHT_DUTY' ? 'Departure time' : 'Start time'
+      Alert.alert('Validation Error', `${timeLabel} is required`)
       return
     }
 
-    if (!['STANDBY', 'TRAINING', 'OFF_DUTY'].includes(newEventTitle) && !newEventArrivalTime) {
-      Alert.alert('Validation Error', 'Arrival time is required')
+    if (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER'].includes(newEventTitle) && !newEventArrivalTime) {
+      const timeLabel = newEventTitle === 'FLIGHT_DUTY' ? 'Arrival time' : 'End time'
+      Alert.alert('Validation Error', `${timeLabel} is required`)
       return
     }
 
@@ -780,6 +803,17 @@ const Roster = () => {
       notes: newEventNotes || '',
       synced: 0,
       id: uuid.v4()
+    }
+
+    // Fetch existing events for the same date
+    const existingEntries = rosterEntries[selectedDate] || []
+    if (hasTimeOverlap(eventEntry, existingEntries)) {
+      setLoading(false)
+      Alert.alert(
+        'Overlap Error',
+        'The new entry overlaps with an existing roster entry.\nPlease adjust the timings and try again.'
+      )
+      return
     }
 
     try {
@@ -1361,14 +1395,20 @@ const Roster = () => {
                 <TouchableOpacity
                   style={[styles.button, styles.addButton]}
                   onPress={handleAddEvent}
-                  disabled={
-                    !newEventTitle ||
-                    (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER'].includes(newEventTitle) && !newEventOrigin) ||
-                    (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER'].includes(newEventTitle) && !newEventDestination) ||
-                    !newEventDepartureTime ||
-                    (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER'].includes(newEventTitle) && !newEventArrivalTime) ||
-                    loading
-                  }
+                  // disabled={
+                  //   !newEventTitle ||
+                  //   (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER', 'MEDICAL_CHECK', 'MEETING'].includes(
+                  //     newEventTitle
+                  //   ) &&
+                  //     !newEventOrigin) ||
+                  //   (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER', 'MEDICAL_CHECK', 'MEETING'].includes(
+                  //     newEventTitle
+                  //   ) &&
+                  //     !newEventDestination) ||
+                  //   !newEventDepartureTime ||
+                  //   (!['STANDBY', 'TRAINING', 'OFF_DUTY', 'LAYOVER'].includes(newEventTitle) && !newEventArrivalTime) ||
+                  //   loading
+                  // }
                 >
                   {loading ? (
                     <ActivityIndicator size="small" color="#FFF" />
@@ -1553,20 +1593,20 @@ const Roster = () => {
               })}
             </ScrollView>
 
-            {/* Save Button */}
-            <TouchableOpacity
-              style={[rosterModalStyles.button, rosterModalStyles.saveButton]}
-              onPress={handleSaveUploadedRoster}
-            >
-              <Text style={rosterModalStyles.buttonText}>Save</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[rosterModalStyles.button, rosterModalStyles.cancelButton]}
-              onPress={() => setShowRosterModal(false)}
-            >
-              <Text style={rosterModalStyles.buttonText}>Close</Text>
-            </TouchableOpacity>
+            <View style={rosterModalStyles.buttonRow}>
+              <TouchableOpacity
+                style={[rosterModalStyles.button, rosterModalStyles.cancelButton]}
+                onPress={() => setShowRosterModal(false)}
+              >
+                <Text style={rosterModalStyles.cancelButtonText}>Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[rosterModalStyles.button, rosterModalStyles.saveButton]}
+                onPress={handleSaveUploadedRoster}
+              >
+                <Text style={rosterModalStyles.buttonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
       </Modal>
@@ -1574,7 +1614,6 @@ const Roster = () => {
       <ShareModal
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
-        onShare={handleShare}
         selectedMonthRoster={getSelectedMonthRoster()}
         currentMonthYear={currentMonthYear}
       />
@@ -1602,6 +1641,7 @@ const rosterModalStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
     borderRadius: 0,
+    borderRadius: 20,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: {
@@ -1626,11 +1666,17 @@ const rosterModalStyles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd'
-    // marginVertical: 10
   },
   rosterText: {
     fontSize: 16,
     marginBottom: 5
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    width: '100%',
+    paddingHorizontal: 10
   },
   button: {
     flexDirection: 'row',
@@ -1639,17 +1685,32 @@ const rosterModalStyles = StyleSheet.create({
     padding: 10,
     elevation: 2,
     marginTop: 10,
-    width: '100%',
+    flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#045D91'
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2
+    }
   },
   buttonText: {
     fontWeight: 'bold',
     color: 'white',
     fontSize: 16
   },
+  saveButton: {
+    backgroundColor: '#045D91'
+  },
   cancelButton: {
-    backgroundColor: '#FF5C5C'
+    backgroundColor: 'white',
+    borderColor: 'grey',
+    borderWidth: 1
+  },
+  cancelButtonText: {
+    color: 'grey',
+    fontWeight: 'bold',
+    fontSize: 16
   }
 })
 
