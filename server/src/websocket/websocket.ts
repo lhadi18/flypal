@@ -58,15 +58,15 @@ export function setupWebSocketServer(server: any) {
         }
 
         // Handle chat messages
-        const { sender, recipient, content } = parsedData
+        const { sender, recipient, encryptedContent, nonce } = parsedData
         if (parsedData.type === 'chat_message') {
-          if (!sender || !recipient || !content) {
+          if (!sender || !recipient || !encryptedContent || !nonce) {
             console.error('Missing fields in chat message:', parsedData)
             return
           }
 
           // Save the message to the database
-          const message = await Message.create({ sender, recipient, content })
+          const message = await Message.create({ sender, recipient, encryptedContent, nonce })
           console.log('Message saved:', message)
 
           // Prepare the message for sending
@@ -75,7 +75,8 @@ export function setupWebSocketServer(server: any) {
             _id: message._id,
             sender: message.sender,
             recipient: message.recipient,
-            content: message.content,
+            nonce: message.nonce,
+            content: message.encryptedContent,
             timestamp: message.timestamp
           }
 

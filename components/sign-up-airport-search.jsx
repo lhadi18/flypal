@@ -23,7 +23,7 @@ const StyledAirportSearch = forwardRef(({ placeholder, onSelect, initialValue },
   const fetchAirports = async searchQuery => {
     try {
       const response = await axios.get(
-        `https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/airport/getAirport`,
+        `https://2c44-103-18-0-17.ngrok-free.app/api/airport/getAirport`,
         {
           params: { query: searchQuery }
         }

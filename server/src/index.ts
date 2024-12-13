@@ -11,6 +11,7 @@ import eventRoutes from './routes/event-routes'
 import userRoutes from './routes/user-routes'
 import roleRoutes from './routes/role-routes'
 import pdfRoutes from './routes/pdf-routes'
+import keyRoutes from './routes/key-routes'
 import connectDB from './config'
 import express from 'express'
 import dotenv from 'dotenv'
@@ -39,6 +40,7 @@ app.use('/api/checklist', checklistRoutes)
 app.use('/api/bookmarks', bookmarkRoutes)
 app.use('/api/roles', roleRoutes)
 app.use('/api/messages', messageRoutes)
+app.use('/api/key', keyRoutes)
 
 const PORT = process.env.PORT || 8080
 

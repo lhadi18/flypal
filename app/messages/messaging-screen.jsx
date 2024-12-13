@@ -16,6 +16,11 @@ import ProfileModal from '@/components/profile-modal'
 import { useLocalSearchParams } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { debounce } from 'lodash'
+import { box, randomBytes } from 'tweetnacl'
+import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
+import nacl from 'tweetnacl'
+import { Buffer } from 'buffer';
+global.Buffer = Buffer;
 
 const READ_RECEIPT_ICON = require('../../assets/icons/read-receipt.png')
 
@@ -38,9 +43,135 @@ const MessagingScreen = () => {
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
+  const [keyPair, setKeyPair] = useState(null)
+  const [recipientPublicKey, setRecipientPublicKey] = useState(null)
 
   const ws = useRef(null)
   const flatListRef = useRef(null)
+
+  useEffect(() => {
+    const initializeKeys = async () => {
+      try {
+        // Try to load existing private key from SecureStore
+        const privateKeyStr = await SecureStore.getItemAsync('privateKey' + userId);
+        console.log('Retrieved private key from SecureStore:', privateKeyStr);
+    
+        if (privateKeyStr) {
+          const privateKey = decodeBase64(privateKeyStr);
+          const publicKey = nacl.box.keyPair.fromSecretKey(privateKey).publicKey;
+    
+          console.log('Loaded existing key pair:');
+          console.log('Public Key:', encodeBase64(publicKey));
+          console.log('Secret Key:', encodeBase64(privateKey));
+    
+          setKeyPair({
+            publicKey,
+            secretKey: privateKey,
+          });
+        } else {
+          // Generate new keypair
+          const newKeyPair = nacl.box.keyPair();
+          const encodedSecretKey = encodeBase64(newKeyPair.secretKey);
+          const encodedPublicKey = encodeBase64(newKeyPair.publicKey);
+    
+          console.log('Generated new key pair:');
+          console.log('Public Key:', encodedPublicKey);
+          console.log('Secret Key:', encodedSecretKey);
+    
+          await SecureStore.setItemAsync('privateKey' + userId, encodedSecretKey);
+          console.log('Stored private key in SecureStore successfully.');
+    
+          // Prepare data to send to the server
+          const payload = {
+            userId,
+            publicKey: encodedPublicKey,
+          };
+          console.log('Payload to send to server:', payload);
+    
+          // Store public key on server
+          const response = await fetch('https://2c44-103-18-0-17.ngrok-free.app/api/key/keys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+    
+          console.log('Server response status:', response.status);
+          const responseData = await response.json();
+          console.log('Server response data:', responseData);
+    
+          if (!response.ok) {
+            throw new Error(`Failed to store public key: ${responseData.error || 'Unknown error'}`);
+          }
+    
+          setKeyPair(newKeyPair);
+          console.log('New key pair successfully set.');
+        }
+      } catch (error) {
+        console.error('Error initializing keys:', error);
+      }
+    };
+    
+    if (userId) {
+      console.log('UserId detected, initializing keys:', userId);
+      initializeKeys();
+    }    
+  }, [userId])
+
+  const generateSharedKey = () => {
+    if (!recipientPublicKey || !keyPair?.secretKey) {
+      console.error('Recipient public key or sender secret key is missing!');
+      return;
+    }
+  
+    try {
+      const sharedKey = nacl.box.before(recipientPublicKey, keyPair.secretKey);
+      console.log('Generated Shared Key:', encodeBase64(sharedKey));
+      return sharedKey;
+    } catch (error) {
+      console.error('Error generating shared key:', error);
+    }
+  };  
+
+  useEffect(() => {
+    const fetchRecipientKey = async () => {
+      try {
+        const response = await fetch(`https://2c44-103-18-0-17.ngrok-free.app/api/key/keys/${recipientId}`)
+        const data = await response.json()
+        setRecipientPublicKey(decodeBase64(data.publicKey))
+      } catch (error) {
+        console.error('Error fetching recipient key:', error)
+      }
+    }
+
+    if (recipientId) {
+      fetchRecipientKey()
+    }
+  }, [recipientId])
+
+  const encryptMessage = (message) => {
+    const nonce = randomBytes(24)
+    const encryptedMsg = box(
+      new Uint8Array(Buffer.from(message)),
+      nonce,
+      recipientPublicKey,
+      keyPair.secretKey 
+    )
+    return {
+      encryptedContent: encodeBase64(encryptedMsg),
+      nonce: encodeBase64(nonce)
+    }
+  }
+
+  const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
+    const decrypted = box.open(
+      decodeBase64(encryptedContent),
+      decodeBase64(nonce),
+      senderPublicKey,
+      keyPair.secretKey
+    )
+    if (!decrypted) throw new Error('Failed to decrypt message')
+    return Buffer.from(decrypted).toString()
+  }
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -88,7 +219,7 @@ const MessagingScreen = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`https://508d-2001-e68-5472-cb83-28c2-56ed-e437-8c8c.ngrok-free.app/api/messages/${userId}/${recipientId}`)
+        const response = await fetch(`https://2c44-103-18-0-17.ngrok-free.app/api/messages/${userId}/${recipientId}`)
         const data = await response.json()
         setMessages(data)
       } catch (error) {
@@ -99,7 +230,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://192.168.0.6:8080')
+      ws.current = new WebSocket('ws://10.171.56.128:8080')
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -165,19 +296,28 @@ const MessagingScreen = () => {
     SecureStore.setItemAsync(key, value).catch(error => console.error('Error saving draft:', error))
   }, 300)
 
-  const handleSendMessage = () => {
-    if (inputText.trim()) {
+  const handleSendMessage = async () => {
+    if (inputText.trim() && keyPair && recipientPublicKey) {
+      console.log('Recipient Public Key:', recipientPublicKey);
+      console.log('Secret Key:', keyPair.secretKey);
+
+      const { encryptedContent, nonce } = encryptMessage(inputText)
+      
       const message = {
         _id: Date.now().toString(),
         sender: { _id: userId },
         recipient: recipientId,
-        content: inputText,
+        encryptedContent,
+        nonce,
         timestamp: new Date().toISOString()
       }
 
       try {
         ws.current.send(JSON.stringify({ ...message, type: 'chat_message' }))
-        setMessages(prevMessages => [...prevMessages, message])
+        setMessages(prevMessages => [...prevMessages, {
+          ...message,
+          content: inputText // Store decrypted content for display
+        }])
         flatListRef.current?.scrollToEnd({ animated: true })
 
         setInputText('')
@@ -229,10 +369,25 @@ const MessagingScreen = () => {
 
     const { message } = item
     const isMe = String(message.sender._id) === String(userId)
+    console.log("RPK", recipientPublicKey)
+    
+    // Use stored decrypted content for sent messages
+    const content = (() => {
+      try {
+        return decryptMessage(
+          message.encryptedContent,
+          message.nonce,
+          recipientPublicKey // Use sender's public key for received messages
+        )
+      } catch (error) {
+        console.error('Failed to decrypt message:', error)
+        return '[Unable to decrypt message]'
+      }
+    })()
 
     return (
       <View style={[styles.messageContainer, isMe ? styles.myMessageContainer : styles.theirMessageContainer]}>
-        <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{message.content}</Text>
+        <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{content}</Text>
         <TimestampWithReadReceipt timestamp={message.timestamp} isRead={isMe && message.read} />
       </View>
     )
