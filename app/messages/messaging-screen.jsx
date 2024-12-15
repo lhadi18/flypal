@@ -115,22 +115,7 @@ const MessagingScreen = () => {
       console.log('UserId detected, initializing keys:', userId);
       initializeKeys();
     }    
-  }, [userId])
-
-  const generateSharedKey = () => {
-    if (!recipientPublicKey || !keyPair?.secretKey) {
-      console.error('Recipient public key or sender secret key is missing!');
-      return;
-    }
-  
-    try {
-      const sharedKey = nacl.box.before(recipientPublicKey, keyPair.secretKey);
-      console.log('Generated Shared Key:', encodeBase64(sharedKey));
-      return sharedKey;
-    } catch (error) {
-      console.error('Error generating shared key:', error);
-    }
-  };  
+  }, [userId]) 
 
   useEffect(() => {
     const fetchRecipientKey = async () => {
@@ -163,15 +148,35 @@ const MessagingScreen = () => {
   }
 
   const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
-    const decrypted = box.open(
-      decodeBase64(encryptedContent),
-      decodeBase64(nonce),
-      senderPublicKey,
-      keyPair.secretKey
-    )
-    if (!decrypted) throw new Error('Failed to decrypt message')
-    return Buffer.from(decrypted).toString()
-  }
+    try {
+
+      console.log('Attempting to decrypt message...');
+      console.log('Encrypted Content:', encryptedContent);
+      console.log('Nonce:', nonce);
+      console.log('Sender Public Key:', senderPublicKey);
+      console.log('Recipient Secret Key:', keyPair.secretKey);
+  
+      const decrypted = box.open(
+        decodeBase64(encryptedContent),
+        decodeBase64(nonce),
+        senderPublicKey,
+        keyPair.secretKey
+      );
+  
+      if (!decrypted) {
+        throw new Error('Failed to decrypt message: Decryption returned null');
+      }
+  
+      const decryptedMessage = Buffer.from(decrypted).toString();
+      console.log('Decrypted Message:', decryptedMessage);
+      return decryptedMessage;
+  
+    } catch (error) {
+      console.error('Error decrypting message:', error);
+      return '[Unable to decrypt message]';
+    }
+  };
+  
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -238,7 +243,9 @@ const MessagingScreen = () => {
       }
 
       ws.current.onmessage = event => {
-        const data = JSON.parse(event.data)
+        console.log('Raw WebSocket Message:', event.data); // Log raw message
+        const data = JSON.parse(event.data);
+        console.log('Parsed WebSocket Message:', data);
 
         if (data.type === 'online_users') {
           data.users.forEach(user => {
@@ -255,7 +262,18 @@ const MessagingScreen = () => {
 
         // Handle incoming chat messages
         if (data.type === 'chat_message') {
-          setMessages(prevMessages => [...prevMessages, data])
+          console.log('Incoming Chat Message:', data);
+          console.log(data.encryptedContent)
+          console.log(data.nonce)
+
+          if (!data.encryptedContent || !data.nonce) {
+            console.error('Encrypted content or nonce is missing in the message:', data);
+            return;
+          }
+    
+          setMessages((prevMessages) => [...prevMessages, data]);
+    
+          console.log('Message added to state:', data);
 
           // Auto-scroll only if the user is already at the bottom
           if (isAtBottom) {
@@ -298,10 +316,14 @@ const MessagingScreen = () => {
 
   const handleSendMessage = async () => {
     if (inputText.trim() && keyPair && recipientPublicKey) {
-      console.log('Recipient Public Key:', recipientPublicKey);
-      console.log('Secret Key:', keyPair.secretKey);
+      console.log('Generating encrypted message...');
+      console.log('Input Text:', inputText);
+      console.log('Recipient Public Key:', encodeBase64(recipientPublicKey));
 
-      const { encryptedContent, nonce } = encryptMessage(inputText)
+      const { encryptedContent, nonce } = encryptMessage(inputText);
+
+      console.log('Generated Encrypted Content:', encryptedContent);
+      console.log('Generated Nonce:', nonce)
       
       const message = {
         _id: Date.now().toString(),
@@ -312,8 +334,11 @@ const MessagingScreen = () => {
         timestamp: new Date().toISOString()
       }
 
+      console.log('Final Message to Send:', message);
+
       try {
         ws.current.send(JSON.stringify({ ...message, type: 'chat_message' }))
+        console.log('Message sent successfully via WebSocket.');
         setMessages(prevMessages => [...prevMessages, {
           ...message,
           content: inputText // Store decrypted content for display
@@ -369,11 +394,11 @@ const MessagingScreen = () => {
 
     const { message } = item
     const isMe = String(message.sender._id) === String(userId)
-    console.log("RPK", recipientPublicKey)
     
     // Use stored decrypted content for sent messages
     const content = (() => {
       try {
+        console.log("message", message)
         return decryptMessage(
           message.encryptedContent,
           message.nonce,

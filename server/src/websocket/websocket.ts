@@ -76,7 +76,7 @@ export function setupWebSocketServer(server: any) {
             sender: message.sender,
             recipient: message.recipient,
             nonce: message.nonce,
-            content: message.encryptedContent,
+            encryptedContent: message.encryptedContent,
             timestamp: message.timestamp
           }
 
@@ -84,6 +84,7 @@ export function setupWebSocketServer(server: any) {
           ;[sender, recipient].forEach(userId => {
             if (clients.has(userId)) {
               clients.get(userId).send(JSON.stringify(chatMessage))
+              console.log(`Message forwarded to user ${userId}`)
             }
           })
           return
