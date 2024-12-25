@@ -32,6 +32,7 @@ import * as SecureStore from 'expo-secure-store'
 import * as FileSystem from 'expo-file-system'
 import { ROLES } from '../../constants/roles'
 import { useRouter } from 'expo-router'
+import * as Device from 'expo-device'
 import axios from 'axios'
 
 const Settings = () => {
@@ -69,11 +70,14 @@ const Settings = () => {
     setLoading(true)
     try {
       const userId = await SecureStore.getItemAsync('userId')
-      const response = await axios.get(`https://2c44-103-18-0-17.ngrok-free.app/api/users/getUserId`, {
-        params: {
-          userId
+      const response = await axios.get(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/getUserId`,
+        {
+          params: {
+            userId
+          }
         }
-      })
+      )
       setUserDetails(response.data)
       setImage(
         response.data.profilePicture ||
@@ -129,7 +133,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       // handleEditUserDetails(response.data);
@@ -153,7 +157,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -178,7 +182,9 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://2c44-103-18-0-17.ngrok-free.app/api/users/deleteUser/${userId}`)
+              await axios.delete(
+                `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/deleteUser/${userId}`
+              )
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -192,10 +198,20 @@ const Settings = () => {
 
   const handleLogout = async () => {
     try {
+      const userId = await SecureStore.getItemAsync('userId')
+      const deviceId = Device.osBuildId || Device.deviceName || 'unknown-device-id'
+
+      await fetch('https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/push-token/delete-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, deviceId })
+      })
+
       await SecureStore.deleteItemAsync('userId')
-      router.push('/sign-in')
+      await SecureStore.deleteItemAsync('pushToken')
+      router.replace('/sign-in')
     } catch (error) {
-      console.error('Error logging out:', error)
+      console.error('Error during logout:', error)
     }
   }
 
@@ -293,7 +309,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }

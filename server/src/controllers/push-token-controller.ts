@@ -93,3 +93,30 @@ export const getPushTokensForUser = async (req: Request, res: Response): Promise
     res.status(500).json({ message: 'Server error' })
   }
 }
+
+export const deletePushTokenForDevice = async (req: Request, res: Response): Promise<void> => {
+  const { userId, deviceId } = req.body
+
+  if (!userId || !deviceId) {
+    res.status(400).json({ message: 'userId and deviceId are required' })
+    return
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    res.status(400).json({ message: 'Invalid userId' })
+    return
+  }
+
+  try {
+    const result = await PushToken.findOneAndDelete({ userId, deviceId })
+
+    if (result) {
+      res.status(200).json({ message: 'Push token deleted successfully for the specific device' })
+    } else {
+      res.status(404).json({ message: 'Push token not found for the specific device' })
+    }
+  } catch (error) {
+    console.error('Error deleting push token for device:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+}
