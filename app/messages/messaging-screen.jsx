@@ -327,6 +327,7 @@ const MessagingScreen = () => {
         recipient: recipientId,
         encryptedContent,
         nonce,
+        plainText: inputText,
         timestamp: new Date().toISOString(),
         read: false
       }
@@ -346,6 +347,7 @@ const MessagingScreen = () => {
         ])
         console.log('State update took:', Date.now() - stateUpdateStart, 'ms')
 
+        // Performance issue for this
         // const secureStoreStart = Date.now()
         // await SecureStore.deleteItemAsync(`draft_${recipientId}`)
         // console.log('SecureStore delete took:', Date.now() - secureStoreStart, 'ms')

@@ -178,15 +178,11 @@ export const getMessages = async (req: Request, res: Response) => {
 }
 
 export const markMessagesAsRead = async (req: Request, res: Response) => {
-  const { senderId, recipientId } = req.params
+  const { senderId, recipientId, messageIds } = req.body
 
   try {
     const result = await Message.updateMany(
-      {
-        sender: senderId,
-        recipient: recipientId,
-        read: false
-      },
+      { _id: { $in: messageIds }, sender: recipientId, recipient: senderId, read: false },
       { $set: { read: true } }
     )
 
@@ -198,20 +194,20 @@ export const markMessagesAsRead = async (req: Request, res: Response) => {
 }
 
 export const deleteMessages = async (req: Request, res: Response) => {
-  const { userId, otherUserId } = req.body;
+  const { userId, otherUserId } = req.body
 
   try {
     // Delete messages where either the logged-in user is the sender or recipient
     await Message.deleteMany({
       $or: [
         { sender: userId, recipient: otherUserId },
-        { sender: otherUserId, recipient: userId },
-      ],
-    });
+        { sender: otherUserId, recipient: userId }
+      ]
+    })
 
-    return res.status(200).json({ message: 'Conversation deleted successfully' });
+    return res.status(200).json({ message: 'Conversation deleted successfully' })
   } catch (error) {
-    console.error('Error deleting conversation:', error);
-    return res.status(500).json({ error: 'Failed to delete conversation' });
+    console.error('Error deleting conversation:', error)
+    return res.status(500).json({ error: 'Failed to delete conversation' })
   }
 }

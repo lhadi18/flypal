@@ -1,4 +1,6 @@
+import PushToken from '../models/push-token-model'
 import Message from '../models/message-model'
+import User from '../models/user-model'
 import { WebSocketServer } from 'ws'
 import mongoose from 'mongoose'
 
@@ -59,18 +61,17 @@ export function setupWebSocketServer(server: any) {
         }
 
         // Handle chat messages
-        const { sender, recipient, encryptedContent, nonce } = parsedData
         if (parsedData.type === 'chat_message') {
-          if (!sender || !recipient || !encryptedContent || !nonce) {
+          const { sender, recipient, encryptedContent, nonce, plainText } = parsedData
+
+          if (!sender || !recipient || !encryptedContent || !nonce || !plainText) {
             console.error('Missing fields in chat message:', parsedData)
             return
           }
 
-          // Save the message to the database
           const message = await Message.create({ sender, recipient, encryptedContent, nonce })
           console.log('Message saved:', message)
 
-          // Prepare the message for sending
           const chatMessage = {
             type: 'chat_message',
             _id: message._id,
@@ -78,25 +79,34 @@ export function setupWebSocketServer(server: any) {
             recipient: message.recipient,
             nonce: message.nonce,
             encryptedContent: message.encryptedContent,
+            plainText,
             timestamp: message.timestamp
           }
 
-          // Send the message to both sender and recipient if connected
-          ;[sender, recipient].forEach(userId => {
-            if (clients.has(userId)) {
-              clients.get(userId).send(JSON.stringify(chatMessage))
-              console.log(`Message forwarded to user ${userId}`)
-            }
-          })
+          const senderInfo = await User.findById(sender).select('firstName lastName')
+          const senderName = senderInfo ? `${senderInfo.firstName} ${senderInfo.lastName}` : 'Unknown Sender'
+
+          // Use the plain text message for notifications
+          const notificationBody = plainText.length > 50 ? `${plainText.slice(0, 50)}...` : plainText
+
+          // Send the message to the recipient if connected
+          if (clients.has(recipient)) {
+            clients.get(recipient).send(JSON.stringify(chatMessage))
+            console.log(`Message forwarded to user ${recipient}`)
+          } else {
+            console.log(`User ${recipient} is offline. Sending push notification.`)
+            await sendPushNotification(recipient, 'New Message', notificationBody, senderName)
+          }
+
+          if (clients.has(sender)) {
+            clients.get(sender).send(JSON.stringify(chatMessage))
+          }
+
           return
         }
 
         if (parsedData.type === 'read_receipt') {
-          const { senderId, recipientId, messageIds } = parsedData as {
-            senderId: string
-            recipientId: string
-            messageIds: string[]
-          }
+          const { senderId, recipientId, messageIds } = parsedData
 
           if (!clients.has(recipientId)) {
             console.warn(`Recipient (${recipientId}) is offline. Not broadcasting read receipt.`)
@@ -223,4 +233,40 @@ function broadcastStatusChange(clients: ClientsMap, userId: string, status: stri
       console.error('Error broadcasting status change:', error)
     }
   })
+}
+
+// Send a push notification to a user
+async function sendPushNotification(userId: string, title: string, body: string, senderName?: string) {
+  try {
+    const tokens = await PushToken.find({ userId })
+
+    if (tokens.length === 0) {
+      console.warn(`No push tokens found for user: ${userId}`)
+      return
+    }
+
+    const notificationTitle = senderName ? `Message from ${senderName}` : title
+    const notificationBody = body
+
+    const messages = tokens.map(token => ({
+      to: token.token,
+      sound: 'default',
+      title: notificationTitle,
+      body: notificationBody,
+      data: { userId, senderName }
+    }))
+
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(messages)
+    })
+
+    const responseData = await response.json()
+    console.log('Push notification response:', responseData)
+  } catch (error) {
+    console.error('Error sending push notification:', error)
+  }
 }

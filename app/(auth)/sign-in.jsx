@@ -1,6 +1,6 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground, Alert } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { handlePushToken } from '@/services/utils/push-token'
 import { loginUser } from '../../services/apis/user-api'
 import * as SecureStore from 'expo-secure-store'
 import { ScrollView } from 'react-native'
@@ -26,6 +26,7 @@ const SignIn = () => {
       const userId = result._id
 
       await SecureStore.setItemAsync('userId', userId)
+      await handlePushToken(userId)
 
       Alert.alert('Login Successful', `Welcome back, ${email}`)
       router.push('/roster')
@@ -114,11 +115,7 @@ const SignIn = () => {
 
             <View style={styles.registerContainer}>
               <Text style={styles.registerPrompt}>Don't have an account? </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  router.push('/sign-up')
-                }}
-              >
+              <TouchableOpacity onPress={() => router.push('/sign-up')}>
                 <Text style={styles.registerText}>Register</Text>
               </TouchableOpacity>
             </View>
