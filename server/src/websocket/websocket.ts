@@ -1,5 +1,6 @@
 import Message from '../models/message-model'
 import { WebSocketServer } from 'ws'
+import mongoose from 'mongoose'
 
 type ClientsMap = Map<string, any> // Map of connected clients
 const onlineUsers = new Set<string>() // Set to track online users
@@ -91,15 +92,26 @@ export function setupWebSocketServer(server: any) {
         }
 
         if (parsedData.type === 'read_receipt') {
-          const { senderId, recipientId, messageIds } = parsedData
-          const cacheKey = `${senderId}_${recipientId}`
-
-          if (!readCache.has(cacheKey)) {
-            readCache.set(cacheKey, new Set())
+          const { senderId, recipientId, messageIds } = parsedData as {
+            senderId: string
+            recipientId: string
+            messageIds: string[]
           }
 
-          const cachedIds = readCache.get(cacheKey)!
-          messageIds.forEach((id: string) => cachedIds.add(id))
+          if (!clients.has(recipientId)) {
+            console.warn(`Recipient (${recipientId}) is offline. Not broadcasting read receipt.`)
+            return
+          }
+
+          const cacheKey = `${senderId}_${recipientId}`
+          if (!readCache.has(cacheKey)) {
+            readCache.set(cacheKey, new Set<string>())
+          }
+
+          const cachedIds = readCache.get(cacheKey)
+          if (cachedIds) {
+            messageIds.forEach((id: string) => cachedIds.add(id))
+          }
 
           const readReceiptMessage = {
             type: 'read_receipt',
@@ -110,18 +122,40 @@ export function setupWebSocketServer(server: any) {
 
           ;[senderId, recipientId].forEach(userId => {
             if (clients.has(userId)) {
-              clients.get(userId).send(JSON.stringify(readReceiptMessage))
+              console.log(`Broadcasting to userId: ${userId}`)
+              clients.get(userId)?.send(JSON.stringify(readReceiptMessage))
             }
           })
 
           setTimeout(async () => {
-            const idsToUpdate = Array.from(cachedIds)
-            await Message.updateMany(
-              { _id: { $in: idsToUpdate }, sender: recipientId, recipient: senderId, read: false },
-              { $set: { read: true } }
-            )
-            readCache.delete(cacheKey)
+            if (cachedIds) {
+              const idsToUpdate = Array.from(cachedIds).filter(id => {
+                try {
+                  new mongoose.Types.ObjectId(id)
+                  return true
+                } catch {
+                  console.warn(`Invalid ObjectId detected and excluded: ${id}`)
+                  return false
+                }
+              })
+
+              if (idsToUpdate.length > 0) {
+                try {
+                  await Message.updateMany(
+                    { _id: { $in: idsToUpdate }, sender: recipientId, recipient: senderId, read: false },
+                    { $set: { read: true } }
+                  )
+                } catch (error) {
+                  console.error('Error updating read receipts:', error)
+                }
+              } else {
+                console.warn('No valid ObjectIds to update in the database.')
+              }
+
+              readCache.delete(cacheKey)
+            }
           }, 5000)
+
           return
         }
 
@@ -155,10 +189,21 @@ export function setupWebSocketServer(server: any) {
   // Cleanup function for graceful shutdown
   function cleanup(callback: () => void) {
     console.log('Cleaning up WebSocket server...')
-    wss.clients.forEach(client => {
-      client.close() // Close each client
+
+    const shutdownMessage = JSON.stringify({ type: 'server_shutdown', message: 'Server is shutting down' })
+    clients.forEach(clientWs => {
+      try {
+        clientWs.send(shutdownMessage)
+        clientWs.close()
+      } catch (error) {
+        console.error('Error sending shutdown message:', error)
+      }
     })
-    wss.close(callback) // Close the WebSocket server
+
+    clients.clear()
+    onlineUsers.clear()
+
+    wss.close(callback)
   }
 
   return { wss, cleanup }
