@@ -1,3 +1,4 @@
+import 'react-native-get-random-values'
 import {
   SafeAreaView,
   View,
@@ -52,79 +53,84 @@ const MessagingScreen = () => {
   useEffect(() => {
     const initializeKeys = async () => {
       try {
-        // Try to load existing private key from SecureStore
-        const privateKeyStr = await SecureStore.getItemAsync('privateKey' + userId)
-        // console.log('Retrieved private key from SecureStore:', privateKeyStr);
-
+        let privateKeyStr = null;
+  
+        // Attempt to fetch private key from the server
+        const response = await fetch(`https://1c32-103-18-0-19.ngrok-free.app/api/key/keys/${userId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+  
+        if (response.ok) {
+          const data = await response.json();
+          if (data.secretKey) {
+            privateKeyStr = data.secretKey;
+          }
+        }
+  
         if (privateKeyStr) {
-          const privateKey = decodeBase64(privateKeyStr)
-          const publicKey = nacl.box.keyPair.fromSecretKey(privateKey).publicKey
-
-          // console.log('Loaded existing key pair:');
+          // If private key is found on the server, use it
+          const privateKey = decodeBase64(privateKeyStr);
+          const publicKey = nacl.box.keyPair.fromSecretKey(privateKey).publicKey;
+  
+          // console.log('Loaded existing key pair from server:');
           // console.log('Public Key:', encodeBase64(publicKey));
           // console.log('Secret Key:', encodeBase64(privateKey));
-
+  
           setKeyPair({
             publicKey,
-            secretKey: privateKey
-          })
+            secretKey: privateKey,
+          });
         } else {
-          // Generate new keypair
-          const newKeyPair = nacl.box.keyPair()
-          const encodedSecretKey = encodeBase64(newKeyPair.secretKey)
-          const encodedPublicKey = encodeBase64(newKeyPair.publicKey)
-
+          // Generate a new key pair
+          const newKeyPair = nacl.box.keyPair();
+          const encodedSecretKey = encodeBase64(newKeyPair.secretKey);
+          const encodedPublicKey = encodeBase64(newKeyPair.publicKey);
+  
           // console.log('Generated new key pair:');
           // console.log('Public Key:', encodedPublicKey);
           // console.log('Secret Key:', encodedSecretKey);
-
-          await SecureStore.setItemAsync('privateKey' + userId, encodedSecretKey)
-          // console.log('Stored private key in SecureStore successfully.');
-
+  
           // Prepare data to send to the server
           const payload = {
             userId,
-            publicKey: encodedPublicKey
-          }
-          // console.log('Payload to send to server:', payload);
-
-          // Store public key on server
+            secretKey: encodedSecretKey,
+            publicKey: encodedPublicKey,
+          };
+  
+          // Store public key and secret key on the server
           const response = await fetch(
-            'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys',
+            'https://1c32-103-18-0-19.ngrok-free.app/api/key/keys',
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
+              body: JSON.stringify(payload),
             }
-          )
-
-          // console.log('Server response status:', response.status);
-          const responseData = await response.json()
-          // console.log('Server response data:', responseData);
-
+          );
+  
+          const responseData = await response.json();
+  
           if (!response.ok) {
-            throw new Error(`Failed to store public key: ${responseData.error || 'Unknown error'}`)
+            throw new Error(`Failed to store keys on server: ${responseData.error || 'Unknown error'}`);
           }
-
-          setKeyPair(newKeyPair)
-          // console.log('New key pair successfully set.');
+  
+          setKeyPair(newKeyPair);
         }
       } catch (error) {
-        console.error('Error initializing keys:', error)
+        console.error('Error initializing keys:', error);
       }
-    }
-
+    };
+  
     if (userId) {
-      // console.log('UserId detected, initializing keys:', userId);
-      initializeKeys()
+      initializeKeys();
     }
-  }, [userId])
+  }, [userId]);  
 
   useEffect(() => {
     const fetchRecipientKey = async () => {
       try {
         const response = await fetch(
-          `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${recipientId}`
+          `https://1c32-103-18-0-19.ngrok-free.app/api/key/keys/${recipientId}`
         )
         const data = await response.json()
         setRecipientPublicKey(decodeBase64(data.publicKey))
@@ -152,8 +158,8 @@ const MessagingScreen = () => {
       // console.log('Attempting to decrypt message...');
       // console.log('Encrypted Content:', encryptedContent);
       // console.log('Nonce:', nonce);
-      // console.log('Sender Public Key:', senderPublicKey);
-      // console.log('Recipient Secret Key:', keyPair.secretKey);
+      // console.log('Sender Public Key:', encodeBase64(senderPublicKey));
+      // console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
 
       const decrypted = box.open(
         decodeBase64(encryptedContent),
@@ -167,7 +173,7 @@ const MessagingScreen = () => {
       }
 
       const decryptedMessage = Buffer.from(decrypted).toString()
-      // console.log('Decrypted Message:', decryptedMessage);
+      console.log('Decrypted Message:', decryptedMessage);
       return decryptedMessage
     } catch (error) {
       console.error('Error decrypting message:', error)
@@ -222,7 +228,7 @@ const MessagingScreen = () => {
     const fetchMessages = async () => {
       try {
         const response = await fetch(
-          `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/messages/${userId}/${recipientId}`
+          `https://1c32-103-18-0-19.ngrok-free.app/api/messages/${userId}/${recipientId}`
         )
         const data = await response.json()
         setMessages(data)
@@ -234,7 +240,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://172.20.10.2:8080')
+      ws.current = new WebSocket('ws://10.171.61.226:8080')
 
       ws.current.onopen = () => {
         // console.log('WebSocket connected')

@@ -1,3 +1,4 @@
+import 'react-native-get-random-values'
 import {
   SafeAreaView,
   ScrollView,
@@ -15,7 +16,6 @@ import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
 import { useRouter, Link } from 'expo-router'
 import React, { useEffect } from 'react'
-import 'react-native-get-random-values'
 
 const App = () => {
   const router = useRouter()

@@ -26,14 +26,20 @@ export const createMessage = async (req: Request, res: Response): Promise<void> 
 }
 
 export const getConversations = async (req: Request, res: Response) => {
-  const { userId } = req.params
+  const { userId } = req.params;
 
   try {
     const conversations = await Message.aggregate([
       {
         $match: {
-          $or: [{ sender: new mongoose.Types.ObjectId(userId) }, { recipient: new mongoose.Types.ObjectId(userId) }]
-        }
+          $or: [
+            { sender: new mongoose.Types.ObjectId(userId) },
+            { recipient: new mongoose.Types.ObjectId(userId) },
+          ],
+        },
+      },
+      {
+        $sort: { timestamp: -1 }, // Sort messages by timestamp descending
       },
       {
         $group: {
@@ -41,120 +47,133 @@ export const getConversations = async (req: Request, res: Response) => {
             $cond: [
               { $lt: ['$sender', '$recipient'] },
               { sender: '$sender', recipient: '$recipient' },
-              { sender: '$recipient', recipient: '$sender' }
-            ]
+              { sender: '$recipient', recipient: '$sender' },
+            ],
           },
-          lastMessage: { $last: '$content' },
-          lastTimestamp: { $last: '$timestamp' }
-        }
+          lastMessage: { $first: '$encryptedContent' },
+          lastNonce: { $first: '$nonce' },
+          lastTimestamp: { $first: '$timestamp' },
+          senderId: { $first: '$sender' },
+          recipientId: { $first: '$recipient' },
+        },
       },
       {
         $lookup: {
           from: 'users',
-          localField: '_id.sender',
+          localField: 'senderId',
           foreignField: '_id',
-          as: 'senderDetails'
-        }
+          as: 'senderDetails',
+        },
       },
       {
         $lookup: {
           from: 'users',
-          localField: '_id.recipient',
+          localField: 'recipientId',
           foreignField: '_id',
-          as: 'recipientDetails'
-        }
+          as: 'recipientDetails',
+        },
       },
+      // Lookup for sender's homebase, airline, and role
       {
         $lookup: {
           from: 'airports',
           localField: 'senderDetails.homebase',
           foreignField: '_id',
-          as: 'senderHomebaseDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'airports',
-          localField: 'recipientDetails.homebase',
-          foreignField: '_id',
-          as: 'recipientHomebaseDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'roles',
-          localField: 'senderDetails.role',
-          foreignField: '_id',
-          as: 'senderRoleDetails'
-        }
-      },
-      {
-        $lookup: {
-          from: 'roles',
-          localField: 'recipientDetails.role',
-          foreignField: '_id',
-          as: 'recipientRoleDetails'
-        }
+          as: 'senderHomebase',
+        },
       },
       {
         $lookup: {
           from: 'airlines',
           localField: 'senderDetails.airline',
           foreignField: '_id',
-          as: 'senderAirlineDetails'
-        }
+          as: 'senderAirline',
+        },
+      },
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'senderDetails.role',
+          foreignField: '_id',
+          as: 'senderRole',
+        },
+      },
+      // Lookup for recipient's homebase, airline, and role
+      {
+        $lookup: {
+          from: 'airports',
+          localField: 'recipientDetails.homebase',
+          foreignField: '_id',
+          as: 'recipientHomebase',
+        },
       },
       {
         $lookup: {
           from: 'airlines',
           localField: 'recipientDetails.airline',
           foreignField: '_id',
-          as: 'recipientAirlineDetails'
-        }
+          as: 'recipientAirline',
+        },
+      },
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'recipientDetails.role',
+          foreignField: '_id',
+          as: 'recipientRole',
+        },
       },
       {
         $project: {
           _id: 0,
           sender: {
             _id: { $arrayElemAt: ['$senderDetails._id', 0] },
-            airline: { $arrayElemAt: ['$senderAirlineDetails', 0] },
-            email: { $arrayElemAt: ['$senderDetails.email', 0] },
             firstName: { $arrayElemAt: ['$senderDetails.firstName', 0] },
-            homebase: { $arrayElemAt: ['$senderHomebaseDetails', 0] },
             lastName: { $arrayElemAt: ['$senderDetails.lastName', 0] },
+            email: { $arrayElemAt: ['$senderDetails.email', 0]},
             profilePicture: { $arrayElemAt: ['$senderDetails.profilePicture', 0] },
-            role: {
-              _id: { $arrayElemAt: ['$senderRoleDetails._id', 0] },
-              label: { $arrayElemAt: ['$senderRoleDetails.label', 0] },
-              value: { $arrayElemAt: ['$senderRoleDetails.value', 0] }
-            }
+            homebase: {
+              IATA: { $arrayElemAt: ['$senderHomebase.IATA', 0] },
+              ICAO: { $arrayElemAt: ['$senderHomebase.ICAO', 0] },
+              city: { $arrayElemAt: ['$senderHomebase.city', 0] },
+            },
+            airline: {
+              ICAO: { $arrayElemAt: ['$senderAirline.ICAO', 0] },
+              Name: { $arrayElemAt: ['$senderAirline.Name', 0] },
+            },
+            role: { value: { $arrayElemAt: ['$senderRole.value', 0] } },
           },
           recipient: {
             _id: { $arrayElemAt: ['$recipientDetails._id', 0] },
-            airline: { $arrayElemAt: ['$recipientAirlineDetails', 0] },
-            email: { $arrayElemAt: ['$recipientDetails.email', 0] },
             firstName: { $arrayElemAt: ['$recipientDetails.firstName', 0] },
-            homebase: { $arrayElemAt: ['$recipientHomebaseDetails', 0] },
             lastName: { $arrayElemAt: ['$recipientDetails.lastName', 0] },
+            email: { $arrayElemAt: ['$recipientDetails.email', 0]},
             profilePicture: { $arrayElemAt: ['$recipientDetails.profilePicture', 0] },
-            role: {
-              _id: { $arrayElemAt: ['$recipientRoleDetails._id', 0] },
-              label: { $arrayElemAt: ['$recipientRoleDetails.label', 0] },
-              value: { $arrayElemAt: ['$recipientRoleDetails.value', 0] }
-            }
+            homebase: {
+              IATA: { $arrayElemAt: ['$recipientHomebase.IATA', 0] },
+              ICAO: { $arrayElemAt: ['$recipientHomebase.ICAO', 0] },
+              city: { $arrayElemAt: ['$recipientHomebase.city', 0] },
+            },
+            airline: {
+              ICAO: { $arrayElemAt: ['$recipientAirline.ICAO', 0] },
+              Name: { $arrayElemAt: ['$recipientAirline.Name', 0] },
+            },
+            role: { value: { $arrayElemAt: ['$recipientRole.value', 0] } },
           },
           lastMessage: 1,
-          lastTimestamp: 1
-        }
-      }
-    ])
+          lastNonce: 1,
+          lastTimestamp: 1,
+        },
+      },
+      { $sort: { lastTimestamp: -1 } }, // Sort final conversations by last message timestamp
+    ]);
 
-    res.status(200).json(conversations)
+    res.status(200).json(conversations);
   } catch (error) {
-    console.error('Error fetching conversations:', error)
-    res.status(500).json({ error: 'Failed to fetch conversations.' })
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch conversations.' });
   }
-}
+};
 
 // Get all messages between two users
 export const getMessages = async (req: Request, res: Response) => {

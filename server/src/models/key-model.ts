@@ -3,14 +3,14 @@ import mongoose, { Schema, Document } from 'mongoose'
 export interface IKey extends Document {
   userId: mongoose.Schema.Types.ObjectId
   publicKey: string
-  encryptedPrivateKey?: string  // Optional, for users who want to store encrypted private key
+  secretKey: string  
   createdAt: Date
 }
 
 const keySchema: Schema<IKey> = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
   publicKey: { type: String, required: true },
-  encryptedPrivateKey: { type: String },
+  secretKey: { type: String, required: true},
   createdAt: { type: Date, default: Date.now }
 })
 

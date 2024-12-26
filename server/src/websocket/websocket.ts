@@ -48,6 +48,44 @@ export function setupWebSocketServer(server: any) {
           return
         }
 
+        if (parsedData.type === 'friend_request') {
+          const { senderId, recipientId } = parsedData;
+          if (clients.has(recipientId)) {
+            clients.get(recipientId).send(JSON.stringify({
+              type: 'friend_request',
+              senderId,
+              message: 'You have a new friend request.',
+            }));
+          }
+          return;
+        }
+
+        if (parsedData.type === 'friend_added') {
+          const { userId, friendId } = parsedData;
+          if (clients.has(friendId)) {
+            clients.get(friendId).send(JSON.stringify({
+              type: 'friend_added',
+              userId,
+              message: 'You are now friends.',
+            }));
+          }
+          return;
+        }
+
+        if (parsedData.type === 'friend_removed') {
+          const { userId, friendId } = parsedData;
+          [userId, friendId].forEach(id => {
+            if (clients.has(id)) {
+              clients.get(id).send(JSON.stringify({
+                type: 'friend_removed',
+                otherUserId: id === userId ? friendId : userId,
+                message: 'Friend has been removed.',
+              }));
+            }
+          });
+          return;
+        }
+
         // Handle disconnect messages (if manually sent)
         if (parsedData.type === 'disconnect') {
           const { userId } = parsedData

@@ -1,3 +1,7 @@
+import 'react-native-get-random-values'
+import nacl from 'tweetnacl';
+import { decodeBase64, encodeBase64 } from 'tweetnacl-util';
+import { Buffer } from 'buffer';
 import {
   View,
   Text,
@@ -68,7 +72,7 @@ const Connection = () => {
 
     try {
       const response = await axios.get(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/friendList/${userId}`
+        `https://1c32-103-18-0-19.ngrok-free.app/api/users/friendList/${userId}`
       )
       setFriends(response.data)
       setFilteredFriends(response.data)
@@ -84,7 +88,7 @@ const Connection = () => {
   const removeFriend = async friendId => {
     try {
       const response = await fetch(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/removeFriend`,
+        `https://1c32-103-18-0-19.ngrok-free.app/api/users/removeFriend`,
         {
           method: 'POST',
           headers: {
@@ -115,7 +119,7 @@ const Connection = () => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://1c32-103-18-0-19.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -142,7 +146,7 @@ const Connection = () => {
 
     try {
       const response = await fetch(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/friendRequest`,
+        `https://1c32-103-18-0-19.ngrok-free.app/api/users/friendRequest`,
         {
           method: 'POST',
           headers: {
@@ -483,24 +487,80 @@ const Message = () => {
   const fetchConversations = async () => {
     const userId = await SecureStore.getItemAsync('userId');
     setUserId(userId);
-
+  
     try {
+      // Fetch user conversations from the API
       const response = await axios.get(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://1c32-103-18-0-19.ngrok-free.app/api/messages/conversations/${userId}`
       );
-      const sortedConversations = response.data.sort(
+      console.log(response.data);
+  
+      const conversations = response.data;
+  
+      // Fetch user's private key
+      const userKeyResponse = await axios.get(
+        `https://1c32-103-18-0-19.ngrok-free.app/api/key/keys/${userId}`
+      );
+      const userPrivateKey = decodeBase64(userKeyResponse.data.secretKey);
+  
+      // Iterate through conversations and decrypt the last message
+      const decryptedConversations = await Promise.all(
+        conversations.map(async (conversation) => {
+          const { lastMessage, lastNonce, sender, recipient } = conversation;
+  
+          // Determine the other party's public key (either sender or recipient)
+          const otherPartyId = sender._id === userId ? recipient._id : sender._id;
+          const otherPartyKeyResponse = await axios.get(
+            `https://1c32-103-18-0-19.ngrok-free.app/api/key/keys/${otherPartyId}`
+          );
+          const otherPartyPublicKey = decodeBase64(otherPartyKeyResponse.data.publicKey);
+  
+          // Decrypt the last message
+          const decryptedMessage = decryptMessage(lastMessage, lastNonce, otherPartyPublicKey, userPrivateKey);
+  
+          return {
+            ...conversation,
+            lastMessage: decryptedMessage, // Replace encrypted message with decrypted content
+          };
+        })
+      );
+  
+      // Sort conversations by timestamp
+      const sortedConversations = decryptedConversations.sort(
         (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
       );
+  
       setConversations(sortedConversations);
     } catch (error) {
       console.log('Error fetching conversations:', error);
     }
   };
+  
+  // Helper function to decrypt messages
+  const decryptMessage = (encryptedContent, nonce, senderPublicKey, recipientPrivateKey) => {
+    try {
+      const decrypted = nacl.box.open(
+        decodeBase64(encryptedContent),
+        decodeBase64(nonce),
+        senderPublicKey,
+        recipientPrivateKey
+      );
+  
+      if (!decrypted) {
+        throw new Error('Failed to decrypt message: Decryption returned null');
+      }
+  
+      return Buffer.from(decrypted).toString(); // Convert decrypted bytes to a string
+    } catch (error) {
+      console.error('Error decrypting message:', error);
+      return '[Unable to decrypt message]';
+    }
+  };  
 
   const deleteConversation = async (otherUserId) => {
     try {
       const response = await axios.delete(
-        'https://2c44-103-18-0-17.ngrok-free.app/api/messages/delete',
+        'https://1c32-103-18-0-19.ngrok-free.app/api/messages/delete',
         {
           data: {
             userId, // Logged-in user ID
@@ -529,7 +589,7 @@ const Message = () => {
   useEffect(() => {
     fetchConversations();
 
-    ws.current = new WebSocket('ws://10.171.56.128:8080');
+    ws.current = new WebSocket('ws://10.171.61.226:8080');
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'chat_message') {
@@ -593,8 +653,8 @@ const Message = () => {
             const otherUser = isRecipientLoggedInUser ? item.sender : item.recipient;
 
             const messageText = isRecipientLoggedInUser
-              ? `You: ${item.lastMessage}`
-              : item.lastMessage;
+              ? item.lastMessage
+              : `You: ${item.lastMessage}`;
 
             return (
               <TouchableOpacity
@@ -687,7 +747,7 @@ const Request = () => {
     try {
       if (userId) {
         const response = await axios.get(
-          `https://2c44-103-18-0-17.ngrok-free.app/api/users/addFriend/${userId}`
+          `https://1c32-103-18-0-19.ngrok-free.app/api/users/addFriend/${userId}`
         )
         setRequests(response.data)
       }
@@ -708,7 +768,7 @@ const Request = () => {
 
     try {
       const response = await fetch(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/acceptRequest`,
+        `https://1c32-103-18-0-19.ngrok-free.app/api/users/acceptRequest`,
         {
           method: 'POST',
           headers: {
@@ -742,7 +802,7 @@ const Request = () => {
 
     try {
       const response = await fetch(
-        `https://2c44-103-18-0-17.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://1c32-103-18-0-19.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {

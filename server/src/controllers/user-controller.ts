@@ -1,3 +1,6 @@
+import nacl from 'tweetnacl';
+import { encodeBase64 } from 'tweetnacl-util';
+import Key from '../models/key-model';
 import Message from '../models/message-model'
 import { Request, Response } from 'express'
 import { bucket } from '../services/gcs'
@@ -58,6 +61,25 @@ export const loginUser = async (req: Request, res: Response) => {
     const user = await User.findOne({ email }).populate('homebase').populate('airline').populate('role', 'value')
 
     if (user && (await user.matchPassword(password))) {
+
+      let keyPair = await Key.findOne({ userId: user._id });
+
+      if (!keyPair) {
+        // Generate a new key pair
+        const newKeyPair = nacl.box.keyPair();
+        const encodedPublicKey = encodeBase64(newKeyPair.publicKey);
+        const encodedSecretKey = encodeBase64(newKeyPair.secretKey);
+
+        // Save the key pair in the key-model collection
+        keyPair = await Key.create({
+          userId: user._id,
+          publicKey: encodedPublicKey,
+          secretKey: encodedSecretKey, // Secure this key (e.g., encrypt it)
+        });
+
+        console.log('New key pair generated and stored for user:', user._id);
+      }
+
       res.status(200).json({
         _id: user._id,
         firstName: user.firstName,
@@ -65,7 +87,9 @@ export const loginUser = async (req: Request, res: Response) => {
         email: user.email,
         homebase: user.homebase,
         airline: user.airline,
-        role: user.role
+        role: user.role,
+        publicKey: keyPair.publicKey,
+        secretKey: keyPair.secretKey,
       })
     } else {
       res.status(401).json({ message: 'Invalid email or password' })

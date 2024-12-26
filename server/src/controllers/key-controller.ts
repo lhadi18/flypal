@@ -1,17 +1,18 @@
 import { Request, Response } from 'express'
 import Key from '../models/key-model'
 
-export const storePublicKey = async (req: Request, res: Response) => {
-  const { userId, publicKey } = req.body;
+export const storeKey = async (req: Request, res: Response) => {
+  const { userId, publicKey, secretKey } = req.body;
 
   console.log('Request body:', req.body);
-  console.log('UserId and PublicKey:', { userId, publicKey });
+  console.log('UserId and PublicKey:', { userId, publicKey, secretKey});
 
   try {
     // Create a new document in the "keys" collection
     const keyEntry = await Key.create({
       userId,
       publicKey,
+      secretKey
     });
 
     res.status(201).json(keyEntry); // Use 201 Created status for successful creation
@@ -22,32 +23,17 @@ export const storePublicKey = async (req: Request, res: Response) => {
 };
 
 
-export const getPublicKey = async (req: Request, res: Response) => {
+export const getKey = async (req: Request, res: Response) => {
   const { userId } = req.params
 
   try {
     const keyEntry = await Key.findOne({ userId })
     if (!keyEntry) {
-      return res.status(404).json({ error: 'Public key not found' })
+      return res.status(404).json({ error: 'Keys not found' })
     }
-    res.status(200).json({ publicKey: keyEntry.publicKey })
+    res.status(200).json({ publicKey: keyEntry.publicKey, secretKey: keyEntry.secretKey })
   } catch (error) {
-    console.error('Error fetching public key:', error)
-    res.status(500).json({ error: 'Failed to fetch public key' })
-  }
-}
-
-export const getEncryptedPrivateKey = async (req: Request, res: Response) => {
-  const { userId } = req.params
-
-  try {
-    const keyEntry = await Key.findOne({ userId })
-    if (!keyEntry?.encryptedPrivateKey) {
-      return res.status(404).json({ error: 'Encrypted private key not found' })
-    }
-    res.status(200).json({ encryptedPrivateKey: keyEntry.encryptedPrivateKey })
-  } catch (error) {
-    console.error('Error fetching encrypted private key:', error)
-    res.status(500).json({ error: 'Failed to fetch encrypted private key' })
+    console.error('Error fetching keys:', error)
+    res.status(500).json({ error: 'Failed to fetch keys' })
   }
 }
