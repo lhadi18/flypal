@@ -1,6 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground, Alert } from 'react-native'
 import ConnectivityService from '@/services/utils/connectivity-service'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { handlePushToken } from '@/services/utils/push-token'
 import { loginUser } from '../../services/apis/user-api'
 import * as SecureStore from 'expo-secure-store'
 import { ScrollView } from 'react-native'
@@ -30,6 +31,7 @@ const SignIn = () => {
       await SecureStore.setItemAsync('userId', userId)
       await SecureStore.setItemAsync('airlineIATA', airlineIATA)
       await SecureStore.setItemAsync('homebaseTZDatabase', homebaseTZDatabase)
+      await handlePushToken(userId)
 
       Alert.alert('Login Successful', `Welcome back, ${email}`)
       router.replace('/roster')
@@ -102,8 +104,11 @@ const SignIn = () => {
                       </TouchableOpacity>
                     </View>
                     {touched.password && errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-                    <TouchableOpacity style={styles.forgotPasswordButton}>
-                      {/* <Text style={styles.forgotPasswordText}>Forgot Password?</Text> */}
+                    <TouchableOpacity
+                      style={styles.forgotPasswordButton}
+                      onPress={() => router.push('/forgot-password')}
+                    >
+                      <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                     </TouchableOpacity>
                   </View>
                   <TouchableOpacity style={styles.loginButton} onPress={handleSubmit}>
@@ -115,11 +120,7 @@ const SignIn = () => {
 
             <View style={styles.registerContainer}>
               <Text style={styles.registerPrompt}>Don't have an account? </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  router.push('/sign-up')
-                }}
-              >
+              <TouchableOpacity onPress={() => router.push('/sign-up')}>
                 <Text style={styles.registerText}>Register</Text>
               </TouchableOpacity>
             </View>

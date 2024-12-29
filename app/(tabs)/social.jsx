@@ -9,16 +9,19 @@ import {
   Modal,
   ScrollView,
   FlatList,
-  Pressable,
-  Image
+  Image,
+  Alert
 } from 'react-native'
-import { MenuProvider, Menu, MenuOptions, MenuOption, MenuTrigger } from 'react-native-popup-menu'
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view'
-import { useRouter, useLocalSearchParams } from 'expo-router'
+import { decodeBase64, encodeBase64 } from 'tweetnacl-util'
 import React, { useEffect, useState, useRef } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as SecureStore from 'expo-secure-store'
+import 'react-native-get-random-values'
+import { useRouter } from 'expo-router'
+import { Buffer } from 'buffer'
+import nacl from 'tweetnacl'
 import axios from 'axios'
 
 const Connection = () => {
@@ -27,12 +30,13 @@ const Connection = () => {
   const [selectedUser, setSelectedUser] = useState(null)
   const [currentUserId, setCurrentUserId] = useState(null)
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false)
-  const [currentPage, setCurrentPage] = useState('connections')
+  const [currentScreen, setCurrentScreen] = useState('connections')
   const [nonFriends, setNonFriends] = useState([])
   const [sentFriendRequests, setSentFriendRequests] = useState([])
   const [searchKeyword, setSearchKeyword] = useState('')
+  const [searchAllKeyword, setSearchAllKeyword] = useState('')
   const [filteredFriends, setFilteredFriends] = useState([])
-
+  const [filteredNonFriends, setFilteredNonFriends] = useState([])
   const router = useRouter()
 
   const toggleMenu = userId => {
@@ -67,7 +71,9 @@ const Connection = () => {
     setCurrentUserId(userId)
 
     try {
-      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/friendList/${userId}`)
+      const response = await axios.get(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/friendList/${userId}`
+      )
       setFriends(response.data)
       setFilteredFriends(response.data)
     } catch (error) {
@@ -81,16 +87,19 @@ const Connection = () => {
 
   const removeFriend = async friendId => {
     try {
-      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/removeFriend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userId: currentUserId, // The logged-in user's ID
-          friendId: friendId // The friend's ID to be removed
-        })
-      })
+      const response = await fetch(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/removeFriend`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: currentUserId, // The logged-in user's ID
+            friendId: friendId // The friend's ID to be removed
+          })
+        }
+      )
 
       const responseData = await response.json()
       console.log('API Response:', responseData)
@@ -110,23 +119,24 @@ const Connection = () => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
 
       setNonFriends(nonFriends)
       setSentFriendRequests(sentFriendRequests)
+      setFilteredNonFriends(nonFriends)
     } catch (error) {
       console.log('Error fetching non-friends:', error)
     }
   }
 
   useEffect(() => {
-    if (currentPage === 'connect') {
+    if (currentScreen === 'connect') {
       fetchNonFriends()
     }
-  }, [currentPage])
+  }, [currentScreen])
 
   const handleSendFriendRequest = async recipientId => {
     if (!currentUserId) {
@@ -135,23 +145,26 @@ const Connection = () => {
     }
 
     try {
-      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/friendRequest`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          senderId: currentUserId, // The logged-in user's ID
-          recipientId: recipientId // The recipient's ID
-        })
-      })
+      const response = await fetch(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/friendRequest`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            senderId: currentUserId, // The logged-in user's ID
+            recipientId: recipientId // The recipient's ID
+          })
+        }
+      )
 
       const responseData = await response.json()
       console.log('API Response:', responseData)
 
       if (response.ok) {
         console.log('Friend request sent successfully')
-        setNonFriends(prev => prev.filter(user => user._id !== recipientId)) // Remove the recipient from the non-friends list
+        setNonFriends(prev => prev.filter(user => user._id !== recipientId))
         await fetchNonFriends()
       } else {
         console.log('Failed to send friend request:', responseData.message)
@@ -165,68 +178,101 @@ const Connection = () => {
     setSearchKeyword(text)
 
     if (text.trim() === '') {
-      // Reset filteredFriends to the full friends list if search is empty
       setFilteredFriends(friends)
     } else {
-      // Filter friends based on the search input
       setFilteredFriends(
         friends.filter(friend => `${friend.firstName} ${friend.lastName}`.toLowerCase().includes(text.toLowerCase()))
       )
     }
   }
 
+  const handleAllSearch = text => {
+    setSearchAllKeyword(text)
+
+    if (text.trim() === '') {
+      setFilteredNonFriends(nonFriends)
+    } else {
+      setFilteredNonFriends(
+        nonFriends.filter(nonFriend =>
+          `${nonFriend.firstName} ${nonFriend.lastName}`.toLowerCase().includes(text.toLowerCase())
+        )
+      )
+    }
+  }
+
   const goToConnectPage = () => {
-    setCurrentPage('connect')
+    setSearchKeyword('')
+    setFilteredFriends(friends)
+    setCurrentScreen('connect')
   }
 
   const goToConnectionsPage = () => {
-    setCurrentPage('connections')
+    setSearchAllKeyword('')
+    setFilteredNonFriends(nonFriends)
+    setSearchKeyword('')
+    setFilteredFriends(friends)
+    setCurrentScreen('connections')
   }
 
-  if (currentPage === 'connect') {
+  if (currentScreen === 'connect') {
     return (
       <View style={styles.tabContent}>
         <TouchableOpacity onPress={goToConnectionsPage} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="black" />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
-        <ScrollView>
-          {nonFriends.length > 0 ? (
-            nonFriends.map(user => (
-              <View key={user._id} style={styles.cardContainer}>
-                <View style={styles.profileContainer}>
-                  {user.profilePicture ? (
-                    <Image source={{ uri: user.profilePicture }} style={styles.profilePicture} />
-                  ) : (
-                    <View style={styles.profilePictureSmall} />
-                  )}
-                  <View style={styles.profileInfo}>
-                    <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
-                    <Text style={styles.role}>{user.role?.value}</Text>
-                    {sentFriendRequests.includes(user._id) ? ( // Check if the user is in sentFriendRequests
-                      <TouchableOpacity style={styles.pendingButton} disabled>
-                        <MaterialIcons name="access-time" size={16} color="white" />
-                        <Text style={styles.buttonText}>Pending</Text>
-                      </TouchableOpacity>
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search user..."
+          placeholderTextColor="grey"
+          value={searchAllKeyword}
+          onChangeText={handleAllSearch}
+        />
+        {nonFriends.length > 0 ? (
+          filteredNonFriends.length > 0 ? (
+            <FlatList
+              data={filteredNonFriends}
+              keyExtractor={user => user._id}
+              renderItem={({ item: user }) => (
+                <View style={styles.cardContainer}>
+                  <View style={styles.profileContainer}>
+                    {user.profilePicture ? (
+                      <Image source={{ uri: user.profilePicture }} style={styles.profilePicture} />
                     ) : (
-                      <TouchableOpacity
-                        style={styles.connectButton}
-                        onPress={() => handleSendFriendRequest(user._id)} // Call the function to send the request
-                      >
-                        <MaterialIcons name="person-add" size={16} color="white" />
-                        <Text style={styles.buttonText}>Connect</Text>
-                      </TouchableOpacity>
+                      <View style={styles.profilePictureSmall} />
                     )}
+                    <View style={styles.profileInfo}>
+                      <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
+                      <Text style={styles.role}>{user.role?.value}</Text>
+                      {sentFriendRequests.includes(user._id) ? ( // Check if the user is in sentFriendRequests
+                        <TouchableOpacity style={styles.pendingButton} disabled>
+                          <MaterialIcons name="access-time" size={16} color="white" />
+                          <Text style={styles.buttonText}>Pending</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.connectButton}
+                          onPress={() => handleSendFriendRequest(user._id)} // Call the function to send the request
+                        >
+                          <MaterialIcons name="person-add" size={16} color="white" />
+                          <Text style={styles.buttonText}>Connect</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))
+              )}
+            />
           ) : (
             <View style={styles.noFriendsContainer}>
-              <Text style={styles.noFriendsText}>No users to connect with.</Text>
+              <Text style={styles.noFriendsText}>No users found.</Text>
             </View>
-          )}
-        </ScrollView>
+          )
+        ) : (
+          <View style={styles.noFriendsContainer}>
+            <Text style={styles.noFriendsText}>No users to connect with.</Text>
+          </View>
+        )}
       </View>
     )
   }
@@ -430,34 +476,121 @@ const Connection = () => {
 const Message = () => {
   const [conversations, setConversations] = useState([])
   const [userId, setUserId] = useState(null)
+  const [openUserId, setOpenUserId] = useState(null) // Tracks which menu is open
   const router = useRouter()
   const ws = useRef(null)
+
+  const toggleMenu = userId => {
+    setOpenUserId(prev => (prev === userId ? null : userId)) // Toggle menu visibility
+  }
 
   const fetchConversations = async () => {
     const userId = await SecureStore.getItemAsync('userId')
     setUserId(userId)
 
     try {
+      // Fetch user conversations from the API
       const response = await axios.get(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/messages/conversations/${userId}`
       )
-      const sortedConversations = response.data.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp))
+      console.log(response.data)
+
+      const conversations = response.data
+
+      // Fetch user's private key
+      const userKeyResponse = await axios.get(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${userId}`
+      )
+      const userPrivateKey = decodeBase64(userKeyResponse.data.secretKey)
+
+      // Iterate through conversations and decrypt the last message
+      const decryptedConversations = await Promise.all(
+        conversations.map(async conversation => {
+          const { lastMessage, lastNonce, sender, recipient } = conversation
+
+          // Determine the other party's public key (either sender or recipient)
+          const otherPartyId = sender._id === userId ? recipient._id : sender._id
+          const otherPartyKeyResponse = await axios.get(
+            `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${otherPartyId}`
+          )
+          const otherPartyPublicKey = decodeBase64(otherPartyKeyResponse.data.publicKey)
+
+          // Decrypt the last message
+          const decryptedMessage = decryptMessage(lastMessage, lastNonce, otherPartyPublicKey, userPrivateKey)
+
+          return {
+            ...conversation,
+            lastMessage: decryptedMessage // Replace encrypted message with decrypted content
+          }
+        })
+      )
+
+      // Sort conversations by timestamp
+      const sortedConversations = decryptedConversations.sort(
+        (a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp)
+      )
+
       setConversations(sortedConversations)
     } catch (error) {
       console.log('Error fetching conversations:', error)
     }
   }
 
+  // Helper function to decrypt messages
+  const decryptMessage = (encryptedContent, nonce, senderPublicKey, recipientPrivateKey) => {
+    try {
+      const decrypted = nacl.box.open(
+        decodeBase64(encryptedContent),
+        decodeBase64(nonce),
+        senderPublicKey,
+        recipientPrivateKey
+      )
+
+      if (!decrypted) {
+        throw new Error('Failed to decrypt message: Decryption returned null')
+      }
+
+      return Buffer.from(decrypted).toString() // Convert decrypted bytes to a string
+    } catch (error) {
+      console.error('Error decrypting message:', error)
+      return '[Unable to decrypt message]'
+    }
+  }
+
+  const deleteConversation = async otherUserId => {
+    try {
+      const response = await axios.delete(
+        'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/messages/delete',
+        {
+          data: {
+            userId, // Logged-in user ID
+            otherUserId // ID of the other user in the conversation
+          }
+        }
+      )
+
+      if (response.status === 200) {
+        // Remove deleted conversation from local state
+        setConversations(prev =>
+          prev.filter(
+            conversation => conversation.sender._id !== otherUserId && conversation.recipient._id !== otherUserId
+          )
+        )
+        Alert.alert('Success', 'Conversation deleted successfully')
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error)
+      Alert.alert('Error', 'Failed to delete conversation')
+    }
+  }
+
   useEffect(() => {
-    // Fetch initial conversations
     fetchConversations()
 
-    // Set up WebSocket
-    ws.current = new WebSocket('ws://10.164.238.244:8080')
+    ws.current = new WebSocket('ws://10.164.234.23:8080')
     ws.current.onmessage = event => {
       const data = JSON.parse(event.data)
       if (data.type === 'chat_message') {
-        // Update conversations
         setConversations(prevConversations => {
           let conversationFound = false
 
@@ -476,7 +609,6 @@ const Message = () => {
             return conversation
           })
 
-          // If no matching conversation, add a new one
           if (!conversationFound) {
             const otherUser = data.sender === userId ? data.recipientDetails : data.senderDetails
             updatedConversations.push({
@@ -497,7 +629,6 @@ const Message = () => {
     }
   }, [])
 
-  // Refresh conversations when returning to this screen
   useFocusEffect(
     React.useCallback(() => {
       fetchConversations()
@@ -507,12 +638,17 @@ const Message = () => {
   return (
     <View style={styles.tabContent}>
       {conversations.length > 0 ? (
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-          {conversations.map((item, index) => {
-            const otherUser = item.sender._id === userId ? item.recipient : item.sender
+        <FlatList
+          data={conversations}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => {
+            const isRecipientLoggedInUser = item.recipient._id === userId
+            const otherUser = isRecipientLoggedInUser ? item.sender : item.recipient
+
+            const messageText = isRecipientLoggedInUser ? item.lastMessage : `You: ${item.lastMessage}`
+
             return (
               <TouchableOpacity
-                key={index}
                 style={styles.cardContainer}
                 onPress={() =>
                   router.push({
@@ -538,14 +674,40 @@ const Message = () => {
                   )}
                   <View style={styles.profileInfo}>
                     <Text style={styles.name}>{`${otherUser.firstName} ${otherUser.lastName}`}</Text>
-                    <Text style={styles.role}>{item.lastMessage}</Text>
+                    <Text style={styles.role}>{messageText}</Text>
                     <Text style={styles.timestamp}>{new Date(item.lastTimestamp).toLocaleString()}</Text>
                   </View>
                 </View>
+                <View style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity onPress={() => toggleMenu(otherUser._id)}>
+                    <MaterialIcons name="more-vert" size={24} color="black" />
+                  </TouchableOpacity>
+                  {openUserId === otherUser._id && (
+                    <View style={styles.menuOptions}>
+                      <TouchableOpacity
+                        style={styles.menuButton}
+                        onPress={() => {
+                          setOpenUserId(null) // Close menu
+                          Alert.alert('Delete Conversation', 'Are you sure you want to delete this conversation?', [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: () => deleteConversation(otherUser._id)
+                            }
+                          ])
+                        }}
+                      >
+                        <MaterialIcons style={styles.menuIcon} name="delete" size={16} color="red" />
+                        <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
             )
-          })}
-        </ScrollView>
+          }}
+        />
       ) : (
         <View style={styles.noFriendsContainer}>
           <Text style={styles.noFriendsText}>No conversations yet. Start a chat!</Text>
@@ -566,7 +728,9 @@ const Request = () => {
     setUserId(userId)
     try {
       if (userId) {
-        const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/addFriend/${userId}`)
+        const response = await axios.get(
+          `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/addFriend/${userId}`
+        )
         setRequests(response.data)
       }
     } catch (error) {
@@ -585,16 +749,19 @@ const Request = () => {
     }
 
     try {
-      const response = await fetch(`https://40c7-115-164-76-186.ngrok-free.app/api/users/acceptRequest`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          senderId: friendRequestId,
-          recipientId: userId
-        })
-      })
+      const response = await fetch(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/acceptRequest`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            senderId: friendRequestId,
+            recipientId: userId
+          })
+        }
+      )
 
       const responseData = await response.json()
       console.log('API Response:', responseData)
@@ -617,7 +784,7 @@ const Request = () => {
 
     try {
       const response = await fetch(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
@@ -710,8 +877,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const { tab } = useLocalSearchParams()
-  const [index, setIndex] = useState(tab === 'connection' ? 0 : tab === 'message' ? 1 : 2)
+  const [index, setIndex] = useState(0)
 
   const [routes] = useState([
     { key: 'connection', title: 'Connection' },
@@ -1080,7 +1246,8 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 10
+    marginHorizontal: 10,
+    marginTop: 10
   },
   backButtonText: {
     fontSize: 16,

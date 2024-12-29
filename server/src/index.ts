@@ -1,4 +1,5 @@
 import diningRoutes from './routes/dining-recommendation-routes'
+import pushTokenRoutes from './routes/push-token-routes'
 import checklistRoutes from './routes/checklist-routes'
 import aircraftRoutes from './routes/aircraft-routes'
 import bookmarkRoutes from './routes/bookmark-routes'
@@ -11,6 +12,7 @@ import eventRoutes from './routes/event-routes'
 import userRoutes from './routes/user-routes'
 import roleRoutes from './routes/role-routes'
 import pdfRoutes from './routes/pdf-routes'
+import keyRoutes from './routes/key-routes'
 import connectDB from './config'
 import express from 'express'
 import dotenv from 'dotenv'
@@ -39,6 +41,8 @@ app.use('/api/checklist', checklistRoutes)
 app.use('/api/bookmarks', bookmarkRoutes)
 app.use('/api/roles', roleRoutes)
 app.use('/api/messages', messageRoutes)
+app.use('/api/key', keyRoutes)
+app.use('/api/push-token', pushTokenRoutes)
 
 const PORT = process.env.PORT || 8080
 
@@ -55,13 +59,13 @@ httpServer.listen(PORT, () => {
 function shutdown() {
   console.log('Shutting down server...')
 
-  httpServer.close(() => {
-    console.log('HTTP server closed')
-  })
-
+  // Remove all connected clients
   cleanup(() => {
     console.log('WebSocket server cleaned up')
-    process.exit(0) // Exit the process after cleanup
+    httpServer.close(() => {
+      console.log('HTTP server closed')
+      process.exit(0) // Exit the process after cleanup
+    })
   })
 
   setTimeout(() => {

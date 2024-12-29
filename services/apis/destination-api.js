@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store'
 import axios from 'axios'
 
-const API_URL = 'https://40c7-115-164-76-186.ngrok-free.app'
+const API_URL = 'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app'
 
 export const fetchNearbyPlaces = async (latitude, longitude, city, dietaryOption = '') => {
   try {

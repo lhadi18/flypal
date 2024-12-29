@@ -5,6 +5,8 @@ import Checklist from '../models/checklist-model';
 // Create a new checklist
 export const createChecklist: RequestHandler = async (req: Request, res: Response) => {
   const { userId, title, flightRoute, travelDate, items } = req.body;
+  console.log(req.body)
+  console.log({ userId, title, flightRoute, travelDate, items })
 
   if (!userId || !title) {
     res.status(400).json({ message: 'User ID and title are required' });

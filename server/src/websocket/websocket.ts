@@ -1,5 +1,8 @@
+import PushToken from '../models/push-token-model'
 import Message from '../models/message-model'
+import User from '../models/user-model'
 import { WebSocketServer } from 'ws'
+import mongoose from 'mongoose'
 
 type ClientsMap = Map<string, any> // Map of connected clients
 const onlineUsers = new Set<string>() // Set to track online users
@@ -45,6 +48,44 @@ export function setupWebSocketServer(server: any) {
           return
         }
 
+        if (parsedData.type === 'friend_request') {
+          const { senderId, recipientId } = parsedData;
+          if (clients.has(recipientId)) {
+            clients.get(recipientId).send(JSON.stringify({
+              type: 'friend_request',
+              senderId,
+              message: 'You have a new friend request.',
+            }));
+          }
+          return;
+        }
+
+        if (parsedData.type === 'friend_added') {
+          const { userId, friendId } = parsedData;
+          if (clients.has(friendId)) {
+            clients.get(friendId).send(JSON.stringify({
+              type: 'friend_added',
+              userId,
+              message: 'You are now friends.',
+            }));
+          }
+          return;
+        }
+
+        if (parsedData.type === 'friend_removed') {
+          const { userId, friendId } = parsedData;
+          [userId, friendId].forEach(id => {
+            if (clients.has(id)) {
+              clients.get(id).send(JSON.stringify({
+                type: 'friend_removed',
+                otherUserId: id === userId ? friendId : userId,
+                message: 'Friend has been removed.',
+              }));
+            }
+          });
+          return;
+        }
+
         // Handle disconnect messages (if manually sent)
         if (parsedData.type === 'disconnect') {
           const { userId } = parsedData
@@ -58,46 +99,67 @@ export function setupWebSocketServer(server: any) {
         }
 
         // Handle chat messages
-        const { sender, recipient, content } = parsedData
         if (parsedData.type === 'chat_message') {
-          if (!sender || !recipient || !content) {
+          const { sender, recipient, encryptedContent, nonce, plainText } = parsedData
+
+          if (!sender || !recipient || !encryptedContent || !nonce || !plainText) {
             console.error('Missing fields in chat message:', parsedData)
             return
           }
 
-          // Save the message to the database
-          const message = await Message.create({ sender, recipient, content })
+          const message = await Message.create({ sender, recipient, encryptedContent, nonce })
           console.log('Message saved:', message)
 
-          // Prepare the message for sending
           const chatMessage = {
             type: 'chat_message',
             _id: message._id,
             sender: message.sender,
             recipient: message.recipient,
-            content: message.content,
+            nonce: message.nonce,
+            encryptedContent: message.encryptedContent,
+            plainText,
             timestamp: message.timestamp
           }
 
-          // Send the message to both sender and recipient if connected
-          ;[sender, recipient].forEach(userId => {
-            if (clients.has(userId)) {
-              clients.get(userId).send(JSON.stringify(chatMessage))
-            }
-          })
+          const senderInfo = await User.findById(sender).select('firstName lastName')
+          const senderName = senderInfo ? `${senderInfo.firstName} ${senderInfo.lastName}` : 'Unknown Sender'
+
+          // Use the plain text message for notifications
+          const notificationBody = plainText.length > 50 ? `${plainText.slice(0, 50)}...` : plainText
+
+          // Send the message to the recipient if connected
+          if (clients.has(recipient)) {
+            clients.get(recipient).send(JSON.stringify(chatMessage))
+            console.log(`Message forwarded to user ${recipient}`)
+          } else {
+            console.log(`User ${recipient} is offline. Sending push notification.`)
+            await sendPushNotification(recipient, 'New Message', notificationBody, senderName)
+          }
+
+          if (clients.has(sender)) {
+            clients.get(sender).send(JSON.stringify(chatMessage))
+          }
+
           return
         }
 
         if (parsedData.type === 'read_receipt') {
           const { senderId, recipientId, messageIds } = parsedData
-          const cacheKey = `${senderId}_${recipientId}`
 
-          if (!readCache.has(cacheKey)) {
-            readCache.set(cacheKey, new Set())
+          if (!clients.has(recipientId)) {
+            console.warn(`Recipient (${recipientId}) is offline. Not broadcasting read receipt.`)
+            return
           }
 
-          const cachedIds = readCache.get(cacheKey)!
-          messageIds.forEach((id: string) => cachedIds.add(id))
+          const cacheKey = `${senderId}_${recipientId}`
+          if (!readCache.has(cacheKey)) {
+            readCache.set(cacheKey, new Set<string>())
+          }
+
+          const cachedIds = readCache.get(cacheKey)
+          if (cachedIds) {
+            messageIds.forEach((id: string) => cachedIds.add(id))
+          }
 
           const readReceiptMessage = {
             type: 'read_receipt',
@@ -108,18 +170,40 @@ export function setupWebSocketServer(server: any) {
 
           ;[senderId, recipientId].forEach(userId => {
             if (clients.has(userId)) {
-              clients.get(userId).send(JSON.stringify(readReceiptMessage))
+              console.log(`Broadcasting to userId: ${userId}`)
+              clients.get(userId)?.send(JSON.stringify(readReceiptMessage))
             }
           })
 
           setTimeout(async () => {
-            const idsToUpdate = Array.from(cachedIds)
-            await Message.updateMany(
-              { _id: { $in: idsToUpdate }, sender: recipientId, recipient: senderId, read: false },
-              { $set: { read: true } }
-            )
-            readCache.delete(cacheKey)
+            if (cachedIds) {
+              const idsToUpdate = Array.from(cachedIds).filter(id => {
+                try {
+                  new mongoose.Types.ObjectId(id)
+                  return true
+                } catch {
+                  console.warn(`Invalid ObjectId detected and excluded: ${id}`)
+                  return false
+                }
+              })
+
+              if (idsToUpdate.length > 0) {
+                try {
+                  await Message.updateMany(
+                    { _id: { $in: idsToUpdate }, sender: recipientId, recipient: senderId, read: false },
+                    { $set: { read: true } }
+                  )
+                } catch (error) {
+                  console.error('Error updating read receipts:', error)
+                }
+              } else {
+                console.warn('No valid ObjectIds to update in the database.')
+              }
+
+              readCache.delete(cacheKey)
+            }
           }, 5000)
+
           return
         }
 
@@ -153,10 +237,21 @@ export function setupWebSocketServer(server: any) {
   // Cleanup function for graceful shutdown
   function cleanup(callback: () => void) {
     console.log('Cleaning up WebSocket server...')
-    wss.clients.forEach(client => {
-      client.close() // Close each client
+
+    const shutdownMessage = JSON.stringify({ type: 'server_shutdown', message: 'Server is shutting down' })
+    clients.forEach(clientWs => {
+      try {
+        clientWs.send(shutdownMessage)
+        clientWs.close()
+      } catch (error) {
+        console.error('Error sending shutdown message:', error)
+      }
     })
-    wss.close(callback) // Close the WebSocket server
+
+    clients.clear()
+    onlineUsers.clear()
+
+    wss.close(callback)
   }
 
   return { wss, cleanup }
@@ -176,4 +271,40 @@ function broadcastStatusChange(clients: ClientsMap, userId: string, status: stri
       console.error('Error broadcasting status change:', error)
     }
   })
+}
+
+// Send a push notification to a user
+async function sendPushNotification(userId: string, title: string, body: string, senderName?: string) {
+  try {
+    const tokens = await PushToken.find({ userId })
+
+    if (tokens.length === 0) {
+      console.warn(`No push tokens found for user: ${userId}`)
+      return
+    }
+
+    const notificationTitle = senderName ? `Message from ${senderName}` : title
+    const notificationBody = body
+
+    const messages = tokens.map(token => ({
+      to: token.token,
+      sound: 'default',
+      title: notificationTitle,
+      body: notificationBody,
+      data: { userId, senderName }
+    }))
+
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(messages)
+    })
+
+    const responseData = await response.json()
+    console.log('Push notification response:', responseData)
+  } catch (error) {
+    console.error('Error sending push notification:', error)
+  }
 }

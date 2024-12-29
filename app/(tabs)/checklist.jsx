@@ -89,7 +89,7 @@ const Checklists = () => {
     }
     try {
       const response = await axios.post(
-        'https://40c7-115-164-76-186.ngrok-free.app/api/checklist/createChecklist',
+        'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/checklist/createChecklist',
         checklistData
       )
       console.log('Checklist created:', response.data)
@@ -105,11 +105,14 @@ const Checklists = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
-      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/checklist/getChecklist`, {
-        params: {
-          userId
+      const response = await axios.get(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/checklist/getChecklist`,
+        {
+          params: {
+            userId
+          }
         }
-      })
+      )
       setChecklists(response.data)
     } catch (error) {
       if (error.response && error.response.status === 404) {
@@ -138,7 +141,7 @@ const Checklists = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `https://40c7-115-164-76-186.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
+                `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
               )
               await fetchChecklists()
             } catch (error) {
@@ -167,7 +170,7 @@ const Checklists = () => {
     }
     try {
       const response = await axios.put(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
         updatedChecklistData
       )
       console.log('Checklist updated:', response.data)

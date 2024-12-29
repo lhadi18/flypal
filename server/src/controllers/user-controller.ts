@@ -2,13 +2,17 @@ import DiningRecommendation from '../models/dining-recommendation-model'
 import Checklist from '../models/checklist-model'
 import Bookmark from '../models/bookmark-model'
 import Message from '../models/message-model'
+import { encodeBase64 } from 'tweetnacl-util'
 import Roster from '../models/roster-model'
 import { Request, Response } from 'express'
 import { bucket } from '../services/gcs'
 import User from '../models/user-model'
+import Key from '../models/key-model'
 import { v4 as uuidv4 } from 'uuid'
 import mongoose from 'mongoose'
+import nacl from 'tweetnacl'
 import multer from 'multer'
+import bcrypt from 'bcrypt'
 
 const DEFAULT_PROFILE_PICTURE_URL = 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
 
@@ -57,6 +61,24 @@ export const loginUser = async (req: Request, res: Response) => {
     const user = await User.findOne({ email }).populate('homebase').populate('airline').populate('role', 'value')
 
     if (user && (await user.matchPassword(password))) {
+      let keyPair = await Key.findOne({ userId: user._id })
+
+      if (!keyPair) {
+        // Generate a new key pair
+        const newKeyPair = nacl.box.keyPair()
+        const encodedPublicKey = encodeBase64(newKeyPair.publicKey)
+        const encodedSecretKey = encodeBase64(newKeyPair.secretKey)
+
+        // Save the key pair in the key-model collection
+        keyPair = await Key.create({
+          userId: user._id,
+          publicKey: encodedPublicKey,
+          secretKey: encodedSecretKey // Secure this key (e.g., encrypt it)
+        })
+
+        console.log('New key pair generated and stored for user:', user._id)
+      }
+
       res.status(200).json({
         _id: user._id,
         firstName: user.firstName,
@@ -64,7 +86,9 @@ export const loginUser = async (req: Request, res: Response) => {
         email: user.email,
         homebase: user.homebase,
         airline: user.airline,
-        role: user.role
+        role: user.role,
+        publicKey: keyPair.publicKey,
+        secretKey: keyPair.secretKey
       })
     } else {
       res.status(401).json({ message: 'Invalid email or password' })
@@ -720,5 +744,30 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
   } catch (error) {
     console.error('Error handling profile picture upload:', error)
     res.status(500).json({ message: 'Error uploading profile picture' })
+  }
+}
+
+// Update user password
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  const { email, newPassword } = req.body
+
+  try {
+    // Find the user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      res.status(404).json({ message: 'User not found' })
+      return
+    }
+
+    if (newPassword) {
+      user.password = newPassword
+      await user.save()
+      res.json({ message: 'Password updated successfully' })
+    } else {
+      res.status(400).json({ message: 'Password is required' })
+    }
+  } catch (error) {
+    console.error('Error resetting password:', error)
+    res.status(500).json({ message: 'Failed to reset password' })
   }
 }

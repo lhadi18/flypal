@@ -849,7 +849,9 @@ const Roster = () => {
   const handlePickDocument = async () => {
     const userId = await SecureStore.getItemAsync('userId')
 
-    const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/airline/${userId}/canUploadRoster`)
+    const response = await axios.get(
+      `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/airline/${userId}/canUploadRoster`
+    )
 
     if (!response.data || !response.data.canUploadRoster) {
       Alert.alert('Roster Import Not Supported', 'We have yet to support roster imports for your airline.')
@@ -881,11 +883,15 @@ const Roster = () => {
           type: file.mimeType
         })
 
-        const response = await axios.post('https://40c7-115-164-76-186.ngrok-free.app/api/pdf/upload', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
+        const response = await axios.post(
+          'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/pdf/upload',
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
           }
-        })
+        )
 
         if (response.data.parsedData) {
           setUploadedRosterData(response.data.parsedData)

@@ -1,3 +1,4 @@
+import 'react-native-get-random-values'
 import {
   SafeAreaView,
   ScrollView,
@@ -10,6 +11,7 @@ import {
 } from 'react-native'
 import ConnectivityService from '../services/utils/connectivity-service'
 import { initializeDatabase } from '../services/utils/database'
+import { handlePushToken } from '../services/utils/push-token'
 import { validateUserId } from '../services/apis/user-api'
 import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
@@ -23,13 +25,13 @@ const App = () => {
     ConnectivityService.initialize()
     initializeDatabase()
 
-    // Check for notification permissions on app launch
     const checkNotificationPermissions = async () => {
       const { status } = await Notifications.getPermissionsAsync()
       if (status !== 'granted') {
         const { status: newStatus } = await Notifications.requestPermissionsAsync()
         if (newStatus !== 'granted') {
           console.warn('Notification permissions not granted.')
+          return
         }
       }
     }
@@ -47,6 +49,7 @@ const App = () => {
         if (userId) {
           const isValid = await validateUserId(userId)
           if (isValid) {
+            await handlePushToken(userId) // Generate and save push token
             router.replace('/roster')
           } else {
             router.replace('/sign-in')

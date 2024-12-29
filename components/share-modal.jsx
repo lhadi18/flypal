@@ -28,7 +28,7 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://10.164.238.244:8080')
+    ws.current = new WebSocket('ws://10.164.234.23:8080')
 
     ws.current.onopen = () => {
       console.log('WebSocket connected')
@@ -58,7 +58,9 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
       setLoading(true)
-      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/friendList/${userId}`)
+      const response = await axios.get(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/friendList/${userId}`
+      )
       console.log(response.data)
       setConnections(response.data)
       setFilteredConnections(response.data)
