@@ -37,7 +37,8 @@ const Connection = () => {
   const [searchAllKeyword, setSearchAllKeyword] = useState('')
   const [filteredFriends, setFilteredFriends] = useState([])
   const [filteredNonFriends, setFilteredNonFriends] = useState([])
-  const router = useRouter()
+  const ws = useRef(null);
+  const router = useRouter();
 
   const toggleMenu = userId => {
     if (openUserId === userId) {
@@ -66,13 +67,63 @@ const Connection = () => {
     setIsProfileModalVisible(false)
   }
 
+  useEffect(() => {
+    const setupWebSocket = async () => {
+      const userId = await SecureStore.getItemAsync('userId');
+      setCurrentUserId(userId);
+  
+      ws.current = new WebSocket('ws://10.167.61.238:8080'); // Replace with your WebSocket URL
+  
+      ws.current.onopen = () => {
+        console.log('WebSocket connected');
+        ws.current.send(JSON.stringify({ type: 'register', userId }));
+      };
+  
+      ws.current.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        handleWebSocketMessage(message); // Pass message to the handler
+      };
+  
+      ws.current.onclose = () => {
+        console.log('WebSocket disconnected');
+      };
+  
+      return () => {
+        ws.current?.close();
+      };
+    };
+  
+    setupWebSocket();
+  }, []);
+
+  const handleWebSocketMessage = (message) => {
+    if (message.type === 'friend_request') {
+      console.log('Friend request received (Connection):', message);
+      fetchNonFriends(); // Refresh non-friends list
+    }
+  
+    if (message.type === 'friend_added') {
+      console.log('Friend added (Connection):', message);
+      fetchFriends(); // Refresh friends list
+    }
+  
+    if (message.type === 'friend_removed') {
+      console.log('Friend removed (Connection):', message);
+      setFriends((prev) =>
+        prev.filter((friend) => friend._id !== message.otherUserId)
+      );
+    }
+  };
+  
+  
+
   const fetchFriends = async () => {
     const userId = await SecureStore.getItemAsync('userId')
     setCurrentUserId(userId)
 
     try {
       const response = await axios.get(
-        `https://1c32-103-18-0-19.ngrok-free.app/api/users/friendList/${userId}`
+        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/friendList/${userId}`
       )
       setFriends(response.data)
       setFilteredFriends(response.data)
@@ -85,41 +136,47 @@ const Connection = () => {
     fetchFriends()
   }, [])
 
-  const removeFriend = async friendId => {
+  const removeFriend = async (friendId) => {
     try {
       const response = await fetch(
-        `https://1c32-103-18-0-19.ngrok-free.app/api/users/removeFriend`,
+        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/removeFriend`,
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            userId: currentUserId, // The logged-in user's ID
-            friendId: friendId // The friend's ID to be removed
-          })
+            userId: currentUserId,
+            friendId,
+          }),
         }
-      )
-
-      const responseData = await response.json()
-      console.log('API Response:', responseData)
-
+      );
+  
+      const responseData = await response.json();
+      console.log('API Response:', responseData);
+  
       if (response.ok) {
-        console.log('Friend removed successfully')
-        setFriends(prevFriends => prevFriends.filter(friend => friend._id !== friendId))
-        await fetchFriends()
-      } else {
-        console.log('Failed to remove friend:', responseData.message)
+        console.log('Friend removed successfully');
+        ws.current?.send(
+          JSON.stringify({
+            type: 'friend_removed',
+            userId: currentUserId,
+            friendId,
+          })
+        );
+        setFriends((prevFriends) =>
+          prevFriends.filter((friend) => friend._id !== friendId)
+        );
       }
     } catch (error) {
-      console.log('Error removing friend:', error)
+      console.log('Error removing friend:', error);
     }
-  }
+  };  
 
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://1c32-103-18-0-19.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -138,41 +195,35 @@ const Connection = () => {
     }
   }, [currentScreen])
 
-  const handleSendFriendRequest = async recipientId => {
+  const handleSendFriendRequest = async (recipientId) => {
     if (!currentUserId) {
-      console.log('Current user ID is not set')
-      return
+      console.log('Current user ID is not set');
+      return;
     }
-
+  
     try {
-      const response = await fetch(
-        `https://1c32-103-18-0-19.ngrok-free.app/api/users/friendRequest`,
+      const response = await axios.post(
+        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/friendRequest`,
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            senderId: currentUserId, // The logged-in user's ID
-            recipientId: recipientId // The recipient's ID
-          })
+          senderId: currentUserId,
+          recipientId,
         }
-      )
-
-      const responseData = await response.json()
-      console.log('API Response:', responseData)
-
-      if (response.ok) {
-        console.log('Friend request sent successfully')
-        setNonFriends(prev => prev.filter(user => user._id !== recipientId)) 
-        await fetchNonFriends()
-      } else {
-        console.log('Failed to send friend request:', responseData.message)
+      );
+      if (response.status === 200) {
+        console.log('Friend request sent successfully');
+        ws.current?.send(
+          JSON.stringify({
+            type: 'friend_request',
+            senderId: currentUserId,
+            recipientId,
+          })
+        );
+        fetchNonFriends();
       }
     } catch (error) {
-      console.log('Error sending friend request:', error)
+      console.error('Error sending friend request:', error);
     }
-  }
+  };  
 
   const handleSearch = text => {
     setSearchKeyword(text)
@@ -491,7 +542,7 @@ const Message = () => {
     try {
       // Fetch user conversations from the API
       const response = await axios.get(
-        `https://1c32-103-18-0-19.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://7e9e-103-18-0-19.ngrok-free.app/api/messages/conversations/${userId}`
       );
       console.log(response.data);
   
@@ -499,7 +550,7 @@ const Message = () => {
   
       // Fetch user's private key
       const userKeyResponse = await axios.get(
-        `https://1c32-103-18-0-19.ngrok-free.app/api/key/keys/${userId}`
+        `https://7e9e-103-18-0-19.ngrok-free.app/api/key/keys/${userId}`
       );
       const userPrivateKey = decodeBase64(userKeyResponse.data.secretKey);
   
@@ -511,7 +562,7 @@ const Message = () => {
           // Determine the other party's public key (either sender or recipient)
           const otherPartyId = sender._id === userId ? recipient._id : sender._id;
           const otherPartyKeyResponse = await axios.get(
-            `https://1c32-103-18-0-19.ngrok-free.app/api/key/keys/${otherPartyId}`
+            `https://7e9e-103-18-0-19.ngrok-free.app/api/key/keys/${otherPartyId}`
           );
           const otherPartyPublicKey = decodeBase64(otherPartyKeyResponse.data.publicKey);
   
@@ -560,7 +611,7 @@ const Message = () => {
   const deleteConversation = async (otherUserId) => {
     try {
       const response = await axios.delete(
-        'https://1c32-103-18-0-19.ngrok-free.app/api/messages/delete',
+        'https://7e9e-103-18-0-19.ngrok-free.app/api/messages/delete',
         {
           data: {
             userId, // Logged-in user ID
@@ -589,7 +640,7 @@ const Message = () => {
   useEffect(() => {
     fetchConversations();
 
-    ws.current = new WebSocket('ws://10.171.61.226:8080');
+    ws.current = new WebSocket('ws://10.167.61.238:8080');
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'chat_message') {
@@ -740,6 +791,55 @@ const Request = () => {
   const [userId, setUserId] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [friendName, setFriendName] = useState('') // To store the accepted friend's name
+  const ws = useRef(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const setupWebSocket = async () => {
+      const userId = await SecureStore.getItemAsync('userId');
+      setUserId(userId);
+  
+      ws.current = new WebSocket('ws://10.167.61.238:8080'); // Replace with your WebSocket URL
+  
+      ws.current.onopen = () => {
+        console.log('WebSocket connected');
+        ws.current.send(JSON.stringify({ type: 'register', userId }));
+      };
+  
+      ws.current.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        handleWebSocketMessage(message); // Pass message to the handler
+      };
+  
+      ws.current.onclose = () => {
+        console.log('WebSocket disconnected');
+      };
+  
+      return () => {
+        ws.current?.close();
+      };
+    };
+  
+    setupWebSocket();
+  }, []);
+  
+  const handleWebSocketMessage = (message) => {
+    if (message.type === 'friend_request') {
+      console.log('Friend request received (Request):', message);
+      fetchRequests(); // Refresh friend requests list
+    }
+  
+    if (message.type === 'friend_added') {
+      console.log('Friend added (Request):', message);
+      fetchRequests(); // Optionally refresh requests or related UI
+    }
+  
+    if (message.type === 'friend_removed') {
+      console.log('Friend removed (Request):', message);
+      fetchRequests(); // Optionally refresh requests or related UI
+    }
+  };
+  
 
   const fetchRequests = async () => {
     const userId = await SecureStore.getItemAsync('userId')
@@ -747,7 +847,7 @@ const Request = () => {
     try {
       if (userId) {
         const response = await axios.get(
-          `https://1c32-103-18-0-19.ngrok-free.app/api/users/addFriend/${userId}`
+          `https://7e9e-103-18-0-19.ngrok-free.app/api/users/addFriend/${userId}`
         )
         setRequests(response.data)
       }
@@ -762,37 +862,44 @@ const Request = () => {
 
   const acceptRequest = async (friendRequestId, friendName) => {
     if (!userId) {
-      console.log('Current user ID is not set')
-      return
+      console.log('Current user ID is not set');
+      return;
     }
-
+  
     try {
       const response = await fetch(
-        `https://1c32-103-18-0-19.ngrok-free.app/api/users/acceptRequest`,
+        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/acceptRequest`,
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             senderId: friendRequestId,
-            recipientId: userId
-          })
+            recipientId: userId,
+          }),
         }
-      )
-
-      const responseData = await response.json()
-      console.log('API Response:', responseData)
-
+      );
+  
+      const responseData = await response.json();
+      console.log('API Response:', responseData);
+  
       if (response.ok) {
-        console.log('Friend request accepted successfully')
-        setModalVisible(true)
-        await fetchRequests()
+        console.log('Friend request accepted successfully');
+        ws.current?.send(
+          JSON.stringify({
+            type: 'friend_added',
+            userId,
+            friendId: friendRequestId,
+          })
+        );
+        setFriendName(friendName)
+        await fetchRequests();
       }
     } catch (error) {
-      console.log('Error accepting friend request:', error)
+      console.log('Error accepting friend request:', error);
     }
-  }
+  };
 
   const declineRequest = async friendRequestId => {
     if (!userId) {
@@ -802,7 +909,7 @@ const Request = () => {
 
     try {
       const response = await fetch(
-        `https://1c32-103-18-0-19.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
@@ -895,6 +1002,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
+  const ws = useRef(new WebSocket('ws://10.167.61.238:8080'));
   const [index, setIndex] = useState(0)
 
   const [routes] = useState([
@@ -907,18 +1015,38 @@ const Social = () => {
     <TabBar {...props} style={styles.tabBar} labelStyle={styles.tabLabel} indicatorStyle={styles.tabIndicator} />
   )
 
+  useEffect(() => {
+    ws.current.onopen = () => console.log('WebSocket connected');
+    ws.current.onclose = () => console.log('WebSocket disconnected');
+
+    return () => {
+      ws.current?.close();
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <TabView
         navigationState={{ index, routes }}
-        renderScene={renderScene}
+        renderScene={({ route }) => {
+          switch (route.key) {
+            case 'connection':
+              return <Connection ws={ws} />;
+            case 'request':
+              return <Request ws={ws} />;
+            case 'message':
+              return <Message ws={ws} />;
+            default:
+              return null;
+          }
+        }}
         onIndexChange={setIndex}
         initialLayout={{ width: useWindowDimensions().width }}
         renderTabBar={renderTabBar}
       />
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

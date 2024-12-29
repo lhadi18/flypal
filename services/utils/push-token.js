@@ -20,7 +20,7 @@ export const handlePushToken = async userId => {
 
     if (storedToken !== pushToken.data) {
       console.log('New push token detected, saving to server.')
-      await fetch('https://1c32-103-18-0-19.ngrok-free.app/api/push-token/save', {
+      await fetch('https://7e9e-103-18-0-19.ngrok-free.app/api/push-token/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, token: pushToken.data, deviceId })

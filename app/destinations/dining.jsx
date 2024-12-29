@@ -63,7 +63,7 @@ const Dining = () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         const response = await fetch(
-          `https://1c32-103-18-0-19.ngrok-free.app/api/bookmarks/user/${userId}`
+          `https://7e9e-103-18-0-19.ngrok-free.app/api/bookmarks/user/${userId}`
         )
         if (response.ok) {
           const userBookmarks = await response.json()
@@ -152,7 +152,7 @@ const Dining = () => {
         airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value
       }
 
-      await fetch(`https://1c32-103-18-0-19.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await fetch(`https://7e9e-103-18-0-19.ngrok-free.app/api/bookmarks/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
