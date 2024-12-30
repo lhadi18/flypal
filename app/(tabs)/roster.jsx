@@ -1,4 +1,14 @@
 import {
+  requestNotificationPermission,
+  cancelAllNotifications,
+  scheduleNotification,
+  scheduleRedEyeReminder,
+  rescheduleNotifications,
+  loadNotificationSettings,
+  saveNotificationSettings,
+  cancelNotificationForEvent
+} from '../../services/utils/notification-services'
+import {
   SafeAreaView,
   SectionList,
   View,
@@ -74,15 +84,15 @@ const Roster = () => {
   const [selectedEntryIndex, setSelectedEntryIndex] = useState(null)
   const [homebaseTZ, setHomebaseTZ] = useState('')
   const [showShareModal, setShowShareModal] = useState(false)
-  const [currentMonthYear, setCurrentMonthYear] = useState(moment().format('YYYY-MM')) // Default to current month and year
+  const [currentMonthYear, setCurrentMonthYear] = useState(moment().format('YYYY-MM'))
 
   const [toastVisible, setToastVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [customReminderHour, setCustomReminderHour] = useState(2) // Default to 2 hours before the event
-  const [restReminderEnabled, setRestReminderEnabled] = useState(false) // For rest reminders
-  const [redEyeReminderTime, setRedEyeReminderTime] = useState(18) // Default red-eye reminder time (6 PM)
+  const [customReminderHour, setCustomReminderHour] = useState(2)
+  const [restReminderEnabled, setRestReminderEnabled] = useState(false)
+  const [redEyeReminderTime, setRedEyeReminderTime] = useState(18)
 
   const originRef = useRef(null)
   const destinationRef = useRef(null)
@@ -93,28 +103,15 @@ const Roster = () => {
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024
 
-  // Load saved settings from AsyncStorage
   const loadSettings = async () => {
     try {
-      const savedNotificationsEnabled = await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)
-      const savedCustomReminderHour = await AsyncStorage.getItem(CUSTOM_REMINDER_HOUR_KEY)
-      const savedRestReminderEnabled = await AsyncStorage.getItem(REST_REMINDER_ENABLED_KEY)
-      const savedRedEyeReminderTime = await AsyncStorage.getItem(RED_EYE_REMINDER_TIME_KEY)
-
-      if (savedNotificationsEnabled !== null) {
-        setNotificationsEnabled(JSON.parse(savedNotificationsEnabled))
-      }
-      if (savedCustomReminderHour !== null) {
-        setCustomReminderHour(JSON.parse(savedCustomReminderHour))
-      }
-      if (savedRestReminderEnabled !== null) {
-        setRestReminderEnabled(JSON.parse(savedRestReminderEnabled))
-      }
-      if (savedRedEyeReminderTime !== null) {
-        setRedEyeReminderTime(JSON.parse(savedRedEyeReminderTime))
-      }
+      const settings = await loadNotificationSettings()
+      setNotificationsEnabled(settings.notificationsEnabled)
+      setCustomReminderHour(settings.customReminderHour)
+      setRestReminderEnabled(settings.restReminderEnabled)
+      setRedEyeReminderTime(settings.redEyeReminderTime)
     } catch (error) {
-      console.error('Error loading settings:', error)
+      console.error('Error loading notification settings:', error)
     }
   }
 
@@ -185,24 +182,17 @@ const Roster = () => {
   }, [rosterEntries])
 
   useEffect(() => {
-    const scheduleAllNotifications = async () => {
-      await cancelAllNotifications()
-
-      events.forEach(event => {
-        if (notificationsEnabled) {
-          scheduleNotification(event, customReminderHour)
-
-          const eventTime = moment.tz(event.departureTime, event.origin?.tz_database || homebaseTZ)
-          const departureHour = eventTime.hour()
-
-          if (departureHour >= 0 && departureHour <= 7) {
-            scheduleRedEyeReminder(event, redEyeReminderTime)
-          }
-        }
-      })
+    const reschedule = async () => {
+      console.log('event roster', events)
+      if (notificationsEnabled) {
+        const timezone = homebaseTZ || 'UTC'
+        await rescheduleNotifications(notificationsEnabled, customReminderHour, redEyeReminderTime, timezone, events)
+      } else {
+        await cancelAllNotifications()
+      }
     }
 
-    scheduleAllNotifications()
+    reschedule()
   }, [notificationsEnabled, customReminderHour, redEyeReminderTime, events])
 
   useEffect(() => {
@@ -223,7 +213,7 @@ const Roster = () => {
   }
 
   const requestNotificationPermission = async () => {
-    return (await Notifications.requestPermissionsAsync()).status === 'granted'
+    return await requestNotificationPermission()
   }
 
   const fetchRosterEntries = async startDate => {
@@ -333,11 +323,12 @@ const Roster = () => {
           onPress: async () => {
             try {
               const isConnected = false
-
               if (isConnected) {
               }
 
+              await cancelNotificationForEvent(rosterId)
               await deleteRosterEntry(rosterId, isConnected)
+
               showToast('Roster entry deleted successfully.')
 
               const today = getCurrentDate()
@@ -351,129 +342,6 @@ const Roster = () => {
       ],
       { cancelable: true }
     )
-  }
-
-  const scheduleNotification = async (event, reminderHoursBefore) => {
-    const permissionGranted = await requestNotificationPermission()
-    if (!permissionGranted) return
-
-    const eventStartTime = event.departureTime
-      ? moment.tz(event.departureTime, event.origin?.tz_database || homebaseTZ)
-      : null
-    const eventEndTime = event.arrivalTime
-      ? moment.tz(event.arrivalTime, event.destination?.tz_database || homebaseTZ)
-      : null
-
-    if (!eventStartTime || !eventStartTime.isValid()) {
-      console.warn('Invalid or missing start time for event:', event)
-      return
-    }
-
-    const reminderTime = eventStartTime.clone().subtract(reminderHoursBefore, 'hours')
-
-    if (reminderTime.isAfter(moment())) {
-      let notificationTitle = 'Upcoming Event Reminder'
-      let notificationBody = ''
-
-      switch (event.type) {
-        case 'STANDBY':
-          notificationTitle = 'Standby Duty Reminder'
-          notificationBody = `Your standby duty starts in ${reminderHoursBefore} hours.`
-          break
-
-        case 'TRAINING':
-          notificationTitle = 'Training Reminder'
-          notificationBody = `Your training session starts in ${reminderHoursBefore} hours.`
-          break
-
-        case 'OFF_DUTY':
-          notificationTitle = 'Off Duty Reminder'
-          notificationBody = `Enjoy your off-duty time! It begins in ${reminderHoursBefore} hours.`
-          break
-
-        case 'LAYOVER':
-          notificationTitle = 'Layover Reminder'
-          notificationBody = `Your layover at ${event.origin?.name} (${event.origin?.IATA}) starts in ${reminderHoursBefore} hours.`
-          break
-
-        case 'MEDICAL_CHECK':
-          notificationTitle = 'Medical Check Reminder'
-          notificationBody = `Your medical check starts in ${reminderHoursBefore} hours.`
-          break
-
-        case 'MEETING':
-          notificationTitle = 'Meeting Reminder'
-          notificationBody = `Your meeting starts in ${reminderHoursBefore} hours.`
-          break
-
-        case 'FLIGHT_DUTY':
-          notificationTitle = `Flight Duty Reminder: ${event.flightNumber || 'N/A'}`
-          notificationBody = `Your flight from ${event.origin?.IATA || 'N/A'} to ${event.destination?.IATA || 'N/A'} departs in ${reminderHoursBefore} hours.`
-          break
-
-        default:
-          notificationTitle = 'Event Reminder'
-          notificationBody = `You have an upcoming event starting in ${reminderHoursBefore} hours.`
-      }
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: notificationTitle,
-          body: notificationBody,
-          sound: 'default',
-          badge: 1
-        },
-        trigger: {
-          date: new Date(reminderTime)
-        }
-      })
-      console.log(await Notifications.getAllScheduledNotificationsAsync())
-    }
-
-    if (['STANDBY', 'OFF_DUTY', 'LAYOVER'].includes(event.type) && eventEndTime && eventEndTime.isAfter(moment())) {
-      const endNotificationTitle = `${event.type} End Reminder`
-      const endNotificationBody = `Your ${event.type.toLowerCase()} ends soon.`
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: endNotificationTitle,
-          body: endNotificationBody,
-          sound: 'default',
-          badge: 1
-        },
-        trigger: {
-          date: new Date(eventEndTime.clone().subtract(30, 'minutes'))
-        }
-      })
-    }
-  }
-
-  const scheduleRedEyeReminder = async (event, redEyeReminderTime) => {
-    const permissionGranted = await requestNotificationPermission()
-    if (!permissionGranted) return
-
-    const eventTime = moment.tz(event.departureTime, event.origin?.tz_database || homebaseTZ)
-    const departureHour = eventTime.hour()
-
-    if (departureHour >= 0 && departureHour <= 7) {
-      const reminderDayBefore = eventTime.clone().subtract(1, 'day').set('hour', redEyeReminderTime).set('minute', 0)
-
-      if (reminderDayBefore.isAfter(moment())) {
-        const formattedDepartureTime = eventTime.format('DD/MM/YYYY HH:mm [GMT]Z')
-
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `Red-Eye Flight Reminder: ${event.flightNumber}`,
-            body: `You have a red-eye flight tomorrow from ${event.origin.IATA} to ${event.destination.IATA} departing at ${formattedDepartureTime}.`,
-            sound: 'default',
-            badge: 1
-          },
-          trigger: {
-            date: new Date(reminderDayBefore)
-          }
-        })
-      }
-    }
   }
 
   const getSelectedMonthRoster = () => {
@@ -774,7 +642,7 @@ const Roster = () => {
       return
     }
 
-    const timezone = newEventOrigin?.timezone || homebaseTZ
+    const timezone = newEventOrigin?.timezone || homebaseTZ || 'UTC'
     const departureDateTime = moment.tz(newEventDepartureTime, DISPLAY_FORMAT, timezone)
     const arrivalDateTime = newEventArrivalTime
       ? moment.tz(newEventArrivalTime, DISPLAY_FORMAT, newEventDestination?.timezone || timezone)
@@ -826,6 +694,15 @@ const Roster = () => {
       clearInputs()
       clearOriginAndDestination()
       setModalVisible(false)
+
+      const reminderHoursBefore = customReminderHour || 2
+      await scheduleNotification(eventEntry, reminderHoursBefore, timezone)
+      if (eventEntry.type === 'FLIGHT_DUTY') {
+        await scheduleRedEyeReminder(eventEntry, redEyeReminderTime, timezone)
+      }
+
+      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync()
+      console.log(scheduledNotifications)
     } catch (error) {
       console.error('Error saving event:', error)
       Alert.alert('Error', 'Could not save the event. Please try again.')
@@ -897,7 +774,7 @@ const Roster = () => {
           setUploadedRosterData(response.data.parsedData)
           setShowRosterModal(true)
         } else {
-          Alert.alert('Error', 'Unable to parse the uploaded roster.')
+          Alert.alert('Error', 'Unable to read the uploaded roster.')
         }
       } catch (error) {
         console.error('Error uploading file:', error)

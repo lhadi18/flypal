@@ -139,6 +139,8 @@ const Settings = () => {
       // handleEditUserDetails(response.data);
       fetchUserDetails()
       setCurrentScreen('UserProfile')
+
+      SecureStore.setItemAsync('homebaseTZDatabase', response.data.homebase.tz_database)
     } catch (error) {
       console.error('Error updating user profile:', error)
     }

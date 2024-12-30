@@ -142,13 +142,12 @@ const extractUniqueAirports = (duties: Duty[]): string[] => {
   const airportSet = new Set<string>()
 
   duties.forEach(duty => {
-    // Ensure the duty has sufficient information to be considered valid
     if (duty.flightNumber && duty.departureTime && duty.arrivalTime) {
       if (typeof duty.departureAirport === 'string') {
-        airportSet.add(duty.departureAirport) // Only add strings
+        airportSet.add(duty.departureAirport)
       }
       if (typeof duty.arrivalAirport === 'string') {
-        airportSet.add(duty.arrivalAirport) // Only add strings
+        airportSet.add(duty.arrivalAirport)
       }
     }
   })

@@ -4,63 +4,77 @@ import {
   scheduleRedEyeReminder,
   cancelAllNotifications,
   requestNotificationPermission,
-  rescheduleNotifications
+  rescheduleNotifications,
+  loadNotificationSettings,
+  saveNotificationSettings
 } from '../../services/utils/notification-services'
 import { View, Text, Switch, SafeAreaView, ScrollView, StyleSheet, Button } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getAllRosterEntries } from '@/services/utils/database'
 import eventEmitter from '../../services/utils/event-emitter'
 import Slider from '@react-native-community/slider'
 import * as Notifications from 'expo-notifications'
 import React, { useState, useEffect } from 'react'
 import * as SecureStore from 'expo-secure-store'
 
-// Constants for keys used to store settings
-const NOTIFICATIONS_ENABLED_KEY = 'notificationsEnabled'
-const CUSTOM_REMINDER_HOUR_KEY = 'customReminderHour'
-const RED_EYE_REMINDER_TIME_KEY = 'redEyeReminderTime'
-
-const getInitialRedEyeReminderTime = () => {
-  const date = new Date()
-  date.setHours(18, 0, 0, 0) // Set to 18:00 (6:00 PM)
-  return date
-}
-
 const ReminderSettings = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [redEyeReminderTime, setRedEyeReminderTime] = useState(getInitialRedEyeReminderTime())
+  const [redEyeReminderTime, setRedEyeReminderTime] = useState(new Date())
   const [customReminderHour, setCustomReminderHour] = useState(2) // Default to 2 hours before flight
   const [homebaseTZ, setHomebaseTZ] = useState('UTC') // Default timezone
 
   useEffect(() => {
-    loadSettings()
+    initializeSettings()
     fetchHomebaseTimezone()
   }, [])
 
   useEffect(() => {
-    const saveAndReschedule = async () => {
-      try {
-        await saveSettings()
-
-        if (notificationsEnabled) {
-          const userId = await SecureStore.getItemAsync('userId')
-          await requestNotificationPermission()
-          await rescheduleNotifications(
-            notificationsEnabled,
-            customReminderHour,
-            redEyeReminderTime.getHours(),
-            homebaseTZ,
-            userId
-          )
-        } else {
-          await cancelAllNotifications()
-        }
-      } catch (error) {
-        console.error('Error in saveAndReschedule:', error)
-      }
-    }
-
-    saveAndReschedule()
+    saveAndRescheduleNotifications()
   }, [notificationsEnabled, customReminderHour, redEyeReminderTime, homebaseTZ])
+
+  const initializeSettings = async () => {
+    try {
+      const settings = await loadNotificationSettings()
+      setNotificationsEnabled(settings.notificationsEnabled)
+      setCustomReminderHour(settings.customReminderHour)
+      setRedEyeReminderTime(new Date(settings.redEyeReminderTime))
+    } catch (error) {
+      console.error('Error loading settings:', error)
+    }
+  }
+
+  const saveAndRescheduleNotifications = async () => {
+    try {
+      await saveNotificationSettings({
+        notificationsEnabled,
+        customReminderHour,
+        redEyeReminderTime: redEyeReminderTime.toISOString()
+      })
+
+      eventEmitter.emit('settingsChanged', {
+        notificationsEnabled,
+        customReminderHour,
+        redEyeReminderTime
+      })
+
+      if (notificationsEnabled) {
+        const userId = await SecureStore.getItemAsync('userId')
+        const events = await getAllRosterEntries(userId)
+        await requestNotificationPermission()
+        await rescheduleNotifications(
+          notificationsEnabled,
+          customReminderHour,
+          redEyeReminderTime.getHours(),
+          homebaseTZ,
+          events
+        )
+      } else {
+        await cancelAllNotifications()
+      }
+    } catch (error) {
+      console.error('Error saving and rescheduling notifications:', error)
+    }
+  }
 
   const fetchHomebaseTimezone = async () => {
     try {
@@ -72,42 +86,6 @@ const ReminderSettings = () => {
       }
     } catch (error) {
       console.error('Error fetching home base timezone:', error)
-    }
-  }
-
-  const saveSettings = async () => {
-    try {
-      await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, JSON.stringify(notificationsEnabled))
-      await AsyncStorage.setItem(CUSTOM_REMINDER_HOUR_KEY, JSON.stringify(customReminderHour))
-      await AsyncStorage.setItem(RED_EYE_REMINDER_TIME_KEY, JSON.stringify(redEyeReminderTime))
-
-      eventEmitter.emit('settingsChanged', {
-        notificationsEnabled,
-        customReminderHour,
-        redEyeReminderTime
-      })
-    } catch (error) {
-      console.error('Error saving settings:', error)
-    }
-  }
-
-  const loadSettings = async () => {
-    try {
-      const savedNotificationsEnabled = await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)
-      const savedCustomReminderHour = await AsyncStorage.getItem(CUSTOM_REMINDER_HOUR_KEY)
-      const savedRedEyeReminderTime = await AsyncStorage.getItem(RED_EYE_REMINDER_TIME_KEY)
-
-      if (savedNotificationsEnabled !== null) {
-        setNotificationsEnabled(JSON.parse(savedNotificationsEnabled))
-      }
-      if (savedCustomReminderHour !== null) {
-        setCustomReminderHour(JSON.parse(savedCustomReminderHour))
-      }
-      if (savedRedEyeReminderTime !== null) {
-        setRedEyeReminderTime(new Date(JSON.parse(savedRedEyeReminderTime)))
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error)
     }
   }
 

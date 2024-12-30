@@ -68,7 +68,6 @@ export const getRoles = async () => {
       method: 'get',
       url: `${API_URL}/api/roles/getAllRoles`
     })
-    console.log(response.data)
     return response.data
   } catch (error) {
     if (error.response && error.response.data) {

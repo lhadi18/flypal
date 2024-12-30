@@ -174,14 +174,16 @@ export const updateUserDetails = async (req: Request, res: Response): Promise<vo
 
     await user.save()
 
+    const updatedUser = await User.findById(user._id).populate('homebase').populate('airline')
+
     res.status(200).json({
-      _id: user._id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      homebase: user.homebase,
-      airline: user.airline,
-      role: user.role
+      _id: updatedUser?._id,
+      firstName: updatedUser?.firstName,
+      lastName: updatedUser?.lastName,
+      email: updatedUser?.email,
+      homebase: updatedUser?.homebase,
+      airline: updatedUser?.airline,
+      role: updatedUser?.role
     })
   } catch (error) {
     console.error('Error updating user details:', error)
