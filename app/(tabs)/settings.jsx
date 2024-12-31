@@ -23,6 +23,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import StyledAirportSearch from '@/components/sign-up-airport-search'
 import AirlineSearch from '@/components/sign-up-airline-search'
+import eventEmitter from '@/services/utils/event-emitter'
 import RNPickerSelect from 'react-native-picker-select'
 import { getRoles } from '@/services/apis/user-api'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -30,7 +31,6 @@ import React, { useState, useEffect } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import * as SecureStore from 'expo-secure-store'
 import * as FileSystem from 'expo-file-system'
-import { ROLES } from '../../constants/roles'
 import { useRouter } from 'expo-router'
 import * as Device from 'expo-device'
 import axios from 'axios'
@@ -136,11 +136,13 @@ const Settings = () => {
         `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
-      // handleEditUserDetails(response.data);
       fetchUserDetails()
       setCurrentScreen('UserProfile')
 
-      SecureStore.setItemAsync('homebaseTZDatabase', response.data.homebase.tz_database)
+      const newHomebaseTZ = response.data.homebase.tz_database
+      eventEmitter.emit('homebaseUpdated', newHomebaseTZ)
+
+      SecureStore.setItemAsync('homebaseTZDatabase', newHomebaseTZ)
     } catch (error) {
       console.error('Error updating user profile:', error)
     }

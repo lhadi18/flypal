@@ -174,7 +174,6 @@ export const rescheduleNotifications = async (
     await cancelAllNotifications()
     return
   }
-  console.log('events', events)
   // Cancel notifications for all existing events
   for (const event of events) {
     await cancelNotificationForEvent(event.id)
@@ -182,7 +181,6 @@ export const rescheduleNotifications = async (
 
   // Schedule notifications for all events
   for (const event of events) {
-    console.log('Events:', event)
     await scheduleNotification(event, customReminderHour, timezone)
 
     if (event.type === 'FLIGHT_DUTY') {

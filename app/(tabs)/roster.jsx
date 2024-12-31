@@ -128,6 +128,16 @@ const Roster = () => {
     }
   }, [])
 
+  useEffect(() => {
+    const handleHomebaseUpdated = newHomebaseTZ => {
+      console.log('Homebase TZ updated to:', newHomebaseTZ)
+      setHomebaseTZ(newHomebaseTZ)
+    }
+    eventEmitter.on('homebaseUpdated', handleHomebaseUpdated)
+    return () => {
+      eventEmitter.off('homebaseUpdated', handleHomebaseUpdated)
+    }
+  }, [])
   useLayoutEffect(() => {
     if (route.params?.action) {
       if (route.params.action === 'pickDocument') {
@@ -183,7 +193,6 @@ const Roster = () => {
 
   useEffect(() => {
     const reschedule = async () => {
-      console.log('event roster', events)
       if (notificationsEnabled) {
         const timezone = homebaseTZ || 'UTC'
         await rescheduleNotifications(notificationsEnabled, customReminderHour, redEyeReminderTime, timezone, events)
