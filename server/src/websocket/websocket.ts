@@ -56,34 +56,44 @@ export function setupWebSocketServer(server: any) {
               senderId,
               message: 'You have a new friend request.',
             }));
-          }
+          } else {
+            console.log(`User ${recipientId} is offline. Sending push notification.`);
+            await sendPushNotification(recipientId, 'Friend Request', 'You have a new friend request.');
+          }          
           return;
         }
 
         if (parsedData.type === 'friend_added') {
           const { userId, friendId } = parsedData;
-          if (clients.has(friendId)) {
-            clients.get(friendId).send(JSON.stringify({
-              type: 'friend_added',
-              userId,
-              message: 'You are now friends.',
-            }));
-          }
-          return;
+          // Broadcast the update to both users
+          [userId, friendId].forEach((id) => {
+            if (clients.has(id)) {
+              clients.get(id).send(
+                JSON.stringify({
+                  type: 'friend_added',
+                  userId: id === userId ? friendId : userId,
+                  message: 'You are now friends.',
+                })
+              );
+            }
+          });
         }
 
         if (parsedData.type === 'friend_removed') {
           const { userId, friendId } = parsedData;
-          [userId, friendId].forEach(id => {
+        
+          // Notify both users about the removal
+          [userId, friendId].forEach((id) => {
             if (clients.has(id)) {
-              clients.get(id).send(JSON.stringify({
-                type: 'friend_removed',
-                otherUserId: id === userId ? friendId : userId,
-                message: 'Friend has been removed.',
-              }));
+              clients.get(id).send(
+                JSON.stringify({
+                  type: 'friend_removed',
+                  otherUserId: id === userId ? friendId : userId,
+                  message: 'Friend has been removed.',
+                })
+              );
             }
           });
-          return;
         }
 
         // Handle disconnect messages (if manually sent)

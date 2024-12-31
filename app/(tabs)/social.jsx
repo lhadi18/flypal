@@ -37,6 +37,7 @@ const Connection = () => {
   const [searchAllKeyword, setSearchAllKeyword] = useState('')
   const [filteredFriends, setFilteredFriends] = useState([])
   const [filteredNonFriends, setFilteredNonFriends] = useState([])
+  const ws = useRef(null)
   const router = useRouter()
 
   const toggleMenu = userId => {
@@ -64,6 +65,52 @@ const Connection = () => {
   const closeProfileModal = () => {
     setSelectedUser(null)
     setIsProfileModalVisible(false)
+  }
+
+  useEffect(() => {
+    const setupWebSocket = async () => {
+      const userId = await SecureStore.getItemAsync('userId')
+      setCurrentUserId(userId)
+
+      ws.current = new WebSocket('ws://10.167.61.238:8080') // Replace with your WebSocket URL
+
+      ws.current.onopen = () => {
+        console.log('WebSocket connected')
+        ws.current.send(JSON.stringify({ type: 'register', userId }))
+      }
+
+      ws.current.onmessage = event => {
+        const message = JSON.parse(event.data)
+        handleWebSocketMessage(message) // Pass message to the handler
+      }
+
+      ws.current.onclose = () => {
+        console.log('WebSocket disconnected')
+      }
+
+      return () => {
+        ws.current?.close()
+      }
+    }
+
+    setupWebSocket()
+  }, [])
+
+  const handleWebSocketMessage = message => {
+    if (message.type === 'friend_request') {
+      console.log('Friend request received (Connection):', message)
+      fetchNonFriends() // Refresh non-friends list
+    }
+
+    if (message.type === 'friend_added') {
+      console.log('Friend added (Connection):', message)
+      fetchFriends() // Refresh friends list
+    }
+
+    if (message.type === 'friend_removed') {
+      console.log('Friend removed (Connection):', message)
+      setFriends(prev => prev.filter(friend => friend._id !== message.otherUserId))
+    }
   }
 
   const fetchFriends = async () => {
@@ -95,8 +142,8 @@ const Connection = () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            userId: currentUserId, // The logged-in user's ID
-            friendId: friendId // The friend's ID to be removed
+            userId: currentUserId,
+            friendId
           })
         }
       )
@@ -106,10 +153,14 @@ const Connection = () => {
 
       if (response.ok) {
         console.log('Friend removed successfully')
+        ws.current?.send(
+          JSON.stringify({
+            type: 'friend_removed',
+            userId: currentUserId,
+            friendId
+          })
+        )
         setFriends(prevFriends => prevFriends.filter(friend => friend._id !== friendId))
-        await fetchFriends()
-      } else {
-        console.log('Failed to remove friend:', responseData.message)
       }
     } catch (error) {
       console.log('Error removing friend:', error)
@@ -148,29 +199,23 @@ const Connection = () => {
       const response = await fetch(
         `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/friendRequest`,
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            senderId: currentUserId, // The logged-in user's ID
-            recipientId: recipientId // The recipient's ID
-          })
+          senderId: currentUserId,
+          recipientId
         }
       )
-
-      const responseData = await response.json()
-      console.log('API Response:', responseData)
-
-      if (response.ok) {
+      if (response.status === 200) {
         console.log('Friend request sent successfully')
-        setNonFriends(prev => prev.filter(user => user._id !== recipientId))
-        await fetchNonFriends()
-      } else {
-        console.log('Failed to send friend request:', responseData.message)
+        ws.current?.send(
+          JSON.stringify({
+            type: 'friend_request',
+            senderId: currentUserId,
+            recipientId
+          })
+        )
+        fetchNonFriends()
       }
     } catch (error) {
-      console.log('Error sending friend request:', error)
+      console.error('Error sending friend request:', error)
     }
   }
 
@@ -722,6 +767,54 @@ const Request = () => {
   const [userId, setUserId] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [friendName, setFriendName] = useState('') // To store the accepted friend's name
+  const ws = useRef(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    const setupWebSocket = async () => {
+      const userId = await SecureStore.getItemAsync('userId')
+      setUserId(userId)
+
+      ws.current = new WebSocket('ws://10.167.61.238:8080') // Replace with your WebSocket URL
+
+      ws.current.onopen = () => {
+        console.log('WebSocket connected')
+        ws.current.send(JSON.stringify({ type: 'register', userId }))
+      }
+
+      ws.current.onmessage = event => {
+        const message = JSON.parse(event.data)
+        handleWebSocketMessage(message) // Pass message to the handler
+      }
+
+      ws.current.onclose = () => {
+        console.log('WebSocket disconnected')
+      }
+
+      return () => {
+        ws.current?.close()
+      }
+    }
+
+    setupWebSocket()
+  }, [])
+
+  const handleWebSocketMessage = message => {
+    if (message.type === 'friend_request') {
+      console.log('Friend request received (Request):', message)
+      fetchRequests() // Refresh friend requests list
+    }
+
+    if (message.type === 'friend_added') {
+      console.log('Friend added (Request):', message)
+      fetchRequests() // Optionally refresh requests or related UI
+    }
+
+    if (message.type === 'friend_removed') {
+      console.log('Friend removed (Request):', message)
+      fetchRequests() // Optionally refresh requests or related UI
+    }
+  }
 
   const fetchRequests = async () => {
     const userId = await SecureStore.getItemAsync('userId')
@@ -768,7 +861,14 @@ const Request = () => {
 
       if (response.ok) {
         console.log('Friend request accepted successfully')
-        setModalVisible(true)
+        ws.current?.send(
+          JSON.stringify({
+            type: 'friend_added',
+            userId,
+            friendId: friendRequestId
+          })
+        )
+        setFriendName(friendName)
         await fetchRequests()
       }
     } catch (error) {
@@ -877,6 +977,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
+  const ws = useRef(new WebSocket('ws://10.167.61.238:8080'))
   const [index, setIndex] = useState(0)
 
   const [routes] = useState([
@@ -889,11 +990,31 @@ const Social = () => {
     <TabBar {...props} style={styles.tabBar} labelStyle={styles.tabLabel} indicatorStyle={styles.tabIndicator} />
   )
 
+  useEffect(() => {
+    ws.current.onopen = () => console.log('WebSocket connected')
+    ws.current.onclose = () => console.log('WebSocket disconnected')
+
+    return () => {
+      ws.current?.close()
+    }
+  }, [])
+
   return (
     <View style={styles.container}>
       <TabView
         navigationState={{ index, routes }}
-        renderScene={renderScene}
+        renderScene={({ route }) => {
+          switch (route.key) {
+            case 'connection':
+              return <Connection ws={ws} />
+            case 'request':
+              return <Request ws={ws} />
+            case 'message':
+              return <Message ws={ws} />
+            default:
+              return null
+          }
+        }}
         onIndexChange={setIndex}
         initialLayout={{ width: useWindowDimensions().width }}
         renderTabBar={renderTabBar}

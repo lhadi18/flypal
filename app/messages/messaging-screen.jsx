@@ -176,7 +176,7 @@ const MessagingScreen = () => {
       }
 
       const decryptedMessage = Buffer.from(decrypted).toString()
-      console.log('Decrypted Message:', decryptedMessage)
+      // console.log('Decrypted Message:', decryptedMessage);
       return decryptedMessage
     } catch (error) {
       console.error('Error decrypting message:', error)
