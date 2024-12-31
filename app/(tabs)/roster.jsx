@@ -1173,6 +1173,7 @@ const Roster = () => {
                   <DateTimePickerModal
                     isVisible={isDeparturePickerVisible}
                     mode="datetime"
+                    date={new Date()}
                     onConfirm={handleConfirmDeparture}
                     onCancel={() => setDeparturePickerVisible(false)}
                   />
@@ -1206,6 +1207,7 @@ const Roster = () => {
                       <DateTimePickerModal
                         isVisible={isArrivalPickerVisible}
                         mode="datetime"
+                        date={new Date()}
                         onConfirm={handleConfirmArrival}
                         onCancel={() => setArrivalPickerVisible(false)}
                       />
@@ -1360,6 +1362,7 @@ const Roster = () => {
                         <DateTimePickerModal
                           isVisible={showDatePicker}
                           mode="date"
+                          date={new Date()}
                           onConfirm={date => {
                             const formattedDate = moment(date).format('YYYY-MM-DD')
 
@@ -1441,6 +1444,7 @@ const Roster = () => {
                         <DateTimePickerModal
                           isVisible={showDatePicker}
                           mode="date"
+                          date={new Date()}
                           onConfirm={date => {
                             const formattedDate = moment(date).format('YYYY-MM-DD')
 
