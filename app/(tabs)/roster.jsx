@@ -225,7 +225,7 @@ const Roster = () => {
     return await requestNotificationPermission()
   }
 
-  const fetchRosterEntries = async startDate => {
+  const fetchRosterEntries = async (startDate = selectedDate) => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const offlineEntries = await getAllRosterEntries(userId)
@@ -340,8 +340,7 @@ const Roster = () => {
 
               showToast('Roster entry deleted successfully.')
 
-              const today = getCurrentDate()
-              await fetchRosterEntries(today)
+              await fetchRosterEntries(selectedDate)
             } catch (error) {
               showToast('Failed to delete roster entry.')
               console.error('Error deleting event:', error)
@@ -598,6 +597,8 @@ const Roster = () => {
     const newEndTime = moment(newEntry.arrivalTime)
 
     for (const entry of existingEntries) {
+      if (entry.id === editEventId) continue
+
       const existingStartTime = moment(entry.departureTime)
       const existingEndTime = moment(entry.arrivalTime)
 
@@ -717,7 +718,7 @@ const Roster = () => {
       Alert.alert('Error', 'Could not save the event. Please try again.')
     } finally {
       setLoading(false)
-      await fetchRosterEntries(getCurrentDate())
+      await fetchRosterEntries(selectedDate)
     }
   }
 
