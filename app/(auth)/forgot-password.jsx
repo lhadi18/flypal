@@ -17,7 +17,7 @@ const ForgotPassword = () => {
 
     try {
       const response = await axios.post(
-        'https://7e9e-103-18-0-19.ngrok-free.app/api/users/forgotPassword', // Replace with your actual backend URL
+        'https://94d7-103-18-0-19.ngrok-free.app/api/users/forgotPassword', // Replace with your actual backend URL
         { email, newPassword }
       )
       if (response.status === 200) {

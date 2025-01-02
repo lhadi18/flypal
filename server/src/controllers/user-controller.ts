@@ -488,6 +488,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     await DiningRecommendation.deleteMany({ user: id })
     await Checklist.deleteMany({ userId: id })
     await Bookmark.deleteMany({ userId: id })
+    await Key.deleteMany({userId: id})
     await Message.deleteMany({
       $or: [{ sender: id }, { recipient: id }]
     })

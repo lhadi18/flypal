@@ -64,6 +64,7 @@ export function setupWebSocketServer(server: any) {
         }
 
         if (parsedData.type === 'friend_added') {
+          console.log("nigga")
           const { userId, friendId } = parsedData;
           // Broadcast the update to both users
           [userId, friendId].forEach((id) => {
@@ -77,6 +78,19 @@ export function setupWebSocketServer(server: any) {
               );
             }
           });
+
+          [userId, friendId].forEach((id) => {
+            if (clients.has(id)) {
+              clients.get(id).send(
+                JSON.stringify({
+                  type: 'friend_added_connection',
+                  userId: id === userId ? friendId : userId,
+                  message: 'You are now friends.',
+                })
+              );
+            }
+          });
+          return
         }
 
         if (parsedData.type === 'friend_removed') {
@@ -94,6 +108,19 @@ export function setupWebSocketServer(server: any) {
               );
             }
           });
+
+          [userId, friendId].forEach((id) => {
+            if (clients.has(id)) {
+              clients.get(id).send(
+                JSON.stringify({
+                  type: 'friend_removed_connection',
+                  otherUserId: id === userId ? friendId : userId,
+                  message: 'Friend has been removed.',
+                })
+              );
+            }
+          });
+          return
         }
 
         // Handle disconnect messages (if manually sent)

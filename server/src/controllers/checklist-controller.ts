@@ -1,12 +1,27 @@
 import { Request, Response, RequestHandler } from 'express';
 import mongoose from 'mongoose';
 import Checklist from '../models/checklist-model';
+import NodeCache from 'node-cache'; // In-memory cache for temporary storage
 
-// Create a new checklist
+// Create an in-memory cache instance
+const requestCache = new NodeCache({ stdTTL: 20 }); // Cache with a 20-second TTL
+
+// Simple hash function
+const simpleHash = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0; // Convert to a 32-bit integer
+  }
+  return hash;
+};
+
 export const createChecklist: RequestHandler = async (req: Request, res: Response) => {
   const { userId, title, flightRoute, travelDate, items } = req.body;
-  console.log(req.body)
-  console.log({ userId, title, flightRoute, travelDate, items })
+
+  console.log(req.body);
+  console.log({ userId, title, flightRoute, travelDate, items });
 
   if (!userId || !title) {
     res.status(400).json({ message: 'User ID and title are required' });
@@ -18,13 +33,27 @@ export const createChecklist: RequestHandler = async (req: Request, res: Respons
     return;
   }
 
+  // Generate a simple hash for the request body
+  const requestString = JSON.stringify({ userId, title, flightRoute, travelDate, items });
+  const requestHash = simpleHash(requestString);
+
+  // Check if the request hash already exists in the cache
+  if (requestCache.has(requestHash)) {
+    console.log("Debounced")
+    res.status(200).json({ message: 'Duplicate request detected. Checklist already created.' });
+    return;
+  }
+
+  // Store the hash in the cache to track the request
+  requestCache.set(requestHash, true);
+
   try {
     const checklist = new Checklist({
       userId,
       title,
       flightRoute,
       travelDate,
-      items
+      items,
     });
 
     await checklist.save();
@@ -34,6 +63,7 @@ export const createChecklist: RequestHandler = async (req: Request, res: Respons
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // Get all checklists for a user
 export const getChecklist: RequestHandler = async (req: Request, res: Response) => {

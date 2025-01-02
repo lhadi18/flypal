@@ -24,7 +24,7 @@ import * as SecureStore from 'expo-secure-store'
 import { useRouter } from 'expo-router'
 import axios from 'axios'
 
-const Connection = () => {
+const Connection = ({ isActive }) => {
   const [friends, setFriends] = useState([])
   const [openUserId, setOpenUserId] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
@@ -68,11 +68,12 @@ const Connection = () => {
   }
 
   useEffect(() => {
+    console.log("Connection Mounted")
     const setupWebSocket = async () => {
       const userId = await SecureStore.getItemAsync('userId');
       setCurrentUserId(userId);
   
-      ws.current = new WebSocket('ws://10.167.61.238:8080'); // Replace with your WebSocket URL
+      ws.current = new WebSocket('ws://10.167.60.197:8080'); // Replace with your WebSocket URL
   
       ws.current.onopen = () => {
         console.log('WebSocket connected');
@@ -92,9 +93,12 @@ const Connection = () => {
         ws.current?.close();
       };
     };
+
+    if (isActive) {
+      setupWebSocket();
+    }
   
-    setupWebSocket();
-  }, []);
+  }, [isActive]);
 
   const handleWebSocketMessage = (message) => {
     if (message.type === 'friend_request') {
@@ -107,7 +111,7 @@ const Connection = () => {
       fetchFriends(); // Refresh friends list
     }
   
-    if (message.type === 'friend_removed') {
+    if (message.type === 'friend_removed_connection') {
       console.log('Friend removed (Connection):', message);
       setFriends((prev) =>
         prev.filter((friend) => friend._id !== message.otherUserId)
@@ -123,7 +127,7 @@ const Connection = () => {
 
     try {
       const response = await axios.get(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/friendList/${userId}`
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/friendList/${userId}`
       )
       setFriends(response.data)
       setFilteredFriends(response.data)
@@ -133,13 +137,15 @@ const Connection = () => {
   }
 
   useEffect(() => {
-    fetchFriends()
-  }, [])
+    if (isActive) {
+      fetchFriends();
+    }
+  }, [isActive]);
 
   const removeFriend = async (friendId) => {
     try {
       const response = await fetch(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/removeFriend`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/removeFriend`,
         {
           method: 'POST',
           headers: {
@@ -176,7 +182,7 @@ const Connection = () => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -203,7 +209,7 @@ const Connection = () => {
   
     try {
       const response = await axios.post(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/friendRequest`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/friendRequest`,
         {
           senderId: currentUserId,
           recipientId,
@@ -524,7 +530,7 @@ const Connection = () => {
   )
 }
 
-const Message = () => {
+const Message = ({ isActive }) => {
   const [conversations, setConversations] = useState([]);
   const [userId, setUserId] = useState(null);
   const [openUserId, setOpenUserId] = useState(null); // Tracks which menu is open
@@ -542,7 +548,7 @@ const Message = () => {
     try {
       // Fetch user conversations from the API
       const response = await axios.get(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://94d7-103-18-0-19.ngrok-free.app/api/messages/conversations/${userId}`
       );
       console.log(response.data);
   
@@ -550,7 +556,7 @@ const Message = () => {
   
       // Fetch user's private key
       const userKeyResponse = await axios.get(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/key/keys/${userId}`
+        `https://94d7-103-18-0-19.ngrok-free.app/api/key/keys/${userId}`
       );
       const userPrivateKey = decodeBase64(userKeyResponse.data.secretKey);
   
@@ -562,7 +568,7 @@ const Message = () => {
           // Determine the other party's public key (either sender or recipient)
           const otherPartyId = sender._id === userId ? recipient._id : sender._id;
           const otherPartyKeyResponse = await axios.get(
-            `https://7e9e-103-18-0-19.ngrok-free.app/api/key/keys/${otherPartyId}`
+            `https://94d7-103-18-0-19.ngrok-free.app/api/key/keys/${otherPartyId}`
           );
           const otherPartyPublicKey = decodeBase64(otherPartyKeyResponse.data.publicKey);
   
@@ -611,7 +617,7 @@ const Message = () => {
   const deleteConversation = async (otherUserId) => {
     try {
       const response = await axios.delete(
-        'https://7e9e-103-18-0-19.ngrok-free.app/api/messages/delete',
+        'https://94d7-103-18-0-19.ngrok-free.app/api/messages/delete',
         {
           data: {
             userId, // Logged-in user ID
@@ -640,10 +646,12 @@ const Message = () => {
   useEffect(() => {
     fetchConversations();
 
-    ws.current = new WebSocket('ws://10.167.61.238:8080');
+    if (isActive) {
+      ws.current = new WebSocket('ws://10.167.60.197:8080');
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (data.type === 'chat_message') {
+        console.log("executed msg")
         setConversations((prevConversations) => {
           let conversationFound = false;
 
@@ -685,7 +693,8 @@ const Message = () => {
     return () => {
       ws.current.close();
     };
-  }, []);
+    }
+  }, [isActive]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -786,7 +795,7 @@ const Message = () => {
   );
 };
 
-const Request = () => {
+const Request = ({ isActive }) => {
   const [requests, setRequests] = useState([])
   const [userId, setUserId] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
@@ -796,10 +805,11 @@ const Request = () => {
 
   useEffect(() => {
     const setupWebSocket = async () => {
+      console.log("Request Mounted")
       const userId = await SecureStore.getItemAsync('userId');
       setUserId(userId);
   
-      ws.current = new WebSocket('ws://10.167.61.238:8080'); // Replace with your WebSocket URL
+      ws.current = new WebSocket('ws://10.167.60.197:8080'); // Replace with your WebSocket URL
   
       ws.current.onopen = () => {
         console.log('WebSocket connected');
@@ -807,6 +817,7 @@ const Request = () => {
       };
   
       ws.current.onmessage = (event) => {
+        console.log("executed req")
         const message = JSON.parse(event.data);
         handleWebSocketMessage(message); // Pass message to the handler
       };
@@ -819,9 +830,10 @@ const Request = () => {
         ws.current?.close();
       };
     };
-  
-    setupWebSocket();
-  }, []);
+    if (isActive) {
+      setupWebSocket();
+    }
+  }, [isActive]);
   
   const handleWebSocketMessage = (message) => {
     if (message.type === 'friend_request') {
@@ -847,7 +859,7 @@ const Request = () => {
     try {
       if (userId) {
         const response = await axios.get(
-          `https://7e9e-103-18-0-19.ngrok-free.app/api/users/addFriend/${userId}`
+          `https://94d7-103-18-0-19.ngrok-free.app/api/users/addFriend/${userId}`
         )
         setRequests(response.data)
       }
@@ -857,8 +869,10 @@ const Request = () => {
   }
 
   useEffect(() => {
-    fetchRequests()
-  }, [])
+    if (isActive) {
+      fetchRequests();
+    }
+  }, [isActive])
 
   const acceptRequest = async (friendRequestId, friendName) => {
     if (!userId) {
@@ -868,7 +882,7 @@ const Request = () => {
   
     try {
       const response = await fetch(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/acceptRequest`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/acceptRequest`,
         {
           method: 'POST',
           headers: {
@@ -909,7 +923,7 @@ const Request = () => {
 
     try {
       const response = await fetch(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
@@ -1002,7 +1016,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const ws = useRef(new WebSocket('ws://10.167.61.238:8080'));
+  const ws = useRef(new WebSocket('ws://10.167.60.197:8080'));
   const [index, setIndex] = useState(0)
 
   const [routes] = useState([
@@ -1024,23 +1038,31 @@ const Social = () => {
     };
   }, []);
 
+  const handleTabChange = (newIndex) => {
+    setIndex(newIndex);
+  };
+
   return (
     <View style={styles.container}>
       <TabView
         navigationState={{ index, routes }}
         renderScene={({ route }) => {
+          
           switch (route.key) {
             case 'connection':
-              return <Connection ws={ws} />;
+              console.log("test1")
+              return <Connection isActive={index === 0} ws={ws} />;
             case 'request':
-              return <Request ws={ws} />;
+              console.log("test2")
+              return <Request isActive={index === 2} ws={ws} />;
             case 'message':
-              return <Message ws={ws} />;
+              console.log("test3")
+              return <Message isActive={index === 1} ws={ws} />;
             default:
               return null;
           }
         }}
-        onIndexChange={setIndex}
+        onIndexChange={handleTabChange}
         initialLayout={{ width: useWindowDimensions().width }}
         renderTabBar={renderTabBar}
       />

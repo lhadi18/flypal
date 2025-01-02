@@ -20,6 +20,8 @@ const Checklists = () => {
   const [checklistItemOptions, setChecklistItemOptions] = useState([])
   const [checklists, setChecklists] = useState([])
   const [currentChecklist, setCurrentChecklist] = useState(null)
+  const [validationErrors, setValidationErrors] = useState({});
+  const [editValidationErrors, setEditValidationErrors] = useState({});
 
   const handleOpenForm = () => {
     setIsFormOpen(true)
@@ -61,12 +63,27 @@ const Checklists = () => {
     setTravelDate(currentDate)
   }
 
-  const handleAddChecklistItem = text => {
+  const handleAddChecklistItem = (text) => {
     if (text.trim() && checklistItemOptions.length < 20) {
-      setChecklistItemOptions([...checklistItemOptions, text.trim()])
-      setNewItemText('')
+      setChecklistItemOptions([...checklistItemOptions, text.trim()]);
+      setNewItemText('');
+      // Clear the 'items' validation error if it exists
+      if (validationErrors.items) {
+        setValidationErrors({ ...validationErrors, items: undefined });
+      }
     }
-  }
+  };
+
+  const handleAddEditChecklistItem = (item) => {
+    const updatedItems = [...currentChecklist.items, item];
+    setCurrentChecklist({ ...currentChecklist, items: updatedItems });
+    // Clear the 'items' validation error if it exists
+    if (editValidationErrors.items) {
+      setEditValidationErrors({ ...editValidationErrors, items: undefined });
+    }
+  };
+  
+  
 
   const handleRemoveChecklistItem = index => {
     const updatedItems = [...checklistItemOptions]
@@ -79,34 +96,61 @@ const Checklists = () => {
   const isLimitReached = checklistItemOptions.length >= 20
 
   const handleCreateChecklist = async () => {
-    const userId = await SecureStore.getItemAsync('userId')
+    // Reset validation errors
+    const errors = {};
+  
+    // Validate required fields
+    if (!newItem.trim()) {
+      errors.title = 'Title is required';
+    }
+    if (!flightRoute.trim()) {
+      errors.flightRoute = 'Flight route is required';
+    }
+    if (!travelDate) {
+      errors.travelDate = 'Travel date is required';
+    }
+    if (checklistItemOptions.length === 0) {
+      errors.items = 'At least one checklist item is required';
+    }
+  
+    // Set validation errors if any
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+  
+    // Prepare data for API call
+    const userId = await SecureStore.getItemAsync('userId');
     const checklistData = {
       userId,
       title: newItem,
       flightRoute: flightRoute,
       travelDate: travelDate,
-      items: checklistItemOptions
-    }
+      items: checklistItemOptions,
+    };
+  
     try {
+      // API call to create checklist
       const response = await axios.post(
-        'https://7e9e-103-18-0-19.ngrok-free.app/api/checklist/createChecklist',
+        'https://94d7-103-18-0-19.ngrok-free.app/api/checklist/createChecklist',
         checklistData
-      )
-      console.log('Checklist created:', response.data)
-      handleCloseForm()
-      fetchChecklists()
+      );
+      console.log('Checklist created:', response.data);
+  
+      // Reset form and fetch updated checklists
+      handleCloseForm();
+      fetchChecklists();
     } catch (error) {
-      console.error('Error saving event:', error)
-      console.log(checklistData)
+      console.error('Error creating checklist:', error);
     }
-  }
+  };
 
   const fetchChecklists = async () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
       const response = await axios.get(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/checklist/getChecklist`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/checklist/getChecklist`,
         {
           params: {
             userId
@@ -141,7 +185,7 @@ const Checklists = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `https://7e9e-103-18-0-19.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
+                `https://94d7-103-18-0-19.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
               )
               await fetchChecklists()
             } catch (error) {
@@ -160,62 +204,87 @@ const Checklists = () => {
   }
 
   const handleUpdateChecklist = async () => {
-    const userId = await SecureStore.getItemAsync('userId')
+    const errors = {};
+  
+    // Validate required fields
+    if (!currentChecklist.title.trim()) {
+      errors.title = 'Title is required';
+    }
+    if (!currentChecklist.flightRoute.trim()) {
+      errors.flightRoute = 'Flight route is required';
+    }
+    if (!currentChecklist.travelDate) {
+      errors.travelDate = 'Travel date is required';
+    }
+    if (currentChecklist.items.length === 0) {
+      errors.items = 'At least one checklist item is required';
+    }
+  
+    // Set validation errors if any
+    if (Object.keys(errors).length > 0) {
+      setEditValidationErrors(errors);
+      return;
+    }
+  
+    // Prepare data for API call
+    const userId = await SecureStore.getItemAsync('userId');
     const updatedChecklistData = {
       userId,
       title: currentChecklist.title,
       flightRoute: currentChecklist.flightRoute,
       travelDate: currentChecklist.travelDate,
-      items: currentChecklist.items
-    }
+      items: currentChecklist.items,
+    };
+  
     try {
       const response = await axios.put(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
         updatedChecklistData
-      )
-      console.log('Checklist updated:', response.data)
-      setIsEditFormOpen(false)
-      fetchChecklists()
+      );
+      console.log('Checklist updated:', response.data);
+      setIsEditFormOpen(false);
+      fetchChecklists();
     } catch (error) {
-      console.error('Error updating checklist:', error)
+      console.error('Error updating checklist:', error);
     }
-  }
+  };
+  
 
   return (
+    <View style={{ flex: 1, position: 'relative' }}>
     <ScrollView contentContainerStyle={styles.scrollViewContainer}>
       <View style={styles.container}>
         <Text style={styles.header}>Item Checklist</Text>
-        <TouchableOpacity style={styles.button} onPress={handleOpenForm}>
-          <FontAwesomeIcon icon={faPlus} size={32} color="#fff" />
-        </TouchableOpacity>
         <Modal visible={isFormOpen} animationType="slide" transparent={true} onRequestClose={handleCloseForm}>
-          <View style={styles.modalContainer}>
-            {isFormOpen && (
-              <CreateItemChecklistForm
-                newItem={newItem}
-                onItemChange={handleItemChange}
-                flightRoute={flightRoute}
-                onFlightRouteChange={handleFlightRouteChange}
-                travelDate={travelDate}
-                onTravelDateChange={handleTravelDateChange}
-                showDatePicker={showDatePicker}
-                displayDatePicker={displayDatePicker}
-                hideDatePicker={hideDatePicker}
-                isDatePickerVisible={isDatePickerVisible}
-                setShowDatePicker={setShowDatePicker}
-                handleConfirm={handleConfirm}
-                newItemText={newItemText}
-                setNewItemText={setNewItemText}
-                onAddChecklistItem={handleAddChecklistItem}
-                onRemoveChecklistItem={handleRemoveChecklistItem}
-                leftColumnItems={leftColumnItems}
-                rightColumnItems={rightColumnItems}
-                isLimitReached={isLimitReached}
-                onClose={handleCloseForm}
-                onCreate={handleCreateChecklist}
-              />
-            )}
-          </View>
+        <View style={styles.modalContainer}>
+          {isFormOpen && (
+          <CreateItemChecklistForm
+            newItem={newItem}
+            onItemChange={handleItemChange}
+            flightRoute={flightRoute}
+            onFlightRouteChange={handleFlightRouteChange}
+            travelDate={travelDate}
+            onTravelDateChange={handleTravelDateChange}
+            showDatePicker={showDatePicker}
+            displayDatePicker={displayDatePicker}
+            hideDatePicker={hideDatePicker}
+            isDatePickerVisible={isDatePickerVisible}
+            setShowDatePicker={setShowDatePicker}
+            handleConfirm={handleConfirm}
+            newItemText={newItemText}
+            setNewItemText={setNewItemText}
+            onAddChecklistItem={handleAddChecklistItem}
+            onRemoveChecklistItem={handleRemoveChecklistItem}
+            leftColumnItems={leftColumnItems}
+            rightColumnItems={rightColumnItems}
+            isLimitReached={isLimitReached}
+            onClose={handleCloseForm}
+            onCreate={handleCreateChecklist}
+            validationErrors={validationErrors} // Use validationErrors for Create form
+            setValidationErrors={setValidationErrors}
+          /> 
+          )}
+        </View>
         </Modal>
         <Modal
           visible={isEditFormOpen}
@@ -232,10 +301,7 @@ const Checklists = () => {
                 onTravelDateChange={date => setCurrentChecklist({ ...currentChecklist, travelDate: date })}
                 leftColumnItems={currentChecklist.items.slice(0, 10)}
                 rightColumnItems={currentChecklist.items.slice(10)}
-                onAddChecklistItem={item => {
-                  const updatedItems = [...currentChecklist.items, item]
-                  setCurrentChecklist({ ...currentChecklist, items: updatedItems })
-                }}
+                onAddChecklistItem={handleAddEditChecklistItem}
                 onRemoveChecklistItem={index => {
                   const items = [...currentChecklist.items]
                   items.splice(index, 1)
@@ -252,6 +318,8 @@ const Checklists = () => {
                 setNewItemText={setNewItemText}
                 onClose={() => setIsEditFormOpen(false)}
                 onUpdate={handleUpdateChecklist}
+                validationErrors={editValidationErrors}
+                setValidationErrors={setEditValidationErrors} // Pass the setter
               />
             )}
           </View>
@@ -322,6 +390,10 @@ const Checklists = () => {
         )}
       </View>
     </ScrollView>
+      <TouchableOpacity style={styles.button} onPress={handleOpenForm}>
+        <FontAwesomeIcon icon={faPlus} size={32} color="#fff" />
+      </TouchableOpacity> 
+    </View>
   )
 }
 
@@ -342,6 +414,8 @@ const EditChecklistForm = ({
   rightColumnItems = [],
   isLimitReached = false,
   onUpdate = () => {},
+  validationErrors = {}, // Pass validation errors
+  setValidationErrors = () => {},
 }) => {
   const getLocalTime = time => {
     return moment(time).format('DD/MM/YYYY')
@@ -352,24 +426,36 @@ const EditChecklistForm = ({
       <Text style={formStyles.header}>Edit Checklist</Text>
       <View style={formStyles.box}>
         <View style={formStyles.inputBox}>
-          <TextInput
-            style={formStyles.title}
-            placeholder="Enter title..."
-            placeholderTextColor="grey"
-            value={checklist.title || ''}
-            onChangeText={onItemChange}
-          />
+        <TextInput
+          style={formStyles.title}
+          placeholder="Enter title..."
+          placeholderTextColor="grey"
+          value={checklist.title || ''}
+          onChangeText={(text) => {
+            onItemChange(text);
+            setValidationErrors({ ...validationErrors, title: undefined }); // Clear the title error
+          }}
+        />
           <Ionicons name="pencil" size={18} color="#000" />
+          {validationErrors.title && (
+            <Text style={formStyles.errorText}>{validationErrors.title}</Text>
+          )}
         </View>
         <View style={formStyles.inputBox}>
-          <TextInput
-            style={formStyles.details}
-            placeholder="Enter flight route..."
-            placeholderTextColor="grey"
-            value={checklist.flightRoute || ''}
-            onChangeText={onFlightRouteChange}
-          />
+        <TextInput
+          style={formStyles.details}
+          placeholder="Enter flight route..."
+          placeholderTextColor="grey"
+          value={checklist.flightRoute || ''}
+          onChangeText={(text) => {
+            onFlightRouteChange(text);
+            setValidationErrors({ ...validationErrors, flightRoute: undefined }); // Clear the flight route error
+          }}
+        />
           <Ionicons name="pencil" size={18} color="#000" />
+          {validationErrors.flightRoute && (
+            <Text style={formStyles.errorText}>{validationErrors.flightRoute}</Text>
+          )}
         </View>
         <View style={formStyles.inputBox}>
           <TouchableOpacity onPress={displayDatePicker} style={formStyles.details}>
@@ -380,10 +466,16 @@ const EditChecklistForm = ({
           <DateTimePickerModal
             isVisible={isDatePickerVisible}
             mode="date"
-            onConfirm={handleConfirm}
+            onConfirm={(date) => {
+              handleConfirm(date);
+              setValidationErrors({ ...validationErrors, travelDate: undefined }); // Clear the travel date error
+            }}
             onCancel={hideDatePicker}
           />
           <Ionicons name="pencil" size={18} color="#000" />
+          {validationErrors.travelDate && (
+            <Text style={formStyles.errorText}>{validationErrors.travelDate}</Text>
+          )}
         </View>
         <View>
           <Text style={formStyles.checklistTitle}>Item List</Text>
@@ -443,6 +535,9 @@ const EditChecklistForm = ({
               )}
             </View>
           </View>
+          {validationErrors.items && (
+            <Text style={formStyles.errorTextBottom}>{validationErrors.items}</Text>
+          )}
         </View>
         <View style={formStyles.buttonContainer}>
           <TouchableOpacity style={formStyles.cancelButton} onPress={onClose}>
@@ -476,6 +571,8 @@ const CreateItemChecklistForm = ({
   isLimitReached = false,
   onClose = () => {},
   onCreate = () => {},
+  validationErrors = {}, // Receive errors
+  setValidationErrors = () => {},
 }) => {
   const getLocalTime = time => {
     return moment(time).format('DD/MM/YYYY')
@@ -486,24 +583,36 @@ const CreateItemChecklistForm = ({
       <Text style={formStyles.header}>Create New Checklist</Text>
       <View style={formStyles.box}>
         <View style={formStyles.inputBox}>
-          <TextInput
-            style={formStyles.title}
-            placeholder="Enter title..."
-            placeholderTextColor="grey"
-            value={newItem}
-            onChangeText={onItemChange}
-          />
+        <TextInput
+          style={formStyles.title}
+          placeholder="Enter title..."
+          placeholderTextColor="grey"
+          value={newItem}
+          onChangeText={(text) => {
+            onItemChange(text);
+            setValidationErrors({ ...validationErrors, title: undefined }); // Clear the title error
+          }}
+        />
           <Ionicons name="pencil" size={18} color="#000" />
+          {validationErrors.title && (
+            <Text style={formStyles.errorText}>{validationErrors.title}</Text>
+          )}
         </View>
         <View style={formStyles.inputBox}>
-          <TextInput
-            style={formStyles.details}
-            placeholder="Enter flight route..."
-            placeholderTextColor="grey"
-            value={flightRoute}
-            onChangeText={onFlightRouteChange}
-          />
+        <TextInput
+          style={formStyles.details}
+          placeholder="Enter flight route..."
+          placeholderTextColor="grey"
+          value={flightRoute}
+          onChangeText={(text) => {
+            onFlightRouteChange(text);
+            setValidationErrors({ ...validationErrors, flightRoute: undefined }); // Clear the flight route error
+          }}
+        />
           <Ionicons name="pencil" size={18} color="#000" />
+          {validationErrors.flightRoute && (
+            <Text style={formStyles.errorText}>{validationErrors.flightRoute}</Text>
+          )}
         </View>
         <View style={formStyles.inputBox}>
           <TouchableOpacity onPress={displayDatePicker} style={formStyles.details}>
@@ -514,10 +623,16 @@ const CreateItemChecklistForm = ({
           <DateTimePickerModal
             isVisible={isDatePickerVisible}
             mode="date"
-            onConfirm={handleConfirm}
+            onConfirm={(date) => {
+              handleConfirm(date);
+              setValidationErrors({ ...validationErrors, travelDate: undefined }); // Clear the travel date error
+            }}
             onCancel={hideDatePicker}
           />
           <Ionicons name="pencil" size={18} color="#000" />
+          {validationErrors.travelDate && (
+            <Text style={formStyles.errorText}>{validationErrors.travelDate}</Text>
+          )}
         </View>
         <View>
           <Text style={formStyles.checklistTitle}>Item List</Text>
@@ -577,6 +692,9 @@ const CreateItemChecklistForm = ({
               )}
             </View>
           </View>
+          {validationErrors.items && (
+            <Text style={formStyles.errorTextBottom}>{validationErrors.items}</Text>
+          )}
         </View>
         <View style={formStyles.buttonContainer}>
           <TouchableOpacity style={formStyles.cancelButton} onPress={onClose}>
@@ -617,7 +735,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     bottom: 30,
     right: 30,
-    elevation: 5
+    elevation: 5,
+    zIndex: 1
   },
   modalContainer: {
     flex: 1,
@@ -779,6 +898,16 @@ const formStyles = StyleSheet.create({
     color: '#656565',
     fontWeight: '600',
     textAlign: 'center'
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    paddingBottom: 6,
+    paddingLeft: 12
+  },
+  errorTextBottom: {
+    color: 'red',
+    fontSize: 12
   }
 })
 

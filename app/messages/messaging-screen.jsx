@@ -56,7 +56,7 @@ const MessagingScreen = () => {
         let privateKeyStr = null;
   
         // Attempt to fetch private key from the server
-        const response = await fetch(`https://7e9e-103-18-0-19.ngrok-free.app/api/key/keys/${userId}`, {
+        const response = await fetch(`https://94d7-103-18-0-19.ngrok-free.app/api/key/keys/${userId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -100,7 +100,7 @@ const MessagingScreen = () => {
   
           // Store public key and secret key on the server
           const response = await fetch(
-            'https://7e9e-103-18-0-19.ngrok-free.app/api/key/keys',
+            'https://94d7-103-18-0-19.ngrok-free.app/api/key/keys',
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -130,7 +130,7 @@ const MessagingScreen = () => {
     const fetchRecipientKey = async () => {
       try {
         const response = await fetch(
-          `https://7e9e-103-18-0-19.ngrok-free.app/api/key/keys/${recipientId}`
+          `https://94d7-103-18-0-19.ngrok-free.app/api/key/keys/${recipientId}`
         )
         const data = await response.json()
         setRecipientPublicKey(decodeBase64(data.publicKey))
@@ -228,7 +228,7 @@ const MessagingScreen = () => {
     const fetchMessages = async () => {
       try {
         const response = await fetch(
-          `https://7e9e-103-18-0-19.ngrok-free.app/api/messages/${userId}/${recipientId}`
+          `https://94d7-103-18-0-19.ngrok-free.app/api/messages/${userId}/${recipientId}`
         )
         const data = await response.json()
         setMessages(data)
@@ -240,7 +240,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://10.167.61.238:8080')
+      ws.current = new WebSocket('ws://10.167.60.197:8080')
 
       ws.current.onopen = () => {
         // console.log('WebSocket connected')

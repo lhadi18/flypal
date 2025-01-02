@@ -71,7 +71,7 @@ const Settings = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const response = await axios.get(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/getUserId`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/getUserId`,
         {
           params: {
             userId
@@ -133,7 +133,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       // handleEditUserDetails(response.data);
@@ -157,7 +157,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -183,7 +183,7 @@ const Settings = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `https://7e9e-103-18-0-19.ngrok-free.app/api/users/deleteUser/${userId}`
+                `https://94d7-103-18-0-19.ngrok-free.app/api/users/deleteUser/${userId}`
               )
               router.push('/sign-in')
             } catch (error) {
@@ -201,7 +201,7 @@ const Settings = () => {
       const userId = await SecureStore.getItemAsync('userId')
       const deviceId = Device.osBuildId || Device.deviceName || 'unknown-device-id'
 
-      await fetch('https://7e9e-103-18-0-19.ngrok-free.app/api/push-token/delete-device', {
+      await fetch('https://94d7-103-18-0-19.ngrok-free.app/api/push-token/delete-device', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, deviceId })
@@ -309,7 +309,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://7e9e-103-18-0-19.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://94d7-103-18-0-19.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
