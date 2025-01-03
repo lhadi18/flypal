@@ -34,12 +34,16 @@ interface Airport {
   objectId: string
 }
 
-const parseAirAsiaRoster = async (lines: string[]): Promise<Duty[]> => {
+const parseAirAsiaRoster = async (lines: string[]): Promise<{ duties: Duty[]; startDate: string; endDate: string }> => {
   const data: Duty[] = []
   let currentDuty: Duty = {}
   let standbyDuty = false
 
   const invisibleUnicodeRegex = /[\u200B\u200C\u200D\uFEFF]/g
+  const dateRangeRegex = /(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/
+
+  let startDate = ''
+  let endDate = ''
 
   const isTime = (str: string) => /^\d{2}:\d{2}$/.test(str)
   const isFlightNumber = (str: string) => /^D\d{3,4}$/.test(str)
@@ -47,6 +51,13 @@ const parseAirAsiaRoster = async (lines: string[]): Promise<Duty[]> => {
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].replace(invisibleUnicodeRegex, '').trim()
+
+    const dateMatch = line.match(dateRangeRegex)
+    if (dateMatch) {
+      startDate = dateMatch[1]
+      endDate = dateMatch[2]
+      continue
+    }
 
     const standbyMatch = line.match(/D7S\d/)
     if (standbyMatch) {
@@ -131,11 +142,13 @@ const parseAirAsiaRoster = async (lines: string[]): Promise<Duty[]> => {
   })
 
   // Filter out incomplete duties
-  return data.filter(
+  const filteredDuties = data.filter(
     duty =>
       (duty.flightNumber && duty.departureAirport && duty.arrivalAirport && duty.departureTime && duty.arrivalTime) ||
       (duty.standby && duty.startTime && duty.endTime)
   )
+
+  return { duties: filteredDuties, startDate, endDate }
 }
 
 const extractUniqueAirports = (duties: Duty[]): string[] => {

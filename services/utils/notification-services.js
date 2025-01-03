@@ -112,7 +112,8 @@ export const scheduleNotification = async (event, reminderHoursBefore, timezone)
       content: {
         title,
         body,
-        sound: 'default'
+        sound: 'default',
+        icon: '../../assets/images/icon.png'
       },
       trigger: {
         date: reminderTime.toDate()
@@ -145,7 +146,8 @@ export const scheduleRedEyeReminder = async (event, redEyeReminderTime, timezone
         content: {
           title: `Red-Eye Flight Reminder`,
           body: `Your flight departs at ${eventTime.format('HH:mm [GMT]Z')}. Don't forget to prepare.`,
-          sound: 'default'
+          sound: 'default',
+          icon: '../../assets/images/icon.png'
         },
         trigger: {
           date: reminderDayBefore.toDate()

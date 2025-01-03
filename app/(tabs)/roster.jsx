@@ -85,6 +85,10 @@ const Roster = () => {
   const [homebaseTZ, setHomebaseTZ] = useState('')
   const [showShareModal, setShowShareModal] = useState(false)
   const [currentMonthYear, setCurrentMonthYear] = useState(moment().format('YYYY-MM'))
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [parsedStartDate, setParsedStartDate] = useState(null)
+  const [parsedEndDate, setParsedEndDate] = useState(null)
 
   const [toastVisible, setToastVisible] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
@@ -216,6 +220,19 @@ const Roster = () => {
 
     fetchHomebaseTZ()
   }, [])
+
+  useEffect(() => {
+    const parseDateToPickerFormat = dateString => {
+      const parsedDate = moment.utc(dateString, 'DD/MM/YYYY')
+      return new Date(parsedDate.year(), parsedDate.month(), parsedDate.date())
+    }
+
+    const minimumDate = startDate ? parseDateToPickerFormat(startDate) : null
+    const maximumDate = endDate ? parseDateToPickerFormat(endDate) : null
+
+    setParsedStartDate(minimumDate)
+    setParsedEndDate(maximumDate)
+  }, [startDate, endDate])
 
   const cancelAllNotifications = async () => {
     await Notifications.cancelAllScheduledNotificationsAsync()
@@ -373,7 +390,11 @@ const Roster = () => {
         <View style={styles.eventHeader}>
           <Text style={styles.eventFlightNumber}>
             {item.type === 'STANDBY' ? (
-              `Standby: ${item.flightNumber || ''}`
+              item.flightNumber ? (
+                `Standby: ${item.flightNumber}`
+              ) : (
+                'Standby'
+              )
             ) : item.type === 'TRAINING' ? (
               `Training`
             ) : item.type === 'OFF_DUTY' ? (
@@ -781,7 +802,12 @@ const Roster = () => {
         )
 
         if (response.data.parsedData) {
-          setUploadedRosterData(response.data.parsedData)
+          const { duties, startDate, endDate } = response.data.parsedData
+
+          setStartDate(startDate)
+          setEndDate(endDate)
+
+          setUploadedRosterData(duties)
           setShowRosterModal(true)
         } else {
           Alert.alert('Error', 'Unable to read the uploaded roster.')
@@ -1321,7 +1347,7 @@ const Roster = () => {
         <View style={styles.loadingModalOverlay}>
           <View style={styles.loadingModal}>
             <ActivityIndicator size="large" color="#FFF" />
-            <Text style={styles.loadingText}>Uploading roster, please wait...</Text>
+            <Text style={styles.loadingText}>Uploading roster{'\n'}please wait...</Text>
           </View>
         </View>
       </Modal>
@@ -1335,6 +1361,13 @@ const Roster = () => {
         <SafeAreaView style={rosterModalStyles.modalOverlay}>
           <View style={rosterModalStyles.modalView}>
             <Text style={rosterModalStyles.modalText}>Uploaded Roster</Text>
+            <Text style={rosterModalStyles.modalSubtitle}>
+              Schedule from {startDate} to {endDate}
+            </Text>
+            <View style={rosterModalStyles.infoContainer}>
+              <Ionicons name="information-circle-outline" size={20} color="#045D91" />
+              <Text style={rosterModalStyles.infoText}>Please fill up the rest of the details below to continue.</Text>
+            </View>
             <ScrollView style={rosterModalStyles.scrollView}>
               {uploadedRosterData.map((entry, index) => {
                 const isFlight = entry.type === 'FLIGHT_DUTY'
@@ -1343,7 +1376,7 @@ const Roster = () => {
                   <View key={index} style={rosterModalStyles.rosterItem}>
                     {isFlight ? (
                       <>
-                        <Text style={rosterModalStyles.rosterText}>Flight: {entry.flightNumber || 'N/A'}</Text>
+                        <Text style={rosterModalStyles.sectionHeader}>Flight: {entry.flightNumber || 'N/A'}</Text>
 
                         {/* Date Selector */}
                         <Text style={styles.label}>Select Date</Text>
@@ -1444,19 +1477,18 @@ const Roster = () => {
                         <DateTimePickerModal
                           isVisible={showDatePicker}
                           mode="date"
-                          date={new Date()}
+                          date={parsedStartDate}
+                          minimumDate={parsedStartDate}
+                          maximumDate={parsedEndDate}
                           onConfirm={date => {
                             const formattedDate = moment(date).format('YYYY-MM-DD')
-
                             const updatedRosterData = [...uploadedRosterData]
                             updatedRosterData[selectedEntryIndex].selectedDate = formattedDate
-
                             setUploadedRosterData(updatedRosterData)
                             setShowDatePicker(false)
                           }}
                           onCancel={() => setShowDatePicker(false)}
                         />
-
                         {/* Standby Details */}
                         <Text style={rosterModalStyles.rosterText}>Standby Number: {entry.standby || 'N/A'}</Text>
                         <Text style={rosterModalStyles.rosterText}>
@@ -1553,11 +1585,25 @@ const rosterModalStyles = StyleSheet.create({
   modalText: {
     fontSize: 20,
     fontWeight: 'bold',
+    marginBottom: 10
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 10
+  },
+  infoContainer: {
+    flexDirection: 'row',
     marginBottom: 15
+  },
+  infoText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: 'red'
   },
   scrollView: {
     flex: 1,
-    marginTop: 20
+    marginTop: 10
   },
   rosterItem: {
     padding: 10,
@@ -1589,7 +1635,10 @@ const rosterModalStyles = StyleSheet.create({
     shadowOffset: {
       width: 0,
       height: 2
-    }
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5
   },
   buttonText: {
     fontWeight: 'bold',

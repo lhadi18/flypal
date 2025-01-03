@@ -10,25 +10,30 @@ import {
   Image,
   ActivityIndicator
 } from 'react-native'
+import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
 import React, { useState, useEffect, useRef } from 'react'
 import * as SecureStore from 'expo-secure-store'
 import { DUTY_TYPES } from '@/constants/duties'
 import { Ionicons } from '@expo/vector-icons'
+import 'react-native-get-random-values'
 import moment from 'moment-timezone'
+import nacl from 'tweetnacl'
 import axios from 'axios'
 
-const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMonthYear }) => {
+const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear }) => {
   const [connections, setConnections] = useState([])
   const [filteredConnections, setFilteredConnections] = useState([])
   const [selectedConnections, setSelectedConnections] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [currentUserId, setCurrentUserId] = useState(null)
+  const [keyPair, setKeyPair] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [showInstructions, setShowInstructions] = useState(false) // State for instructions modal
 
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://10.164.234.23:8080')
+    ws.current = new WebSocket('ws://172.20.10.2:8080')
 
     ws.current.onopen = () => {
       console.log('WebSocket connected')
@@ -53,6 +58,25 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
     }
   }, [])
 
+  useEffect(() => {
+    const fetchKeys = async () => {
+      const userId = await SecureStore.getItemAsync('userId')
+      setCurrentUserId(userId)
+
+      const response = await fetch(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${userId}`
+      )
+      const data = await response.json()
+
+      setKeyPair({
+        publicKey: decodeBase64(data.publicKey),
+        secretKey: decodeBase64(data.secretKey)
+      })
+    }
+
+    fetchKeys()
+  }, [])
+
   const fetchConnections = async () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
@@ -61,7 +85,6 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
       const response = await axios.get(
         `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/friendList/${userId}`
       )
-      console.log(response.data)
       setConnections(response.data)
       setFilteredConnections(response.data)
     } catch (error) {
@@ -69,6 +92,23 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
       Alert.alert('Error', 'Could not fetch connections. Please try again later.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchRecipientPublicKey = async recipientId => {
+    const response = await fetch(
+      `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${recipientId}`
+    )
+    const data = await response.json()
+    return decodeBase64(data.publicKey)
+  }
+
+  const encryptMessage = (message, recipientPublicKey) => {
+    const nonce = nacl.randomBytes(24)
+    const encryptedMsg = nacl.box(new Uint8Array(Buffer.from(message)), nonce, recipientPublicKey, keyPair.secretKey)
+    return {
+      encryptedContent: encodeBase64(encryptedMsg),
+      nonce: encodeBase64(nonce)
     }
   }
 
@@ -87,69 +127,150 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
     setFilteredConnections(filtered)
   }
 
-  const getDutyLabel = type => {
-    const duty = DUTY_TYPES.find(duty => duty.value === type)
-    return duty ? duty.label : type
+  const formatRoster = async (roster, monthYear) => {
+    const typeEmojis = {
+      FLIGHT_DUTY: '✈️',
+      STANDBY: '⏳',
+      TRAINING: '📘',
+      OFF_DUTY: '🛌',
+      LAYOVER: '🏨',
+      MEDICAL_CHECK: '🩺',
+      MEETING: '📝',
+      DEFAULT: '📌'
+    }
+
+    const homebaseTZDatabase = await SecureStore.getItemAsync('homebaseTZDatabase') // Retrieve homebase timezone
+
+    // Filter and flatten the roster for the selected month
+    const filteredRoster = Object.entries(roster)
+      .filter(([date]) => moment(date).format('YYYY-MM') === monthYear)
+      .flatMap(([date, entries]) =>
+        entries.map(entry => ({
+          ...entry,
+          date,
+          sortTime: entry.departureTime || entry.startTime || entry.arrivalTime // Choose the earliest time for sorting
+        }))
+      )
+
+    if (filteredRoster.length === 0) return null
+
+    // Sort the roster by date and time
+    filteredRoster.sort((a, b) => {
+      const dateA = moment(a.date).toDate()
+      const dateB = moment(b.date).toDate()
+      const timeA = a.sortTime ? moment(a.sortTime).toDate() : null
+      const timeB = b.sortTime ? moment(b.sortTime).toDate() : null
+
+      return dateA - dateB || (timeA && timeB ? timeA - timeB : 0)
+    })
+
+    // Group duties by date
+    const groupedByDate = filteredRoster.reduce((acc, entry) => {
+      if (!acc[entry.date]) acc[entry.date] = []
+      acc[entry.date].push(entry)
+      return acc
+    }, {})
+
+    // Format the grouped roster
+    const formattedRoster = Object.entries(groupedByDate)
+      .map(([date, entries]) => {
+        const formattedDate = moment(date).format('MMMM D, YYYY')
+
+        const duties = entries
+          .map(entry => {
+            const emoji = typeEmojis[entry.type] || typeEmojis.DEFAULT
+            const dutyLabel = DUTY_TYPES.find(duty => duty.value === entry.type)?.label || entry.type
+
+            // Construct route information
+            let routeInfo = ''
+            if (entry.type === 'FLIGHT_DUTY') {
+              if (entry.origin?.IATA && entry.destination?.IATA) {
+                routeInfo = `🛫 ${entry.origin.IATA} ➡️ ${entry.destination.IATA}`
+              } else if (entry.origin?.IATA) {
+                routeInfo = `🛫 From ${entry.origin.IATA}`
+              } else if (entry.destination?.IATA) {
+                routeInfo = `🛫 To ${entry.destination.IATA}`
+              }
+            }
+
+            const originTZ = entry.origin?.tz_database || homebaseTZDatabase || 'UTC'
+            const destinationTZ = entry.destination?.tz_database || homebaseTZDatabase || 'UTC'
+
+            // Format times
+            let timeInfo = ''
+            if (entry.type === 'FLIGHT_DUTY') {
+              const departureTime = entry.departureTime
+                ? `Departure: ${moment(entry.departureTime).tz(originTZ).format('HH:mm [GMT]Z')}`
+                : null
+              const arrivalTime = entry.arrivalTime
+                ? `Arrival: ${moment(entry.arrivalTime).tz(destinationTZ).format('HH:mm [GMT]Z')}`
+                : null
+
+              if (departureTime && arrivalTime) {
+                timeInfo = `${departureTime}\n${arrivalTime}`
+              } else if (departureTime) {
+                timeInfo = departureTime
+              }
+            } else {
+              const startTime = entry.departureTime
+                ? `Start: ${moment(entry.departureTime).tz(originTZ).format('HH:mm [GMT]Z')}`
+                : null
+              const endTime = entry.arrivalTime
+                ? `End: ${moment(entry.arrivalTime).tz(destinationTZ).format('HH:mm [GMT]Z')}`
+                : null
+
+              if (startTime && endTime) {
+                timeInfo = `${startTime}\n${endTime}`
+              } else if (startTime) {
+                timeInfo = startTime
+              }
+            }
+
+            return `${emoji} **${dutyLabel}**\n${routeInfo}${routeInfo && timeInfo ? '\n' : ''}${timeInfo}`
+          })
+          .join('\n\n')
+
+        return `📅 **${formattedDate}**\n${duties}`
+      })
+      .join('\n\n')
+
+    // Add a header to the formatted roster
+    return `**Here is my roster for ${moment(monthYear, 'YYYY-MM').format('MMMM YYYY')}**\n\n${formattedRoster}`
   }
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (selectedConnections.length === 0) {
       Alert.alert('No Selection', 'Please select at least one connection.')
       return
     }
 
+    const formattedRoster = await formatRoster(selectedMonthRoster, currentMonthYear)
+    if (!formattedRoster) {
+      Alert.alert('No Data', 'No roster entries available for the selected month.')
+      return
+    }
+
     try {
-      const typeEmojis = {
-        FLIGHT_DUTY: '✈️',
-        GROUND_DUTY: '🚐',
-        TRAINING: '📘',
-        LEAVE: '🌴',
-        MEETING: '📅',
-        DEFAULT: '📌'
-      }
+      for (const recipientId of selectedConnections) {
+        const recipientPublicKey = await fetchRecipientPublicKey(recipientId)
+        const { encryptedContent, nonce } = encryptMessage(formattedRoster, recipientPublicKey)
 
-      const filteredRoster = Object.entries(selectedMonthRoster).filter(([date]) => {
-        const entryMonthYear = moment(date).format('YYYY-MM')
-        return entryMonthYear === currentMonthYear
-      })
-
-      if (filteredRoster.length === 0) {
-        Alert.alert('No Data', 'No roster entries available for the selected month.')
-        return
-      }
-
-      const formattedRoster = filteredRoster
-        .map(([date, entries]) => {
-          const formattedDate = moment(date).format('MMMM D, YYYY')
-          const formattedEntries = entries
-            .map(entry => {
-              const emoji = typeEmojis[entry.type] || typeEmojis.DEFAULT
-              const dutyLabel = getDutyLabel(entry.type) // Use the label
-              return `${emoji} **${dutyLabel}**\n   ✈️ ${entry.origin?.IATA || 'N/A'} ➡️ ${entry.destination?.IATA || 'N/A'}\n   🕒 ${moment(entry.departureTime).format('HH:mm')} - ${moment(entry.arrivalTime).format('HH:mm')}`
-            })
-            .join('\n\n')
-          return `📅 **${formattedDate}**\n${formattedEntries}`
-        })
-        .join('\n\n')
-
-      const messageContent = `📋 **Here is my roster for ${moment(currentMonthYear, 'YYYY-MM').format('MMMM YYYY')}:**\n\n${formattedRoster}`
-
-      selectedConnections.forEach(recipientId => {
         const messagePayload = {
           type: 'chat_message',
           sender: currentUserId,
           recipient: recipientId,
-          content: messageContent,
+          encryptedContent,
+          nonce,
+          plainText: formattedRoster,
           timestamp: new Date().toISOString()
         }
 
         if (ws.current.readyState === WebSocket.OPEN) {
           ws.current.send(JSON.stringify(messagePayload))
-          console.log(`Message sent to recipient: ${recipientId}`)
         } else {
           console.error(`WebSocket connection is not open. Failed to send to ${recipientId}`)
         }
-      })
+      }
 
       Alert.alert('Success', 'Roster shared successfully!')
       setSelectedConnections([])
@@ -170,6 +291,9 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
     <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
+          <TouchableOpacity style={styles.infoButton} onPress={() => setShowInstructions(true)}>
+            <Ionicons name="information-circle-outline" size={24} color="grey" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={24} color="grey" />
           </TouchableOpacity>
@@ -226,6 +350,35 @@ const ShareModal = ({ visible, onClose, onShare, selectedMonthRoster, currentMon
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Instructions Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={showInstructions}
+          onRequestClose={() => setShowInstructions(false)}
+        >
+          <View style={styles.instructionsOverlay}>
+            <View style={styles.instructionsContent}>
+              <Text style={styles.instructionsTitle}>How to Share Your Roster</Text>
+              <Text style={styles.instructionsText}>
+                1. Select the month in the Roster page.
+                {'\n\n'}
+                2. Select the connections you would like to share with.
+                {'\n\n'}
+                3. Once you’ve made your selection, tap the "Share" button to send your roster.
+                {'\n\n'}
+                4. Ensure your roster data is for the correct month before sharing.
+              </Text>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.closeInstructionsButton]}
+                onPress={() => setShowInstructions(false)}
+              >
+                <Text style={styles.closeInstructionsText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </Modal>
   )
@@ -246,6 +399,12 @@ const styles = StyleSheet.create({
     elevation: 5,
     height: '75%',
     position: 'relative'
+  },
+  infoButton: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 10
   },
   closeButton: {
     position: 'absolute',
@@ -319,7 +478,6 @@ const styles = StyleSheet.create({
     elevation: 2,
     width: '48%',
     justifyContent: 'center',
-
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -353,6 +511,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20
+  },
+
+  instructionsOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)'
+  },
+  instructionsContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '90%',
+    alignItems: 'center'
+  },
+  instructionsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10
+  },
+  instructionsText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'left',
+    lineHeight: 24
+  },
+  closeInstructionsButton: {
+    backgroundColor: '#045D91',
+    marginTop: 20,
+    padding: 10,
+    borderRadius: 10
+  },
+  closeInstructionsText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16
   }
 })
 

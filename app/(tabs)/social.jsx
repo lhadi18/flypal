@@ -72,7 +72,7 @@ const Connection = () => {
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      ws.current = new WebSocket('ws://10.167.61.238:8080') // Replace with your WebSocket URL
+      ws.current = new WebSocket('ws://172.20.10.2:8080') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -632,7 +632,7 @@ const Message = () => {
   useEffect(() => {
     fetchConversations()
 
-    ws.current = new WebSocket('ws://10.164.234.23:8080')
+    ws.current = new WebSocket('ws://172.20.10.2:8080')
     ws.current.onmessage = event => {
       const data = JSON.parse(event.data)
       if (data.type === 'chat_message') {
@@ -690,7 +690,9 @@ const Message = () => {
             const isRecipientLoggedInUser = item.recipient._id === userId
             const otherUser = isRecipientLoggedInUser ? item.sender : item.recipient
 
-            const messageText = isRecipientLoggedInUser ? item.lastMessage : `You: ${item.lastMessage}`
+            const messageText = isRecipientLoggedInUser
+              ? item.lastMessage.slice(0, 50) + (item.lastMessage.length > 50 ? '...' : '')
+              : `You: ${item.lastMessage.slice(0, 50)}${item.lastMessage.length > 50 ? '...' : ''}`
 
             return (
               <TouchableOpacity
@@ -775,7 +777,7 @@ const Request = () => {
       const userId = await SecureStore.getItemAsync('userId')
       setUserId(userId)
 
-      ws.current = new WebSocket('ws://10.167.61.238:8080') // Replace with your WebSocket URL
+      ws.current = new WebSocket('ws://172.20.10.2:8080') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -977,7 +979,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const ws = useRef(new WebSocket('ws://10.167.61.238:8080'))
+  const ws = useRef(new WebSocket('ws://172.20.10.2:8080'))
   const [index, setIndex] = useState(0)
 
   const [routes] = useState([

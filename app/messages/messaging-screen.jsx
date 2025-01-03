@@ -243,7 +243,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://10.164.234.23:8080')
+      ws.current = new WebSocket('ws://172.20.10.2:8080')
 
       ws.current.onopen = () => {
         // console.log('WebSocket connected')
@@ -420,6 +420,20 @@ const MessagingScreen = () => {
     markMessagesAsRead(viewableItems)
   }
 
+  const renderFormattedText = text => {
+    const parts = text.split(/(\*\*.*?\*\*)/g)
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <Text key={index} style={styles.boldText}>
+            {part.slice(2, -2)}
+          </Text>
+        )
+      }
+      return <Text key={index}>{part}</Text>
+    })
+  }
+
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
       return <Text style={styles.dateHeader}>{item.date}</Text>
@@ -445,7 +459,7 @@ const MessagingScreen = () => {
 
     return (
       <View style={[styles.messageContainer, isMe ? styles.myMessageContainer : styles.theirMessageContainer]}>
-        <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{content}</Text>
+        <Text style={isMe ? styles.myMessageText : styles.theirMessageText}>{renderFormattedText(content)}</Text>
         <TimestampWithReadReceipt timestamp={message.timestamp} isRead={isMe && message.read} />
       </View>
     )
@@ -566,7 +580,7 @@ export default MessagingScreen
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9f9f9'
+    backgroundColor: 'white'
   },
   container: {
     flex: 1
@@ -638,6 +652,9 @@ const styles = StyleSheet.create({
   myMessageText: {
     color: '#fff',
     fontSize: 16
+  },
+  boldText: {
+    fontWeight: 'bold'
   },
   theirMessageText: {
     color: '#000',
