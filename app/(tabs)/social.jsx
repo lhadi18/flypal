@@ -24,7 +24,7 @@ import { Buffer } from 'buffer'
 import nacl from 'tweetnacl'
 import axios from 'axios'
 
-const Connection = () => {
+const Connection = ({ isActive }) => {
   const [friends, setFriends] = useState([])
   const [openUserId, setOpenUserId] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
@@ -68,6 +68,7 @@ const Connection = () => {
   }
 
   useEffect(() => {
+    console.log('Connection Mounted')
     const setupWebSocket = async () => {
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
@@ -93,8 +94,10 @@ const Connection = () => {
       }
     }
 
-    setupWebSocket()
-  }, [])
+    if (isActive) {
+      setupWebSocket()
+    }
+  }, [isActive])
 
   const handleWebSocketMessage = message => {
     if (message.type === 'friend_request') {
@@ -107,7 +110,7 @@ const Connection = () => {
       fetchFriends() // Refresh friends list
     }
 
-    if (message.type === 'friend_removed') {
+    if (message.type === 'friend_removed_connection') {
       console.log('Friend removed (Connection):', message)
       setFriends(prev => prev.filter(friend => friend._id !== message.otherUserId))
     }
@@ -129,8 +132,10 @@ const Connection = () => {
   }
 
   useEffect(() => {
-    fetchFriends()
-  }, [])
+    if (isActive) {
+      fetchFriends()
+    }
+  }, [isActive])
 
   const removeFriend = async friendId => {
     try {
@@ -196,13 +201,10 @@ const Connection = () => {
     }
 
     try {
-      const response = await fetch(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/friendRequest`,
-        {
-          senderId: currentUserId,
-          recipientId
-        }
-      )
+      const response = await axios.post(`https://94d7-103-18-0-19.ngrok-free.app/api/users/friendRequest`, {
+        senderId: currentUserId,
+        recipientId
+      })
       if (response.status === 200) {
         console.log('Friend request sent successfully')
         ws.current?.send(
@@ -518,7 +520,7 @@ const Connection = () => {
   )
 }
 
-const Message = () => {
+const Message = ({ isActive }) => {
   const [conversations, setConversations] = useState([])
   const [userId, setUserId] = useState(null)
   const [openUserId, setOpenUserId] = useState(null) // Tracks which menu is open
@@ -632,47 +634,49 @@ const Message = () => {
   useEffect(() => {
     fetchConversations()
 
-    ws.current = new WebSocket('ws://172.20.10.2:8080')
-    ws.current.onmessage = event => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'chat_message') {
-        setConversations(prevConversations => {
-          let conversationFound = false
+    if (isActive) {
+      ws.current = new WebSocket('ws://10.167.60.197:8080')
+      ws.current.onmessage = event => {
+        const data = JSON.parse(event.data)
+        if (data.type === 'chat_message') {
+          setConversations(prevConversations => {
+            let conversationFound = false
 
-          const updatedConversations = prevConversations.map(conversation => {
-            if (
-              (conversation.sender._id === data.sender && conversation.recipient._id === data.recipient) ||
-              (conversation.sender._id === data.recipient && conversation.recipient._id === data.sender)
-            ) {
-              conversationFound = true
-              return {
-                ...conversation,
+            const updatedConversations = prevConversations.map(conversation => {
+              if (
+                (conversation.sender._id === data.sender && conversation.recipient._id === data.recipient) ||
+                (conversation.sender._id === data.recipient && conversation.recipient._id === data.sender)
+              ) {
+                conversationFound = true
+                return {
+                  ...conversation,
+                  lastMessage: data.content,
+                  lastTimestamp: data.timestamp
+                }
+              }
+              return conversation
+            })
+
+            if (!conversationFound) {
+              const otherUser = data.sender === userId ? data.recipientDetails : data.senderDetails
+              updatedConversations.push({
+                sender: data.senderDetails,
+                recipient: data.recipientDetails,
                 lastMessage: data.content,
                 lastTimestamp: data.timestamp
-              }
+              })
             }
-            return conversation
+
+            return updatedConversations.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp))
           })
+        }
+      }
 
-          if (!conversationFound) {
-            const otherUser = data.sender === userId ? data.recipientDetails : data.senderDetails
-            updatedConversations.push({
-              sender: data.senderDetails,
-              recipient: data.recipientDetails,
-              lastMessage: data.content,
-              lastTimestamp: data.timestamp
-            })
-          }
-
-          return updatedConversations.sort((a, b) => new Date(b.lastTimestamp) - new Date(a.lastTimestamp))
-        })
+      return () => {
+        ws.current.close()
       }
     }
-
-    return () => {
-      ws.current.close()
-    }
-  }, [])
+  }, [isActive])
 
   useFocusEffect(
     React.useCallback(() => {
@@ -764,7 +768,7 @@ const Message = () => {
   )
 }
 
-const Request = () => {
+const Request = ({ isActive }) => {
   const [requests, setRequests] = useState([])
   const [userId, setUserId] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
@@ -797,9 +801,10 @@ const Request = () => {
         ws.current?.close()
       }
     }
-
-    setupWebSocket()
-  }, [])
+    if (isActive) {
+      setupWebSocket()
+    }
+  }, [isActive])
 
   const handleWebSocketMessage = message => {
     if (message.type === 'friend_request') {
@@ -834,8 +839,10 @@ const Request = () => {
   }
 
   useEffect(() => {
-    fetchRequests()
-  }, [])
+    if (isActive) {
+      fetchRequests()
+    }
+  }, [isActive])
 
   const acceptRequest = async (friendRequestId, friendName) => {
     if (!userId) {
@@ -1001,6 +1008,10 @@ const Social = () => {
     }
   }, [])
 
+  const handleTabChange = newIndex => {
+    setIndex(newIndex)
+  }
+
   return (
     <View style={styles.container}>
       <TabView
@@ -1008,16 +1019,19 @@ const Social = () => {
         renderScene={({ route }) => {
           switch (route.key) {
             case 'connection':
-              return <Connection ws={ws} />
+              console.log('test1')
+              return <Connection isActive={index === 0} ws={ws} />
             case 'request':
-              return <Request ws={ws} />
+              console.log('test2')
+              return <Request isActive={index === 2} ws={ws} />
             case 'message':
-              return <Message ws={ws} />
+              console.log('test3')
+              return <Message isActive={index === 1} ws={ws} />
             default:
               return null
           }
         }}
-        onIndexChange={setIndex}
+        onIndexChange={handleTabChange}
         initialLayout={{ width: useWindowDimensions().width }}
         renderTabBar={renderTabBar}
       />
