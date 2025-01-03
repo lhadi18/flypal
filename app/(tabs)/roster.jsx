@@ -758,7 +758,7 @@ const Roster = () => {
     const userId = await SecureStore.getItemAsync('userId')
 
     const response = await axios.get(
-      `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/airline/${userId}/canUploadRoster`
+      `https://impactful-arbor-425611-c6.as.r.appspot.com/api/airline/${userId}/canUploadRoster`
     )
 
     if (!response.data || !response.data.canUploadRoster) {
@@ -792,7 +792,7 @@ const Roster = () => {
         })
 
         const response = await axios.post(
-          'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/pdf/upload',
+          'https://impactful-arbor-425611-c6.as.r.appspot.com/api/pdf/upload',
           formData,
           {
             headers: {

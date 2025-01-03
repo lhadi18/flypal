@@ -33,7 +33,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://172.20.10.2:8080')
+    ws.current = new WebSocket('wss://impactful-arbor-425611-c6.as.r.appspot.com/ws')
 
     ws.current.onopen = () => {
       console.log('WebSocket connected')
@@ -63,9 +63,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      const response = await fetch(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${userId}`
-      )
+      const response = await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/key/keys/${userId}`)
       const data = await response.json()
 
       setKeyPair({
@@ -83,7 +81,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
       setCurrentUserId(userId)
       setLoading(true)
       const response = await axios.get(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/friendList/${userId}`
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/friendList/${userId}`
       )
       setConnections(response.data)
       setFilteredConnections(response.data)
@@ -96,9 +94,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   }
 
   const fetchRecipientPublicKey = async recipientId => {
-    const response = await fetch(
-      `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${recipientId}`
-    )
+    const response = await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/key/keys/${recipientId}`)
     const data = await response.json()
     return decodeBase64(data.publicKey)
   }

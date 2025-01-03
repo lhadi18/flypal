@@ -42,7 +42,7 @@ const DiningBookmark = () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         const response = await axios.get(
-          `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
+          `https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/user/${userId}/bookmarks-paginated`,
           { params: { page, limit: 10, search: query } }
         )
 
@@ -120,7 +120,7 @@ const DiningBookmark = () => {
             try {
               const userId = await SecureStore.getItemAsync('userId')
               const response = await axios.post(
-                'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/bookmarks/unbookmark',
+                'https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/unbookmark',
                 {
                   userId,
                   sourceType,

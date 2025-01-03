@@ -62,9 +62,7 @@ const Dining = () => {
     const fetchBookmarks = async () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
-        const response = await fetch(
-          `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/bookmarks/user/${userId}`
-        )
+        const response = await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/user/${userId}`)
         if (response.ok) {
           const userBookmarks = await response.json()
           const bookmarkedIds = userBookmarks.map(b => b.diningId)
@@ -153,7 +151,7 @@ const Dining = () => {
         airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value
       }
 
-      await fetch(`https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

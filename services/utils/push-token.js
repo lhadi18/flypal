@@ -20,7 +20,7 @@ export const handlePushToken = async userId => {
 
     if (storedToken !== pushToken.data) {
       console.log('New push token detected, saving to server.')
-      await fetch('https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/push-token/save', {
+      await fetch('https://impactful-arbor-425611-c6.as.r.appspot.com/api/push-token/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, token: pushToken.data, deviceId })

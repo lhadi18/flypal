@@ -73,7 +73,7 @@ const Connection = ({ isActive }) => {
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      ws.current = new WebSocket('ws://172.20.10.2:8080') // Replace with your WebSocket URL
+      ws.current = new WebSocket('wss://impactful-arbor-425611-c6.as.r.appspot.com/ws') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -122,7 +122,7 @@ const Connection = ({ isActive }) => {
 
     try {
       const response = await axios.get(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/friendList/${userId}`
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/friendList/${userId}`
       )
       setFriends(response.data)
       setFilteredFriends(response.data)
@@ -139,19 +139,16 @@ const Connection = ({ isActive }) => {
 
   const removeFriend = async friendId => {
     try {
-      const response = await fetch(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/removeFriend`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: currentUserId,
-            friendId
-          })
-        }
-      )
+      const response = await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/removeFriend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: currentUserId,
+          friendId
+        })
+      })
 
       const responseData = await response.json()
       console.log('API Response:', responseData)
@@ -175,7 +172,7 @@ const Connection = ({ isActive }) => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -201,7 +198,7 @@ const Connection = ({ isActive }) => {
     }
 
     try {
-      const response = await axios.post(`https://94d7-103-18-0-19.ngrok-free.app/api/users/friendRequest`, {
+      const response = await axios.post(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/friendRequest`, {
         senderId: currentUserId,
         recipientId
       })
@@ -538,7 +535,7 @@ const Message = ({ isActive }) => {
     try {
       // Fetch user conversations from the API
       const response = await axios.get(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/messages/conversations/${userId}`
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/messages/conversations/${userId}`
       )
       console.log(response.data)
 
@@ -546,7 +543,7 @@ const Message = ({ isActive }) => {
 
       // Fetch user's private key
       const userKeyResponse = await axios.get(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${userId}`
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/key/keys/${userId}`
       )
       const userPrivateKey = decodeBase64(userKeyResponse.data.secretKey)
 
@@ -558,7 +555,7 @@ const Message = ({ isActive }) => {
           // Determine the other party's public key (either sender or recipient)
           const otherPartyId = sender._id === userId ? recipient._id : sender._id
           const otherPartyKeyResponse = await axios.get(
-            `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/key/keys/${otherPartyId}`
+            `https://impactful-arbor-425611-c6.as.r.appspot.com/api/key/keys/${otherPartyId}`
           )
           const otherPartyPublicKey = decodeBase64(otherPartyKeyResponse.data.publicKey)
 
@@ -606,15 +603,12 @@ const Message = ({ isActive }) => {
 
   const deleteConversation = async otherUserId => {
     try {
-      const response = await axios.delete(
-        'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/messages/delete',
-        {
-          data: {
-            userId, // Logged-in user ID
-            otherUserId // ID of the other user in the conversation
-          }
+      const response = await axios.delete('https://impactful-arbor-425611-c6.as.r.appspot.com/api/messages/delete', {
+        data: {
+          userId, // Logged-in user ID
+          otherUserId // ID of the other user in the conversation
         }
-      )
+      })
 
       if (response.status === 200) {
         // Remove deleted conversation from local state
@@ -635,7 +629,7 @@ const Message = ({ isActive }) => {
     fetchConversations()
 
     if (isActive) {
-      ws.current = new WebSocket('ws://10.167.60.197:8080')
+      ws.current = new WebSocket('wss://impactful-arbor-425611-c6.as.r.appspot.com/ws')
       ws.current.onmessage = event => {
         const data = JSON.parse(event.data)
         if (data.type === 'chat_message') {
@@ -781,7 +775,7 @@ const Request = ({ isActive }) => {
       const userId = await SecureStore.getItemAsync('userId')
       setUserId(userId)
 
-      ws.current = new WebSocket('ws://172.20.10.2:8080') // Replace with your WebSocket URL
+      ws.current = new WebSocket('wss://impactful-arbor-425611-c6.as.r.appspot.com/ws') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -829,7 +823,7 @@ const Request = ({ isActive }) => {
     try {
       if (userId) {
         const response = await axios.get(
-          `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/addFriend/${userId}`
+          `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/addFriend/${userId}`
         )
         setRequests(response.data)
       }
@@ -851,19 +845,16 @@ const Request = ({ isActive }) => {
     }
 
     try {
-      const response = await fetch(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/acceptRequest`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            senderId: friendRequestId,
-            recipientId: userId
-          })
-        }
-      )
+      const response = await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/acceptRequest`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          senderId: friendRequestId,
+          recipientId: userId
+        })
+      })
 
       const responseData = await response.json()
       console.log('API Response:', responseData)
@@ -893,7 +884,7 @@ const Request = ({ isActive }) => {
 
     try {
       const response = await fetch(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
@@ -986,7 +977,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const ws = useRef(new WebSocket('ws://172.20.10.2:8080'))
+  const ws = useRef(new WebSocket('wss://impactful-arbor-425611-c6.as.r.appspot.com/ws'))
   const [index, setIndex] = useState(0)
 
   const [routes] = useState([
