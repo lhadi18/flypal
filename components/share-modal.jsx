@@ -33,7 +33,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('wss://impactful-arbor-425611-c6.as.r.appspot.com/ws')
+    ws.current = new WebSocket('ws://47.128.181.39:8080')
 
     ws.current.onopen = () => {
       console.log('WebSocket connected')
@@ -63,7 +63,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      const response = await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/key/keys/${userId}`)
+      const response = await fetch(`http://47.128.181.39:8080/api/key/keys/${userId}`)
       const data = await response.json()
 
       setKeyPair({
@@ -80,9 +80,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
       setLoading(true)
-      const response = await axios.get(
-        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/friendList/${userId}`
-      )
+      const response = await axios.get(`http://47.128.181.39:8080/api/users/friendList/${userId}`)
       setConnections(response.data)
       setFilteredConnections(response.data)
     } catch (error) {
@@ -94,7 +92,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   }
 
   const fetchRecipientPublicKey = async recipientId => {
-    const response = await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/key/keys/${recipientId}`)
+    const response = await fetch(`http://47.128.181.39:8080/api/key/keys/${recipientId}`)
     const data = await response.json()
     return decodeBase64(data.publicKey)
   }

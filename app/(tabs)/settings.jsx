@@ -70,7 +70,7 @@ const Settings = () => {
     setLoading(true)
     try {
       const userId = await SecureStore.getItemAsync('userId')
-      const response = await axios.get(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/getUserId`, {
+      const response = await axios.get(`http://47.128.181.39:8080/api/users/getUserId`, {
         params: {
           userId
         }
@@ -130,7 +130,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/updateUserId/${currentUserDetails._id}`,
+        `http://47.128.181.39:8080/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       fetchUserDetails()
@@ -157,10 +157,7 @@ const Settings = () => {
     }
 
     try {
-      const response = await axios.put(
-        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/updatePassword/${userId}`,
-        data
-      )
+      const response = await axios.put(`http://47.128.181.39:8080/api/users/updatePassword/${userId}`, data)
       console.log('Password updated:', response.data)
       Alert.alert('Password updated successfully!')
       setCurrentScreen('Settings')
@@ -183,7 +180,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/deleteUser/${userId}`)
+              await axios.delete(`http://47.128.181.39:8080/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -200,7 +197,7 @@ const Settings = () => {
       const userId = await SecureStore.getItemAsync('userId')
       const deviceId = Device.osBuildId || Device.deviceName || 'unknown-device-id'
 
-      await fetch('https://impactful-arbor-425611-c6.as.r.appspot.com/api/push-token/delete-device', {
+      await fetch('http://47.128.181.39:8080/api/push-token/delete-device', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, deviceId })
@@ -307,13 +304,9 @@ const Settings = () => {
         name: 'profile.jpg'
       })
 
-      const response = await axios.put(
-        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/updateProfilePicture/${userId}`,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        }
-      )
+      const response = await axios.put(`http://47.128.181.39:8080/api/users/updateProfilePicture/${userId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
 
       Alert.alert('Success', 'Profile picture updated successfully.')
 

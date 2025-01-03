@@ -28,24 +28,19 @@ const Events = () => {
         const userId = await SecureStore.getItemAsync('userId')
 
         // Fetch Bookmarks
-        const bookmarksResponse = await axios.get(
-          `https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/user/${userId}`
-        )
+        const bookmarksResponse = await axios.get(`http://47.128.181.39:8080/api/bookmarks/user/${userId}`)
         const userBookmarks = bookmarksResponse.data
         const bookmarkedEventKeys = userBookmarks
           .filter(b => b.sourceType === 'EVENT_API')
           .map(b => generateEventId(b.name, b.eventTime)) // generate IDs for comparison
 
         // Fetch Events
-        const eventsResponse = await axios.get(
-          'https://impactful-arbor-425611-c6.as.r.appspot.com/api/events/getEvents',
-          {
-            params: {
-              city: selectedAirport.city,
-              country: selectedAirport.country
-            }
+        const eventsResponse = await axios.get('http://47.128.181.39:8080/api/events/getEvents', {
+          params: {
+            city: selectedAirport.city,
+            country: selectedAirport.country
           }
-        )
+        })
         const fetchedEvents = eventsResponse.data.events.map(event => ({
           ...event,
           uniqueId: generateEventId(event.title, event.date.when),
@@ -72,7 +67,7 @@ const Events = () => {
       const isBookmarked = bookmarks.includes(bookmarkKey)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
 
-      await axios.post(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/${endpoint}`, {
+      await axios.post(`http://47.128.181.39:8080/api/bookmarks/${endpoint}`, {
         userId,
         eventId: id,
         airportId: selectedAirport.id || selectedAirport.objectId || selectedAirport.value,

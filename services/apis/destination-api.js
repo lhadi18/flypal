@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store'
 import axios from 'axios'
 
-const API_URL = 'https://impactful-arbor-425611-c6.as.r.appspot.com'
+const API_URL = 'http://47.128.181.39:8080'
 
 export const fetchNearbyPlaces = async (latitude, longitude, city, dietaryOption = '') => {
   try {

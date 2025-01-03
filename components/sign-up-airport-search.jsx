@@ -22,7 +22,7 @@ const StyledAirportSearch = forwardRef(({ placeholder, onSelect, initialValue },
 
   const fetchAirports = async searchQuery => {
     try {
-      const response = await axios.get(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/airport/getAirport`, {
+      const response = await axios.get(`http://47.128.181.39:8080/api/airport/getAirport`, {
         params: { query: searchQuery }
       })
       setResults(response.data)

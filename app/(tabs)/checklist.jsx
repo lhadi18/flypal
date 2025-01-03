@@ -129,10 +129,7 @@ const Checklists = () => {
 
     try {
       // API call to create checklist
-      const response = await axios.post(
-        'https://impactful-arbor-425611-c6.as.r.appspot.com/api/checklist/createChecklist',
-        checklistData
-      )
+      const response = await axios.post('http://47.128.181.39:8080/api/checklist/createChecklist', checklistData)
       console.log('Checklist created:', response.data)
 
       // Reset form and fetch updated checklists
@@ -147,14 +144,11 @@ const Checklists = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
-      const response = await axios.get(
-        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/checklist/getChecklist`,
-        {
-          params: {
-            userId
-          }
+      const response = await axios.get(`http://47.128.181.39:8080/api/checklist/getChecklist`, {
+        params: {
+          userId
         }
-      )
+      })
       setChecklists(response.data)
     } catch (error) {
       if (error.response && error.response.status === 404) {
@@ -182,9 +176,7 @@ const Checklists = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(
-                `https://impactful-arbor-425611-c6.as.r.appspot.com/api/checklist/deleteChecklist/${checklistId}`
-              )
+              await axios.delete(`http://47.128.181.39:8080/api/checklist/deleteChecklist/${checklistId}`)
               await fetchChecklists()
             } catch (error) {
               console.error('Error deleting checklist:', error)
@@ -236,7 +228,7 @@ const Checklists = () => {
 
     try {
       const response = await axios.put(
-        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/checklist/updateChecklist/${currentChecklist._id}`,
+        `http://47.128.181.39:8080/api/checklist/updateChecklist/${currentChecklist._id}`,
         updatedChecklistData
       )
       console.log('Checklist updated:', response.data)

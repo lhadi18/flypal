@@ -22,7 +22,7 @@ const AirlineSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
 
   const fetchAirlines = async searchQuery => {
     try {
-      const response = await axios.get(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/airline/getAirlines`, {
+      const response = await axios.get(`http://47.128.181.39:8080/api/airline/getAirlines`, {
         params: { query: searchQuery }
       })
       setResults(response.data)

@@ -2,7 +2,7 @@ import axios from 'axios'
 
 export const fetchAircraftTypes = async () => {
   try {
-    const response = await axios.get('https://impactful-arbor-425611-c6.as.r.appspot.com/api/aircraft/getAircraft')
+    const response = await axios.get('http://47.128.181.39:8080/api/aircraft/getAircraft')
     const data = response.data
       .map(item => ({
         label: `${item.Model}`,

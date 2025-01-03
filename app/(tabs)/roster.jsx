@@ -757,9 +757,7 @@ const Roster = () => {
   const handlePickDocument = async () => {
     const userId = await SecureStore.getItemAsync('userId')
 
-    const response = await axios.get(
-      `https://impactful-arbor-425611-c6.as.r.appspot.com/api/airline/${userId}/canUploadRoster`
-    )
+    const response = await axios.get(`http://47.128.181.39:8080/api/airline/${userId}/canUploadRoster`)
 
     if (!response.data || !response.data.canUploadRoster) {
       Alert.alert('Roster Import Not Supported', 'We have yet to support roster imports for your airline.')
@@ -791,15 +789,11 @@ const Roster = () => {
           type: file.mimeType
         })
 
-        const response = await axios.post(
-          'https://impactful-arbor-425611-c6.as.r.appspot.com/api/pdf/upload',
-          formData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
+        const response = await axios.post('http://47.128.181.39:8080/api/pdf/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
           }
-        )
+        })
 
         if (response.data.parsedData) {
           const { duties, startDate, endDate } = response.data.parsedData

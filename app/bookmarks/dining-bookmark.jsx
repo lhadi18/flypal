@@ -41,10 +41,9 @@ const DiningBookmark = () => {
       setLoading(true)
       try {
         const userId = await SecureStore.getItemAsync('userId')
-        const response = await axios.get(
-          `https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/user/${userId}/bookmarks-paginated`,
-          { params: { page, limit: 10, search: query } }
-        )
+        const response = await axios.get(`http://47.128.181.39:8080/api/bookmarks/user/${userId}/bookmarks-paginated`, {
+          params: { page, limit: 10, search: query }
+        })
 
         const newBookmarks = response.data
 
@@ -119,15 +118,12 @@ const DiningBookmark = () => {
           onPress: async () => {
             try {
               const userId = await SecureStore.getItemAsync('userId')
-              const response = await axios.post(
-                'https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/unbookmark',
-                {
-                  userId,
-                  sourceType,
-                  diningId,
-                  airportId: airportId._id
-                }
-              )
+              const response = await axios.post('http://47.128.181.39:8080/api/bookmarks/unbookmark', {
+                userId,
+                sourceType,
+                diningId,
+                airportId: airportId._id
+              })
 
               if (response.status === 200) {
                 setBookmarks(prevBookmarks => prevBookmarks.filter(bookmark => bookmark.diningId !== diningId))
