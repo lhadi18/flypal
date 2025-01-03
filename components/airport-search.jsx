@@ -30,7 +30,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
     if (isConnected) {
       // try {
       //   const response = await axios.get(
-      //     `https://f002-2001-4458-c00f-951c-4c78-3e22-9ba3-a6ad.ngrok-free.app/api/airport/getAirport`,
+      //     `https://impactful-arbor-425611-c6.as.r.appspot.com/api/airport/getAirport`,
       //     { params: { query: searchQuery } }
       //   )
       //   if (response.data.length === 0) {
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     borderColor: '#4386AD',
     borderRadius: 10,
     backgroundColor: '#F8FAFC',
-    marginTop: 10
+    marginBottom: 10
   },
   resultItem: {
     flexDirection: 'row',

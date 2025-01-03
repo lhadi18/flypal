@@ -187,9 +187,10 @@ export const addRosterEntry = async entry => {
   }
 }
 
-export const getAllRosterEntries = async () => {
+export const getAllRosterEntries = async userId => {
   try {
-    const rows = await db.getAllAsync(`
+    const rows = await db.getAllAsync(
+      `
       SELECT roster_entries.*, 
              airports1.objectId AS originObjectId, airports1.IATA AS originIATA, airports1.ICAO AS originICAO, airports1.name AS originName, airports1.city AS originCity, airports1.country AS originCountry, airports1.tz_database AS originTz, 
              airports2.objectId AS destinationObjectId, airports2.IATA AS destinationIATA, airports2.ICAO AS destinationICAO, airports2.name AS destinationName, airports2.city AS destinationCity, airports2.country AS destinationCountry, airports2.tz_database AS destinationTz,
@@ -199,8 +200,10 @@ export const getAllRosterEntries = async () => {
       LEFT JOIN airports AS airports1 ON roster_entries.origin = airports1.objectId
       LEFT JOIN airports AS airports2 ON roster_entries.destination = airports2.objectId
       LEFT JOIN aircrafts ON roster_entries.aircraftType = aircrafts.objectId 
-      WHERE pendingDeletion = 0;
-    `)
+      WHERE roster_entries.userId = ? AND pendingDeletion = 0;
+      `,
+      [userId]
+    )
 
     const data = (rows || []).map(row => ({
       ...row,
@@ -234,7 +237,7 @@ export const getAllRosterEntries = async () => {
 
     return data
   } catch (error) {
-    console.error('Error fetching roster entries from SQLite:', error)
+    console.error('Error fetching roster entries for userId from SQLite:', error)
     return []
   }
 }
@@ -340,9 +343,35 @@ export const getAircraftsFromDatabase = async () => {
   }
 }
 
+// export const resetDatabase = async () => {
+//   try {
+//     // Check if database is initialized
+//     if (!db) {
+//       db = await SQLite.openDatabaseAsync('flypal.db')
+//     }
+
+//     // Drop all tables if they exist
+//     await db.execAsync('DROP TABLE IF EXISTS roster_entries;')
+//     await db.execAsync('DROP TABLE IF EXISTS airports;')
+//     await db.execAsync('DROP TABLE IF EXISTS aircrafts;')
+
+//     console.log('All tables dropped successfully.')
+
+//     // Reinitialize the database
+//     await initializeDatabase()
+
+//     console.log('Database reset and reinitialized.')
+//   } catch (error) {
+//     console.error('Error resetting the database:', error)
+//     throw error
+//   }
+// }
+
 // Initialize database and load airport data on startup
 initializeDatabase()
   .then(async () => {
+    // await resetDatabase()
+
     await loadAirportsData()
     await loadAircraftsData()
   })

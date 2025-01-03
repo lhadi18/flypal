@@ -22,12 +22,9 @@ const AirlineSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
 
   const fetchAirlines = async searchQuery => {
     try {
-      const response = await axios.get(
-        `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/airline/getAirlines`,
-        {
-          params: { query: searchQuery }
-        }
-      )
+      const response = await axios.get(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/airline/getAirlines`, {
+        params: { query: searchQuery }
+      })
       setResults(response.data)
     } catch (error) {
       console.error('Error fetching airlines:', error)

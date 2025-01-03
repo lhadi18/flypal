@@ -29,7 +29,7 @@ const Events = () => {
 
         // Fetch Bookmarks
         const bookmarksResponse = await axios.get(
-          `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}`
+          `https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/user/${userId}`
         )
         const userBookmarks = bookmarksResponse.data
         const bookmarkedEventKeys = userBookmarks
@@ -38,7 +38,7 @@ const Events = () => {
 
         // Fetch Events
         const eventsResponse = await axios.get(
-          'https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/events/getEvents',
+          'https://impactful-arbor-425611-c6.as.r.appspot.com/api/events/getEvents',
           {
             params: {
               city: selectedAirport.city,
@@ -72,7 +72,7 @@ const Events = () => {
       const isBookmarked = bookmarks.includes(bookmarkKey)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
 
-      await axios.post(`https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await axios.post(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/${endpoint}`, {
         userId,
         eventId: id,
         airportId: selectedAirport.id || selectedAirport.objectId || selectedAirport.value,

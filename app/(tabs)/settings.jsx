@@ -23,6 +23,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import StyledAirportSearch from '@/components/sign-up-airport-search'
 import AirlineSearch from '@/components/sign-up-airline-search'
+import eventEmitter from '@/services/utils/event-emitter'
 import RNPickerSelect from 'react-native-picker-select'
 import { getRoles } from '@/services/apis/user-api'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -30,8 +31,8 @@ import React, { useState, useEffect } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import * as SecureStore from 'expo-secure-store'
 import * as FileSystem from 'expo-file-system'
-import { ROLES } from '../../constants/roles'
 import { useRouter } from 'expo-router'
+import * as Device from 'expo-device'
 import axios from 'axios'
 
 const Settings = () => {
@@ -39,7 +40,7 @@ const Settings = () => {
   const [userDetails, setUserDetails] = useState({
     firstName: '',
     lastName: '',
-    role: '',
+    role: { value: '' },
     homebase: { IATA: '', city: '', ICAO: '' },
     airline: { ICAO: '', Name: '' },
     email: ''
@@ -69,8 +70,7 @@ const Settings = () => {
     setLoading(true)
     try {
       const userId = await SecureStore.getItemAsync('userId')
-      console.log(userId)
-      const response = await axios.get(`https://40c7-115-164-76-186.ngrok-free.app/api/users/getUserId`, {
+      const response = await axios.get(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/getUserId`, {
         params: {
           userId
         }
@@ -80,7 +80,6 @@ const Settings = () => {
         response.data.profilePicture ||
           'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
       )
-      console.log('Response Data:', response.data)
     } catch (error) {
       console.error('Error fetching user details:', error)
     } finally {
@@ -129,17 +128,18 @@ const Settings = () => {
       airline: currentUserDetails.airline
     }
 
-    console.log('Updated user data to be sent:', updatedUserData)
-
     try {
       const response = await axios.put(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
-      console.log('User profile updated:', response.data)
-      // handleEditUserDetails(response.data);
       fetchUserDetails()
       setCurrentScreen('UserProfile')
+
+      const newHomebaseTZ = response.data.homebase.tz_database
+      eventEmitter.emit('homebaseUpdated', newHomebaseTZ)
+
+      SecureStore.setItemAsync('homebaseTZDatabase', newHomebaseTZ)
     } catch (error) {
       console.error('Error updating user profile:', error)
     }
@@ -158,7 +158,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -183,7 +183,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://40c7-115-164-76-186.ngrok-free.app/api/users/deleteUser/${userId}`)
+              await axios.delete(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -197,10 +197,20 @@ const Settings = () => {
 
   const handleLogout = async () => {
     try {
+      const userId = await SecureStore.getItemAsync('userId')
+      const deviceId = Device.osBuildId || Device.deviceName || 'unknown-device-id'
+
+      await fetch('https://impactful-arbor-425611-c6.as.r.appspot.com/api/push-token/delete-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, deviceId })
+      })
+
       await SecureStore.deleteItemAsync('userId')
-      router.push('/sign-in')
+      await SecureStore.deleteItemAsync('pushToken')
+      router.replace('/sign-in')
     } catch (error) {
-      console.error('Error logging out:', error)
+      console.error('Error during logout:', error)
     }
   }
 
@@ -298,7 +308,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://40c7-115-164-76-186.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://impactful-arbor-425611-c6.as.r.appspot.com/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -327,14 +337,14 @@ const Settings = () => {
   }
 
   const renderSettings = () => (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}></View>
       <View style={styles.avatarContainer}>
         <TouchableOpacity onPress={() => setShowModal(true)}>
           <Image style={styles.avatar} source={{ uri: image }} />
         </TouchableOpacity>
       </View>
-      <View style={styles.body}>
+      <View>
         <View style={styles.bodyContent}>
           <Text style={styles.name}>
             {userDetails?.firstName} {userDetails?.lastName}
@@ -358,7 +368,7 @@ const Settings = () => {
               </View>
               <FontAwesomeIcon icon={faChevronRight} style={styles.iconRight} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={() => router.push('/social?tab=connection')}>
               <View style={styles.buttonContent}>
                 <FontAwesomeIcon icon={faUserGroup} style={styles.icon} />
                 <Text style={styles.textButton}>Connections</Text>
@@ -412,20 +422,22 @@ const Settings = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   )
 
   const renderUserProfile = () => (
     <ScrollView style={styles.container}>
       <View style={styles.header}></View>
-      <Image
-        style={styles.avatar}
-        source={{
-          uri:
-            userDetails.profilePicture ||
-            'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
-        }}
-      />
+      <View style={styles.avatarContainer}>
+        <Image
+          style={styles.avatar}
+          source={{
+            uri:
+              userDetails.profilePicture ||
+              'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+          }}
+        />
+      </View>
       <View style={styles.bodyProfile}>
         <View style={styles.boxProfile}>
           <View style={styles.headerProfile}>
@@ -497,10 +509,16 @@ const Settings = () => {
   const renderEditProfile = () => (
     <ScrollView style={styles.container}>
       <View style={styles.header}></View>
-      <Image
-        style={styles.avatar}
-        source={{ uri: 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg' }}
-      />
+      <View style={styles.avatarContainer}>
+        <Image
+          style={styles.avatar}
+          source={{
+            uri:
+              userDetails.profilePicture ||
+              'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
+          }}
+        />
+      </View>
       <View style={styles.bodyProfile}>
         <View style={styles.boxProfile}>
           <View style={styles.headerProfile}>
@@ -536,23 +554,36 @@ const Settings = () => {
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>Role</Text>
-                <View>
+                <View style={styles.pickerContainer}>
                   {loadingRoles ? (
                     <ActivityIndicator size="small" color="#0000ff" />
                   ) : (
                     <RNPickerSelect
-                      style={pickerSelectStyles}
                       onValueChange={value => {
-                        const selectedRole = roles.find(role => role.value === value)
-                        setCurrentUserDetails({ ...currentUserDetails, role: selectedRole })
+                        const selectedRole = roles.find(role => role.value === value) || null
+                        setCurrentUserDetails({
+                          ...currentUserDetails,
+                          role: selectedRole
+                        })
                       }}
                       items={roles}
-                      value={currentUserDetails?.role?.value || ''}
+                      style={{
+                        ...pickerSelectStyles,
+                        inputIOS: {
+                          ...pickerSelectStyles.inputIOS,
+                          color: currentUserDetails?.role?.value ? 'black' : 'grey'
+                        },
+                        inputAndroid: {
+                          ...pickerSelectStyles.inputAndroid,
+                          color: currentUserDetails?.role?.value ? 'black' : 'grey'
+                        }
+                      }}
                       placeholder={{
                         label: 'Select your role',
                         value: null,
                         color: 'grey'
                       }}
+                      value={currentUserDetails?.role?.value || null}
                     />
                   )}
                 </View>
@@ -708,11 +739,19 @@ const pickerSelectStyles = StyleSheet.create({
   },
   placeholder: {
     color: 'grey',
-    fontSize: 14 // matching the text size
+    fontSize: 14
   }
 })
 
 const styles = StyleSheet.create({
+  roleField: {
+    width: '100%',
+    backgroundColor: 'white',
+    color: 'black',
+    borderRadius: 5,
+    borderColor: '#ADADAD',
+    borderWidth: 1
+  },
   logout: {
     marginTop: 30
   },
@@ -764,7 +803,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowOffset: { width: 2, height: 4 }
   },
-  avatar: {
+  viewAvatar: {
     width: 130,
     height: 130,
     borderRadius: 63,
@@ -779,7 +818,7 @@ const styles = StyleSheet.create({
     marginTop: 50
   },
   bodyProfile: {
-    marginTop: 70
+    marginTop: 20
   },
   bodyContent: {
     alignItems: 'center',
@@ -883,6 +922,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold'
   },
+  infoStyles: {
+    width: '100%',
+    height: 40,
+    padding: 10,
+    marginVertical: 5,
+    backgroundColor: 'white',
+    color: 'black',
+    borderRadius: 5,
+    borderColor: '#ADADAD',
+    borderWidth: 1
+  },
   infoContainer: {
     margin: 20
   },
@@ -942,16 +992,20 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     alignItems: 'center',
-    marginTop: -50,
-    zIndex: 1
+    justifyContent: 'center', // Ensure the container centers the avatar vertically
+    marginTop: -50, // Adjust this if necessary to properly position the avatar
+    zIndex: 1,
+    width: '100%' // Ensure the container spans the full width
   },
   avatar: {
     width: 130,
     height: 130,
     borderRadius: 65,
     borderWidth: 4,
-    borderColor: 'white'
+    borderColor: 'white',
+    alignSelf: 'center' // Ensure the avatar centers itself inside the container
   },
+
   modalContainer: {
     flex: 1,
     justifyContent: 'center',

@@ -62,9 +62,7 @@ const Dining = () => {
     const fetchBookmarks = async () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
-        const response = await fetch(
-          `https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/user/${userId}`
-        )
+        const response = await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/user/${userId}`)
         if (response.ok) {
           const userBookmarks = await response.json()
           const bookmarkedIds = userBookmarks.map(b => b.diningId)
@@ -98,14 +96,18 @@ const Dining = () => {
         }
       } else if (selectedTab === 'Crew Picks' && selectedAirport && !hasFetchedCrewPicks) {
         try {
+          const userId = await SecureStore.getItemAsync('userId')
           const crewData = await fetchCrewPicks(
             selectedAirport.objectId || selectedAirport.id || selectedAirport.value,
             selectedDietaryOption
           )
+
           const updatedCrewPicks = crewData.map(pick => ({
             ...pick,
-            bookmarked: bookmarks.includes(pick._id)
+            bookmarked: bookmarks.includes(pick._id),
+            userHasLiked: pick.likedBy.includes(userId)
           }))
+
           setCrewPicks(updatedCrewPicks)
           setHasFetchedCrewPicks(true)
         } catch (error) {
@@ -130,9 +132,6 @@ const Dining = () => {
     latitude,
     longitude
   ) => {
-    console.log(latitude)
-    console.log(longitude)
-
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const isBookmarked = bookmarks.includes(id)
@@ -152,7 +151,7 @@ const Dining = () => {
         airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value
       }
 
-      await fetch(`https://74ae-2402-1980-24d-8201-85fb-800c-f2c4-1947.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await fetch(`https://impactful-arbor-425611-c6.as.r.appspot.com/api/bookmarks/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -163,13 +162,22 @@ const Dining = () => {
       const updatedBookmarks = isBookmarked ? bookmarks.filter(bid => bid !== id) : [...bookmarks, id]
       setBookmarks(updatedBookmarks)
 
-      // Update places and crewPicks arrays to reflect bookmark change
+      // Update places
       setPlaces(prevPlaces =>
         prevPlaces.map(place => (place.place_id === id ? { ...place, bookmarked: !isBookmarked } : place))
       )
 
+      // Update crewPicks, preserving the like status
       setCrewPicks(prevCrewPicks =>
-        prevCrewPicks.map(pick => (pick._id === id ? { ...pick, bookmarked: !isBookmarked } : pick))
+        prevCrewPicks.map(pick =>
+          pick._id === id
+            ? {
+                ...pick,
+                bookmarked: !isBookmarked,
+                userHasLiked: pick.userHasLiked // Preserve like status
+              }
+            : pick
+        )
       )
     } catch (error) {
       console.error('Failed to update bookmark:', error)
@@ -272,7 +280,17 @@ const Dining = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const updatedPick = await likeRecommendation(id, userId)
-      setCrewPicks(crewPicks.map(pick => (pick._id === id ? updatedPick : pick)))
+
+      setCrewPicks(prevCrewPicks =>
+        prevCrewPicks.map(pick =>
+          pick._id === id
+            ? {
+                ...updatedPick,
+                bookmarked: bookmarks.includes(updatedPick._id)
+              }
+            : pick
+        )
+      )
     } catch (error) {
       console.error('Failed to update likes:', error)
     }
@@ -285,6 +303,10 @@ const Dining = () => {
 
   const handleSelectOption = option => {
     setSelectedDietaryOption(option)
+  }
+
+  const handleModalClose = () => {
+    setFilterModalVisible(false)
     setHasFetchedPlaces(false)
     setHasFetchedCrewPicks(false)
   }
@@ -322,7 +344,7 @@ const Dining = () => {
 
           <DietaryFilterModal
             isVisible={isFilterModalVisible}
-            onClose={() => setFilterModalVisible(false)}
+            onClose={handleModalClose}
             selectedOption={selectedDietaryOption}
             onSelectOption={handleSelectOption}
           />

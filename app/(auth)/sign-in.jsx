@@ -1,6 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ImageBackground, Alert } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import ConnectivityService from '@/services/utils/connectivity-service'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { handlePushToken } from '@/services/utils/push-token'
 import { loginUser } from '../../services/apis/user-api'
 import * as SecureStore from 'expo-secure-store'
 import { ScrollView } from 'react-native'
@@ -24,11 +25,16 @@ const SignIn = () => {
     try {
       const result = await loginUser({ email, password })
       const userId = result._id
+      const airlineIATA = result.airline.IATA
+      const homebaseTZDatabase = result.homebase.tz_database
 
       await SecureStore.setItemAsync('userId', userId)
+      await SecureStore.setItemAsync('airlineIATA', airlineIATA)
+      await SecureStore.setItemAsync('homebaseTZDatabase', homebaseTZDatabase)
+      await handlePushToken(userId)
 
       Alert.alert('Login Successful', `Welcome back, ${email}`)
-      router.push('/roster')
+      router.replace('/roster')
     } catch (error) {
       Alert.alert('Login Failed', error.message || 'Invalid email or password')
     }
@@ -98,7 +104,10 @@ const SignIn = () => {
                       </TouchableOpacity>
                     </View>
                     {touched.password && errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-                    <TouchableOpacity style={styles.forgotPasswordButton}>
+                    <TouchableOpacity
+                      style={styles.forgotPasswordButton}
+                      onPress={() => router.push('/forgot-password')}
+                    >
                       <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                     </TouchableOpacity>
                   </View>
@@ -111,11 +120,7 @@ const SignIn = () => {
 
             <View style={styles.registerContainer}>
               <Text style={styles.registerPrompt}>Don't have an account? </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  router.push('/sign-up')
-                }}
-              >
+              <TouchableOpacity onPress={() => router.push('/sign-up')}>
                 <Text style={styles.registerText}>Register</Text>
               </TouchableOpacity>
             </View>
@@ -220,7 +225,6 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     color: 'white',
-    fontFamily: 'Roboto-Regular',
     fontSize: 16,
     textAlign: 'center',
     fontWeight: 'bold'

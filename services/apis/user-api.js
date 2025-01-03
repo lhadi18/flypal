@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_URL = 'https://64f6-103-18-0-20.ngrok-free.app'
+const API_URL = 'https://impactful-arbor-425611-c6.as.r.appspot.com'
 
 export const registerUser = async userData => {
   try {
@@ -68,7 +68,6 @@ export const getRoles = async () => {
       method: 'get',
       url: `${API_URL}/api/roles/getAllRoles`
     })
-    console.log(response.data)
     return response.data
   } catch (error) {
     if (error.response && error.response.data) {

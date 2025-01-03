@@ -55,6 +55,19 @@ const RootLayout = () => {
           }
         }}
       ></Stack.Screen>
+      <Stack.Screen
+        name="messages"
+        options={{
+          headerTitle: 'Message',
+          headerShown: true,
+          headerBackTitle: 'Back',
+          headerTintColor: 'white',
+          headerStyle: {
+            backgroundColor: '#045D91'
+          },
+          headerShown: true
+        }}
+      ></Stack.Screen>
     </Stack>
   )
 }

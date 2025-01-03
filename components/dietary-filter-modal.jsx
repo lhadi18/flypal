@@ -4,9 +4,21 @@ import { BlurView } from 'expo-blur'
 import React from 'react'
 
 const DietaryFilterModal = ({ isVisible, onClose, selectedOption, onSelectOption }) => {
-  const handleSelectOption = option => {
-    onSelectOption(option)
+  // Internal state to handle temporary selection
+  const [temporarySelection, setTemporarySelection] = React.useState(selectedOption)
+
+  // Apply changes when the "Apply" button is pressed
+  const handleApply = () => {
+    onSelectOption(temporarySelection) // Commit the selection
+    onClose() // Close the modal
   }
+
+  // Reset temporary selection when the modal is opened
+  React.useEffect(() => {
+    if (isVisible) {
+      setTemporarySelection(selectedOption) // Synchronize state with the parent
+    }
+  }, [isVisible, selectedOption])
 
   return (
     <SafeAreaView style={styles.container}>
@@ -18,10 +30,10 @@ const DietaryFilterModal = ({ isVisible, onClose, selectedOption, onSelectOption
               {dietaryOptions.map(option => (
                 <TouchableOpacity
                   key={option}
-                  style={[styles.optionButton, selectedOption === option && styles.optionButtonSelected]}
-                  onPress={() => handleSelectOption(option)}
+                  style={[styles.optionButton, temporarySelection === option && styles.optionButtonSelected]}
+                  onPress={() => setTemporarySelection(option)} // Update temporary selection
                 >
-                  <Text style={[styles.optionText, selectedOption === option && styles.optionTextSelected]}>
+                  <Text style={[styles.optionText, temporarySelection === option && styles.optionTextSelected]}>
                     {option}
                   </Text>
                 </TouchableOpacity>
@@ -31,7 +43,7 @@ const DietaryFilterModal = ({ isVisible, onClose, selectedOption, onSelectOption
               <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={onClose}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.applyButton]} onPress={onClose}>
+              <TouchableOpacity style={[styles.modalButton, styles.applyButton]} onPress={handleApply}>
                 <Text style={styles.applyButtonText}>Apply</Text>
               </TouchableOpacity>
             </View>
