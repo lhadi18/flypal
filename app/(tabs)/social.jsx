@@ -73,7 +73,7 @@ const Connection = ({ isActive }) => {
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      ws.current = new WebSocket('ws://47.128.181.39:8080') // Replace with your WebSocket URL
+      ws.current = new WebSocket('wss://5b0a-47-128-181-39.ngrok-free.app') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -121,7 +121,7 @@ const Connection = ({ isActive }) => {
     setCurrentUserId(userId)
 
     try {
-      const response = await axios.get(`http://47.128.181.39:8080/api/users/friendList/${userId}`)
+      const response = await axios.get(`https://5b0a-47-128-181-39.ngrok-free.ap/api/users/friendList/${userId}`)
       setFriends(response.data)
       setFilteredFriends(response.data)
     } catch (error) {
@@ -137,7 +137,7 @@ const Connection = ({ isActive }) => {
 
   const removeFriend = async friendId => {
     try {
-      const response = await fetch(`http://47.128.181.39:8080/api/users/removeFriend`, {
+      const response = await fetch(`https://5b0a-47-128-181-39.ngrok-free.ap/api/users/removeFriend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -169,7 +169,7 @@ const Connection = ({ isActive }) => {
 
   const fetchNonFriends = async () => {
     try {
-      const response = await axios.get(`http://47.128.181.39:8080/api/users/nonFriends/${currentUserId}`)
+      const response = await axios.get(`https://5b0a-47-128-181-39.ngrok-free.ap/api/users/nonFriends/${currentUserId}`)
 
       const { nonFriends, sentFriendRequests } = response.data
 
@@ -194,7 +194,7 @@ const Connection = ({ isActive }) => {
     }
 
     try {
-      const response = await axios.post(`http://47.128.181.39:8080/api/users/friendRequest`, {
+      const response = await axios.post(`https://5b0a-47-128-181-39.ngrok-free.ap/api/users/friendRequest`, {
         senderId: currentUserId,
         recipientId
       })
@@ -530,13 +530,13 @@ const Message = ({ isActive }) => {
 
     try {
       // Fetch user conversations from the API
-      const response = await axios.get(`http://47.128.181.39:8080/api/messages/conversations/${userId}`)
+      const response = await axios.get(`https://5b0a-47-128-181-39.ngrok-free.ap/api/messages/conversations/${userId}`)
       console.log(response.data)
 
       const conversations = response.data
 
       // Fetch user's private key
-      const userKeyResponse = await axios.get(`http://47.128.181.39:8080/api/key/keys/${userId}`)
+      const userKeyResponse = await axios.get(`https://5b0a-47-128-181-39.ngrok-free.ap/api/key/keys/${userId}`)
       const userPrivateKey = decodeBase64(userKeyResponse.data.secretKey)
 
       // Iterate through conversations and decrypt the last message
@@ -546,7 +546,9 @@ const Message = ({ isActive }) => {
 
           // Determine the other party's public key (either sender or recipient)
           const otherPartyId = sender._id === userId ? recipient._id : sender._id
-          const otherPartyKeyResponse = await axios.get(`http://47.128.181.39:8080/api/key/keys/${otherPartyId}`)
+          const otherPartyKeyResponse = await axios.get(
+            `https://5b0a-47-128-181-39.ngrok-free.ap/api/key/keys/${otherPartyId}`
+          )
           const otherPartyPublicKey = decodeBase64(otherPartyKeyResponse.data.publicKey)
 
           // Decrypt the last message
@@ -593,7 +595,7 @@ const Message = ({ isActive }) => {
 
   const deleteConversation = async otherUserId => {
     try {
-      const response = await axios.delete('http://47.128.181.39:8080/api/messages/delete', {
+      const response = await axios.delete('https://5b0a-47-128-181-39.ngrok-free.ap/api/messages/delete', {
         data: {
           userId, // Logged-in user ID
           otherUserId // ID of the other user in the conversation
@@ -619,7 +621,7 @@ const Message = ({ isActive }) => {
     fetchConversations()
 
     if (isActive) {
-      ws.current = new WebSocket('ws://47.128.181.39:8080')
+      ws.current = new WebSocket('wss://5b0a-47-128-181-39.ngrok-free.app')
       ws.current.onmessage = event => {
         const data = JSON.parse(event.data)
         if (data.type === 'chat_message') {
@@ -765,7 +767,7 @@ const Request = ({ isActive }) => {
       const userId = await SecureStore.getItemAsync('userId')
       setUserId(userId)
 
-      ws.current = new WebSocket('ws://47.128.181.39:8080') // Replace with your WebSocket URL
+      ws.current = new WebSocket('wss://5b0a-47-128-181-39.ngrok-free.app') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -812,7 +814,7 @@ const Request = ({ isActive }) => {
     setUserId(userId)
     try {
       if (userId) {
-        const response = await axios.get(`http://47.128.181.39:8080/api/users/addFriend/${userId}`)
+        const response = await axios.get(`https://5b0a-47-128-181-39.ngrok-free.ap/api/users/addFriend/${userId}`)
         setRequests(response.data)
       }
     } catch (error) {
@@ -833,7 +835,7 @@ const Request = ({ isActive }) => {
     }
 
     try {
-      const response = await fetch(`http://47.128.181.39:8080/api/users/acceptRequest`, {
+      const response = await fetch(`https://5b0a-47-128-181-39.ngrok-free.ap/api/users/acceptRequest`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -872,7 +874,7 @@ const Request = ({ isActive }) => {
 
     try {
       const response = await fetch(
-        `http://47.128.181.39:8080/api/users/declineRequest`, // Replace with your backend URL
+        `https://5b0a-47-128-181-39.ngrok-free.ap/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
@@ -965,7 +967,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const ws = useRef(new WebSocket('ws://47.128.181.39:8080'))
+  const ws = useRef(new WebSocket('wss://5b0a-47-128-181-39.ngrok-free.app'))
   const [index, setIndex] = useState(0)
 
   const [routes] = useState([

@@ -56,7 +56,7 @@ const MessagingScreen = () => {
         let privateKeyStr = null
 
         // Attempt to fetch private key from the server
-        const response = await fetch(`http://47.128.181.39:8080/api/key/keys/${userId}`, {
+        const response = await fetch(`https://5b0a-47-128-181-39.ngrok-free.ap/api/key/keys/${userId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         })
@@ -99,7 +99,7 @@ const MessagingScreen = () => {
           }
 
           // Store public key and secret key on the server
-          const response = await fetch('http://47.128.181.39:8080/api/key/keys', {
+          const response = await fetch('https://5b0a-47-128-181-39.ngrok-free.ap/api/key/keys', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -126,7 +126,7 @@ const MessagingScreen = () => {
   useEffect(() => {
     const fetchRecipientKey = async () => {
       try {
-        const response = await fetch(`http://47.128.181.39:8080/api/key/keys/${recipientId}`)
+        const response = await fetch(`https://5b0a-47-128-181-39.ngrok-free.ap/api/key/keys/${recipientId}`)
         const data = await response.json()
         setRecipientPublicKey(decodeBase64(data.publicKey))
       } catch (error) {
@@ -222,7 +222,7 @@ const MessagingScreen = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`http://47.128.181.39:8080/api/messages/${userId}/${recipientId}`)
+        const response = await fetch(`https://5b0a-47-128-181-39.ngrok-free.ap/api/messages/${userId}/${recipientId}`)
         const data = await response.json()
         setMessages(data)
       } catch (error) {
@@ -233,7 +233,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://47.128.181.39:8080')
+      ws.current = new WebSocket('wss://5b0a-47-128-181-39.ngrok-free.app')
 
       ws.current.onopen = () => {
         // console.log('WebSocket connected')

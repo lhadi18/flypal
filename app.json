@@ -14,16 +14,26 @@
     },
     "notification": {
       "icon": "./assets/images/icon.png",
-      "color": "#FFFFFF"
+      "color": "#FFFFFF",
+      "iosDisplayInForeground": true
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.lhadi18.flypal",
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE", "NOTIFICATIONS", "VIBRATE"],
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro",

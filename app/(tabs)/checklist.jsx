@@ -129,7 +129,10 @@ const Checklists = () => {
 
     try {
       // API call to create checklist
-      const response = await axios.post('http://47.128.181.39:8080/api/checklist/createChecklist', checklistData)
+      const response = await axios.post(
+        'https://5b0a-47-128-181-39.ngrok-free.ap/api/checklist/createChecklist',
+        checklistData
+      )
       console.log('Checklist created:', response.data)
 
       // Reset form and fetch updated checklists
@@ -144,7 +147,7 @@ const Checklists = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
-      const response = await axios.get(`http://47.128.181.39:8080/api/checklist/getChecklist`, {
+      const response = await axios.get(`https://5b0a-47-128-181-39.ngrok-free.ap/api/checklist/getChecklist`, {
         params: {
           userId
         }
@@ -176,7 +179,9 @@ const Checklists = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`http://47.128.181.39:8080/api/checklist/deleteChecklist/${checklistId}`)
+              await axios.delete(
+                `https://5b0a-47-128-181-39.ngrok-free.ap/api/checklist/deleteChecklist/${checklistId}`
+              )
               await fetchChecklists()
             } catch (error) {
               console.error('Error deleting checklist:', error)
@@ -228,7 +233,7 @@ const Checklists = () => {
 
     try {
       const response = await axios.put(
-        `http://47.128.181.39:8080/api/checklist/updateChecklist/${currentChecklist._id}`,
+        `https://5b0a-47-128-181-39.ngrok-free.ap/api/checklist/updateChecklist/${currentChecklist._id}`,
         updatedChecklistData
       )
       console.log('Checklist updated:', response.data)
