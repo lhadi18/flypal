@@ -70,7 +70,7 @@ const Settings = () => {
     setLoading(true)
     try {
       const userId = await SecureStore.getItemAsync('userId')
-      const response = await axios.get(`https://5b0a-47-128-181-39.ngrok-free.app/api/users/getUserId`, {
+      const response = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/users/getUserId`, {
         params: {
           userId
         }
@@ -130,7 +130,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://5b0a-47-128-181-39.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://b17e-47-128-181-39.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       fetchUserDetails()
@@ -158,7 +158,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://5b0a-47-128-181-39.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://b17e-47-128-181-39.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -183,7 +183,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(`https://5b0a-47-128-181-39.ngrok-free.app/api/users/deleteUser/${userId}`)
+              await axios.delete(`https://b17e-47-128-181-39.ngrok-free.app/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -200,7 +200,7 @@ const Settings = () => {
       const userId = await SecureStore.getItemAsync('userId')
       const deviceId = Device.osBuildId || Device.deviceName || 'unknown-device-id'
 
-      await fetch('https://5b0a-47-128-181-39.ngrok-free.app/api/push-token/delete-device', {
+      await fetch('https://b17e-47-128-181-39.ngrok-free.app/api/push-token/delete-device', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, deviceId })
@@ -308,7 +308,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://5b0a-47-128-181-39.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://b17e-47-128-181-39.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
