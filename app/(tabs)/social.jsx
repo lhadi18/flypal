@@ -73,7 +73,7 @@ const Connection = ({ isActive }) => {
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.appp') // Replace with your WebSocket URL
+      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -623,7 +623,7 @@ const Message = ({ isActive }) => {
     fetchConversations()
 
     if (isActive) {
-      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.appp')
+      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app')
       ws.current.onmessage = event => {
         const data = JSON.parse(event.data)
         if (data.type === 'chat_message') {
@@ -769,7 +769,7 @@ const Request = ({ isActive }) => {
       const userId = await SecureStore.getItemAsync('userId')
       setUserId(userId)
 
-      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.appp') // Replace with your WebSocket URL
+      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -969,7 +969,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const ws = useRef(new WebSocket('wss://b17e-47-128-181-39.ngrok-free.appp'))
+  const ws = useRef(new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app'))
   const [index, setIndex] = useState(0)
 
   const [routes] = useState([

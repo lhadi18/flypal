@@ -33,7 +33,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.appp')
+    ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app')
 
     ws.current.onopen = () => {
       console.log('WebSocket connected')

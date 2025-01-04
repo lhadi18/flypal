@@ -233,7 +233,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.appp')
+      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app')
 
       ws.current.onopen = () => {
         // console.log('WebSocket connected')
