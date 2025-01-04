@@ -29,7 +29,7 @@ const Events = () => {
 
         // Fetch Bookmarks
         const bookmarksResponse = await axios.get(
-          `https://5b0a-47-128-181-39.ngrok-free.ap/api/bookmarks/user/${userId}`
+          `https://5b0a-47-128-181-39.ngrok-free.app/api/bookmarks/user/${userId}`
         )
         const userBookmarks = bookmarksResponse.data
         const bookmarkedEventKeys = userBookmarks
@@ -37,7 +37,7 @@ const Events = () => {
           .map(b => generateEventId(b.name, b.eventTime)) // generate IDs for comparison
 
         // Fetch Events
-        const eventsResponse = await axios.get('https://5b0a-47-128-181-39.ngrok-free.ap/api/events/getEvents', {
+        const eventsResponse = await axios.get('https://5b0a-47-128-181-39.ngrok-free.app/api/events/getEvents', {
           params: {
             city: selectedAirport.city,
             country: selectedAirport.country
@@ -69,7 +69,7 @@ const Events = () => {
       const isBookmarked = bookmarks.includes(bookmarkKey)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
 
-      await axios.post(`https://5b0a-47-128-181-39.ngrok-free.ap/api/bookmarks/${endpoint}`, {
+      await axios.post(`https://5b0a-47-128-181-39.ngrok-free.app/api/bookmarks/${endpoint}`, {
         userId,
         eventId: id,
         airportId: selectedAirport.id || selectedAirport.objectId || selectedAirport.value,
