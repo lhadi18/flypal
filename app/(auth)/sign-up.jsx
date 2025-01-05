@@ -48,8 +48,18 @@ const SignUp = () => {
     firstName: Yup.string().required('First Name is required'),
     lastName: Yup.string().required('Last Name is required'),
     role: Yup.string().required('Role is required'),
-    homebase: Yup.string().required('Homebase is required'),
-    airline: Yup.string().required('Airline is required'),
+    homebase: Yup.object()
+      .shape({
+        value: Yup.string().required('Homebase is required')
+      })
+      .nullable()
+      .required('Homebase is required'),
+    airline: Yup.object()
+      .shape({
+        value: Yup.string().required('Airline is required')
+      })
+      .nullable()
+      .required('Airline is required'),
     email: Yup.string().email('Invalid email').required('Email is required'),
     password: Yup.string().min(8, 'Password must be at least 8 characters').required('Password is required'),
     confirmPassword: Yup.string()
@@ -58,8 +68,14 @@ const SignUp = () => {
   })
 
   const handleSubmit = async (values, { setSubmitting, setErrors }) => {
+    console.log(values)
+    const payload = {
+      ...values,
+      homebase: values.homebase?.value || '',
+      airline: values.airline?.value || ''
+    }
     try {
-      const response = await registerUser(values)
+      const response = await registerUser(payload)
       console.log('User registered successfully:', response)
       Alert.alert('Success', 'User registered successfully!', [
         { text: 'Close', onPress: () => console.log('Popup closed') },
@@ -97,8 +113,8 @@ const SignUp = () => {
                 firstName: '',
                 lastName: '',
                 role: '',
-                homebase: '',
-                airline: '',
+                homebase: null,
+                airline: null,
                 email: '',
                 password: '',
                 confirmPassword: ''
@@ -196,7 +212,7 @@ const SignUp = () => {
                     <Text style={styles.label}>Homebase</Text>
                     <StyledAirportSearch
                       placeholder="Enter your homebase"
-                      onSelect={airport => setFieldValue('homebase', airport ? airport.id : '')} // Use airport ID
+                      onSelect={airport => setFieldValue('homebase', airport)}
                       initialValue={values.homebase}
                     />
                     <View style={styles.errorContainer}>
@@ -207,7 +223,7 @@ const SignUp = () => {
                     <Text style={styles.label}>Airline</Text>
                     <AirlineSearch
                       placeholder="Enter your airline"
-                      onSelect={airline => setFieldValue('airline', airline ? airline.id : '')} // Use airline ID
+                      onSelect={airline => setFieldValue('airline', airline)}
                       initialValue={values.airline}
                     />
                     <View style={styles.errorContainer}>
@@ -489,7 +505,7 @@ const styles = StyleSheet.create({
     tintColor: '#808080'
   },
   errorContainer: {
-    height: 20,
+    height: 30,
     justifyContent: 'center',
     marginTop: 4,
     marginBottom: 4

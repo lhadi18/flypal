@@ -15,16 +15,19 @@ const StyledAirportSearch = forwardRef(({ placeholder, onSelect, initialValue },
 
   useEffect(() => {
     if (initialValue) {
-      setQuery(initialValue.label)
+      setQuery(initialValue.label || '')
       setSelectedAirport(initialValue)
     }
   }, [initialValue])
 
   const fetchAirports = async searchQuery => {
     try {
-      const response = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/airport/getAirport`, {
-        params: { query: searchQuery }
-      })
+      const response = await axios.get(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/airport/getAirport`,
+        {
+          params: { query: searchQuery }
+        }
+      )
       setResults(response.data)
     } catch (error) {
       console.error('Error fetching airports:', error)

@@ -757,7 +757,9 @@ const Roster = () => {
   const handlePickDocument = async () => {
     const userId = await SecureStore.getItemAsync('userId')
 
-    const response = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/airline/${userId}/canUploadRoster`)
+    const response = await axios.get(
+      `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/airline/${userId}/canUploadRoster`
+    )
 
     if (!response.data || !response.data.canUploadRoster) {
       Alert.alert('Roster Import Not Supported', 'We have yet to support roster imports for your airline.')
@@ -789,11 +791,15 @@ const Roster = () => {
           type: file.mimeType
         })
 
-        const response = await axios.post('https://b17e-47-128-181-39.ngrok-free.app/api/pdf/upload', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
+        const response = await axios.post(
+          'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/pdf/upload',
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
           }
-        })
+        )
 
         if (response.data.parsedData) {
           const { duties, startDate, endDate } = response.data.parsedData
@@ -1116,14 +1122,26 @@ const Roster = () => {
                   onValueChange={handleDutyTypeChange}
                   items={DUTY_TYPES.map(duty => ({ label: duty.label, value: duty.value }))}
                   style={{
-                    ...pickerSelectStyles,
-                    inputIOS: { ...pickerSelectStyles.inputIOS, paddingRight: 30 },
-                    inputAndroid: { ...pickerSelectStyles.inputAndroid, paddingRight: 30 },
-                    placeholder: { ...pickerSelectStyles.placeholder, paddingLeft: 0 }
+                    inputIOS: {
+                      fontSize: 16,
+                      color: 'black',
+                      paddingVertical: 10,
+                      paddingHorizontal: 0,
+                      backgroundColor: 'transparent'
+                    },
+                    inputAndroid: {
+                      fontSize: 16,
+                      color: 'black',
+                      paddingVertical: 10,
+                      paddingHorizontal: 0,
+                      backgroundColor: 'transparent'
+                    },
+                    placeholder: {
+                      color: 'grey'
+                    }
                   }}
-                  value={newEventTitle}
+                  useNativeAndroidPickerStyle={false} // Ensures custom styles apply on Android
                   placeholder={{ label: 'Select duty type', value: null }}
-                  useNativeAndroidPickerStyle={false}
                 />
               </View>
 
@@ -1265,10 +1283,23 @@ const Roster = () => {
                             value: aircraft.value
                           }))}
                           style={{
-                            ...pickerSelectStyles,
-                            inputIOS: { ...pickerSelectStyles.inputIOS, paddingRight: 30 },
-                            inputAndroid: { ...pickerSelectStyles.inputAndroid, paddingRight: 30 },
-                            placeholder: { ...pickerSelectStyles.placeholder, paddingLeft: 0 }
+                            inputIOS: {
+                              fontSize: 16,
+                              color: 'black',
+                              paddingVertical: 10,
+                              paddingHorizontal: 0,
+                              backgroundColor: 'transparent'
+                            },
+                            inputAndroid: {
+                              fontSize: 16,
+                              color: 'black',
+                              paddingVertical: 10,
+                              paddingHorizontal: 0,
+                              backgroundColor: 'transparent'
+                            },
+                            placeholder: {
+                              color: 'grey'
+                            }
                           }}
                           value={newEventAircraftType}
                           placeholder={{ label: 'Select aircraft type', value: null }}
@@ -1670,10 +1701,11 @@ const pickerSelectStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderWidth: 0,
-    color: 'black',
     flex: 1,
     height: '100%',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    color: 'black',
+    backgroundColor: 'white'
   },
   placeholder: {
     color: 'grey'

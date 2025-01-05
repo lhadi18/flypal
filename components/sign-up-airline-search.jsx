@@ -5,7 +5,7 @@ import axios from 'axios'
 import _ from 'lodash'
 
 const AirlineSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) => {
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialValue?.label || '')
   const [results, setResults] = useState([])
   const [selectedAirline, setSelectedAirline] = useState(initialValue || null)
 
@@ -15,16 +15,19 @@ const AirlineSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
 
   useEffect(() => {
     if (initialValue) {
-      setQuery(initialValue.label)
+      setQuery(initialValue.label || '')
       setSelectedAirline(initialValue)
     }
   }, [initialValue])
 
   const fetchAirlines = async searchQuery => {
     try {
-      const response = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/airline/getAirlines`, {
-        params: { query: searchQuery }
-      })
+      const response = await axios.get(
+        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/airline/getAirlines`,
+        {
+          params: { query: searchQuery }
+        }
+      )
       setResults(response.data)
     } catch (error) {
       console.error('Error fetching airlines:', error)
@@ -108,9 +111,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: 'black'
-  },
-  icon: {
-    marginRight: 10
   },
   clearButton: {
     marginLeft: 10
