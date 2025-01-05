@@ -153,12 +153,37 @@ const SignUp = () => {
                         <RNPickerSelect
                           onValueChange={handleChange('role')}
                           items={roles}
-                          style={pickerSelectStyles}
+                          style={{
+                            inputIOS: {
+                              fontSize: 14,
+                              paddingVertical: 12,
+                              paddingHorizontal: 10,
+                              borderWidth: 1,
+                              borderColor: 'grey',
+                              borderRadius: 5,
+                              color: 'black',
+                              backgroundColor: 'white',
+                              height: 40
+                            },
+                            inputAndroid: {
+                              fontSize: 14,
+                              paddingVertical: 12,
+                              paddingHorizontal: 10,
+                              borderWidth: 1,
+                              borderColor: 'grey',
+                              borderRadius: 5,
+                              color: 'black',
+                              backgroundColor: 'white',
+                              height: 40
+                            }
+                          }}
+                          useNativeAndroidPickerStyle={false}
                           placeholder={{
                             label: 'Select your role',
                             value: null,
                             color: 'grey'
                           }}
+                          Icon={null}
                           value={values.role}
                         />
                       )}
@@ -288,37 +313,6 @@ const SignUp = () => {
     </ImageBackground>
   )
 }
-
-const pickerSelectStyles = StyleSheet.create({
-  inputIOS: {
-    fontSize: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: 'grey',
-    borderRadius: 5,
-    color: 'black',
-    paddingRight: 30,
-    backgroundColor: 'white',
-    height: 40
-  },
-  inputAndroid: {
-    fontSize: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 0.5,
-    borderColor: 'grey',
-    borderRadius: 5,
-    color: 'black',
-    paddingRight: 30,
-    backgroundColor: 'white',
-    height: 40
-  },
-  placeholder: {
-    color: 'grey',
-    fontSize: 14 // matching the text size
-  }
-})
 
 const styles = StyleSheet.create({
   background: {
