@@ -31,7 +31,6 @@ import {
   getAircraftsFromDatabase
 } from '../../services/utils/database'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import eventEmitter from '@/services/utils/event-emitter'
@@ -49,12 +48,6 @@ import uuid from 'react-native-uuid'
 import moment from 'moment-timezone'
 import axios from 'axios'
 
-// Constants for keys used to store settings
-const NOTIFICATIONS_ENABLED_KEY = 'notificationsEnabled'
-const CUSTOM_REMINDER_HOUR_KEY = 'customReminderHour'
-const REST_REMINDER_ENABLED_KEY = 'restReminderEnabled'
-const RED_EYE_REMINDER_TIME_KEY = 'redEyeReminderTime'
-
 const Roster = () => {
   const [selectedDate, setSelectedDate] = useState('')
   const [events, setEvents] = useState([])
@@ -67,7 +60,6 @@ const Roster = () => {
   const [newEventFlightNumber, setNewEventFlightNumber] = useState('')
   const [newEventAircraftType, setNewEventAircraftType] = useState('')
   const [newEventNotes, setNewEventNotes] = useState('')
-  const [document, setDocument] = useState(null)
   const [isDeparturePickerVisible, setDeparturePickerVisible] = useState(false)
   const [isArrivalPickerVisible, setArrivalPickerVisible] = useState(false)
   const [aircraftTypeData, setAircraftTypeData] = useState([])
@@ -439,6 +431,12 @@ const Roster = () => {
                   End: {getLocalTime(item.arrivalTime, item.origin?.tz_database || homebaseTZ)}
                 </Text>
               </View>
+              {item.notes && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Notes: {item.notes}</Text>
+                </View>
+              )}
             </>
           ) : item.type === 'TRAINING' ? (
             <>
@@ -560,6 +558,12 @@ const Roster = () => {
                 <View style={styles.eventRow}>
                   <Ionicons name="airplane-outline" size={18} color="#045D91" />
                   <Text style={styles.eventText}>Aircraft: {item.aircraftType.model}</Text>
+                </View>
+              )}
+              {item.notes && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Notes: {item.notes}</Text>
                 </View>
               )}
             </>
