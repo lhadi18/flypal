@@ -162,6 +162,13 @@ const Settings = () => {
       return
     }
 
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+
+    setError(null)
+
     const userId = await SecureStore.getItemAsync('userId')
     const data = {
       password
