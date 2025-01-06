@@ -33,7 +33,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app')
+    ws.current = new WebSocket('ws://10.171.63.97:8080')
 
     ws.current.onopen = () => {
       console.log('WebSocket connected')
@@ -63,7 +63,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      const response = await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/key/keys/${userId}`)
+      const response = await fetch(`https://6f9f-103-18-0-17.ngrok-free.app/api/key/keys/${userId}`)
       const data = await response.json()
 
       setKeyPair({
@@ -80,7 +80,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
       setLoading(true)
-      const response = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/users/friendList/${userId}`)
+      const response = await axios.get(`https://6f9f-103-18-0-17.ngrok-free.app/api/users/friendList/${userId}`)
       setConnections(response.data)
       setFilteredConnections(response.data)
     } catch (error) {
@@ -92,7 +92,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   }
 
   const fetchRecipientPublicKey = async recipientId => {
-    const response = await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/key/keys/${recipientId}`)
+    const response = await fetch(`https://6f9f-103-18-0-17.ngrok-free.app/api/key/keys/${recipientId}`)
     const data = await response.json()
     return decodeBase64(data.publicKey)
   }

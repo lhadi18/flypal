@@ -37,6 +37,7 @@ import axios from 'axios'
 
 const Settings = () => {
   const [currentScreen, setCurrentScreen] = useState('Settings')
+  const [errorMessage, setErrorMessage] = useState('');
   const [userDetails, setUserDetails] = useState({
     firstName: '',
     lastName: '',
@@ -71,7 +72,7 @@ const Settings = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const response = await axios.get(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/getUserId`,
+        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/getUserId`,
         {
           params: {
             userId
@@ -121,6 +122,13 @@ const Settings = () => {
       return
     }
 
+    if (!currentUserDetails.firstName || !currentUserDetails.lastName) {
+      setErrorMessage('First name or last name is required');
+      return;
+    }
+  
+    setErrorMessage(''); // Clear previous errors
+
     const updatedUserData = {
       userId: currentUserDetails.userId,
       firstName: currentUserDetails.firstName,
@@ -133,7 +141,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       fetchUserDetails()
@@ -161,7 +169,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
@@ -187,7 +195,7 @@ const Settings = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/deleteUser/${userId}`
+                `https://6f9f-103-18-0-17.ngrok-free.app/api/users/deleteUser/${userId}`
               )
               router.push('/sign-in')
             } catch (error) {
@@ -205,7 +213,7 @@ const Settings = () => {
       const userId = await SecureStore.getItemAsync('userId')
       const deviceId = Device.osBuildId || Device.deviceName || 'unknown-device-id'
 
-      await fetch('https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/push-token/delete-device', {
+      await fetch('https://6f9f-103-18-0-17.ngrok-free.app/api/push-token/delete-device', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, deviceId })
@@ -313,7 +321,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -539,7 +547,9 @@ const Settings = () => {
                   <TextInput
                     style={styles.infoStyles}
                     value={currentUserDetails?.firstName || ''}
-                    onChangeText={text => setCurrentUserDetails({ ...currentUserDetails, firstName: text })}
+                    onChangeText={(text) =>
+                      setCurrentUserDetails({ ...currentUserDetails, firstName: text })
+                    }
                   />
                 </View>
                 <View style={styles.infoColumn}>
@@ -547,10 +557,17 @@ const Settings = () => {
                   <TextInput
                     style={styles.infoStyles}
                     value={currentUserDetails?.lastName || ''}
-                    onChangeText={text => setCurrentUserDetails({ ...currentUserDetails, lastName: text })}
+                    onChangeText={(text) =>
+                      setCurrentUserDetails({ ...currentUserDetails, lastName: text })
+                    }
                   />
                 </View>
               </View>
+              {errorMessage ? (
+                <Text style={{ color: 'red', marginBottom: 5,}}>
+                  {errorMessage}
+                </Text>
+              ) : null}
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>E-mail Address</Text>
                 <View style={styles.infoStyles}>
@@ -975,17 +992,6 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontWeight: 'bold',
     marginBottom: 5
-  },
-  infoStyles: {
-    width: '100%',
-    height: 40,
-    padding: 10,
-    marginVertical: 5,
-    backgroundColor: 'white',
-    color: 'black',
-    borderRadius: 5,
-    borderColor: '#ADADAD',
-    borderWidth: 1
   },
   editButton: {
     backgroundColor: '#045D91',

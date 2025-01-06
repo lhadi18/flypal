@@ -73,7 +73,7 @@ const Connection = ({ isActive }) => {
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app') // Replace with your WebSocket URL
+      ws.current = new WebSocket('ws://10.171.63.97:8080') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -121,7 +121,7 @@ const Connection = ({ isActive }) => {
     setCurrentUserId(userId)
 
     try {
-      const response = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/users/friendList/${userId}`)
+      const response = await axios.get(`https://6f9f-103-18-0-17.ngrok-free.app/api/users/friendList/${userId}`)
       setFriends(response.data)
       setFilteredFriends(response.data)
     } catch (error) {
@@ -137,7 +137,7 @@ const Connection = ({ isActive }) => {
 
   const removeFriend = async friendId => {
     try {
-      const response = await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/users/removeFriend`, {
+      const response = await fetch(`https://6f9f-103-18-0-17.ngrok-free.app/api/users/removeFriend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -170,7 +170,7 @@ const Connection = ({ isActive }) => {
   const fetchNonFriends = async () => {
     try {
       const response = await axios.get(
-        `https://b17e-47-128-181-39.ngrok-free.app/api/users/nonFriends/${currentUserId}`
+        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/nonFriends/${currentUserId}`
       )
 
       const { nonFriends, sentFriendRequests } = response.data
@@ -196,7 +196,7 @@ const Connection = ({ isActive }) => {
     }
 
     try {
-      const response = await axios.post(`https://b17e-47-128-181-39.ngrok-free.app/api/users/friendRequest`, {
+      const response = await axios.post(`https://6f9f-103-18-0-17.ngrok-free.app/api/users/friendRequest`, {
         senderId: currentUserId,
         recipientId
       })
@@ -532,13 +532,13 @@ const Message = ({ isActive }) => {
 
     try {
       // Fetch user conversations from the API
-      const response = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/messages/conversations/${userId}`)
+      const response = await axios.get(`https://6f9f-103-18-0-17.ngrok-free.app/api/messages/conversations/${userId}`)
       console.log(response.data)
 
       const conversations = response.data
 
       // Fetch user's private key
-      const userKeyResponse = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/key/keys/${userId}`)
+      const userKeyResponse = await axios.get(`https://6f9f-103-18-0-17.ngrok-free.app/api/key/keys/${userId}`)
       const userPrivateKey = decodeBase64(userKeyResponse.data.secretKey)
 
       // Iterate through conversations and decrypt the last message
@@ -549,7 +549,7 @@ const Message = ({ isActive }) => {
           // Determine the other party's public key (either sender or recipient)
           const otherPartyId = sender._id === userId ? recipient._id : sender._id
           const otherPartyKeyResponse = await axios.get(
-            `https://b17e-47-128-181-39.ngrok-free.app/api/key/keys/${otherPartyId}`
+            `https://6f9f-103-18-0-17.ngrok-free.app/api/key/keys/${otherPartyId}`
           )
           const otherPartyPublicKey = decodeBase64(otherPartyKeyResponse.data.publicKey)
 
@@ -597,7 +597,7 @@ const Message = ({ isActive }) => {
 
   const deleteConversation = async otherUserId => {
     try {
-      const response = await axios.delete('https://b17e-47-128-181-39.ngrok-free.app/api/messages/delete', {
+      const response = await axios.delete('https://6f9f-103-18-0-17.ngrok-free.app/api/messages/delete', {
         data: {
           userId, // Logged-in user ID
           otherUserId // ID of the other user in the conversation
@@ -623,7 +623,7 @@ const Message = ({ isActive }) => {
     fetchConversations()
 
     if (isActive) {
-      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app')
+      ws.current = new WebSocket('ws://10.171.63.97:8080')
       ws.current.onmessage = event => {
         const data = JSON.parse(event.data)
         if (data.type === 'chat_message') {
@@ -769,7 +769,7 @@ const Request = ({ isActive }) => {
       const userId = await SecureStore.getItemAsync('userId')
       setUserId(userId)
 
-      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app') // Replace with your WebSocket URL
+      ws.current = new WebSocket('ws://10.171.63.97:8080') // Replace with your WebSocket URL
 
       ws.current.onopen = () => {
         console.log('WebSocket connected')
@@ -816,7 +816,7 @@ const Request = ({ isActive }) => {
     setUserId(userId)
     try {
       if (userId) {
-        const response = await axios.get(`https://b17e-47-128-181-39.ngrok-free.app/api/users/addFriend/${userId}`)
+        const response = await axios.get(`https://6f9f-103-18-0-17.ngrok-free.app/api/users/addFriend/${userId}`)
         setRequests(response.data)
       }
     } catch (error) {
@@ -837,7 +837,7 @@ const Request = ({ isActive }) => {
     }
 
     try {
-      const response = await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/users/acceptRequest`, {
+      const response = await fetch(`https://6f9f-103-18-0-17.ngrok-free.app/api/users/acceptRequest`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -876,7 +876,7 @@ const Request = ({ isActive }) => {
 
     try {
       const response = await fetch(
-        `https://b17e-47-128-181-39.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
+        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/declineRequest`, // Replace with your backend URL
         {
           method: 'POST',
           headers: {
@@ -969,7 +969,7 @@ const renderScene = SceneMap({
 })
 
 const Social = () => {
-  const ws = useRef(new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app'))
+  const ws = useRef(new WebSocket('ws://10.171.63.97:8080'))
   const [index, setIndex] = useState(0)
 
   const [routes] = useState([
