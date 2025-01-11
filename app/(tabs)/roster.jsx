@@ -761,9 +761,7 @@ const Roster = () => {
   const handlePickDocument = async () => {
     const userId = await SecureStore.getItemAsync('userId')
 
-    const response = await axios.get(
-      `https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/airline/${userId}/canUploadRoster`
-    )
+    const response = await axios.get(`https://4ca1-103-18-0-17.ngrok-free.app/api/airline/${userId}/canUploadRoster`)
 
     if (!response.data || !response.data.canUploadRoster) {
       Alert.alert('Roster Import Not Supported', 'We have yet to support roster imports for your airline.')
@@ -795,15 +793,11 @@ const Roster = () => {
           type: file.mimeType
         })
 
-        const response = await axios.post(
-          'https://4f4f-2402-1980-248-e007-c463-21a9-3b03-bc3b.ngrok-free.app/api/pdf/upload',
-          formData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
+        const response = await axios.post('https://4ca1-103-18-0-17.ngrok-free.app/api/pdf/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
           }
-        )
+        })
 
         if (response.data.parsedData) {
           const { duties, startDate, endDate } = response.data.parsedData
@@ -814,7 +808,7 @@ const Roster = () => {
           setUploadedRosterData(duties)
           setShowRosterModal(true)
         } else {
-          Alert.alert('Error', 'Unable to read the uploaded roster.')
+          Alert.alert('Error', 'Please upload a valid roster format.')
         }
       } catch (error) {
         console.error('Error uploading file:', error)
@@ -899,6 +893,8 @@ const Roster = () => {
       setUploadedRosterData([])
       setShowRosterModal(false)
       Alert.alert('Success', 'All roster entries have been saved successfully.')
+
+      await fetchRosterEntries(selectedDate)
     } catch (error) {
       console.error('Error saving uploaded roster entries:', error)
       Alert.alert('Error', 'An error occurred while saving the roster entries. Please try again.')
@@ -1259,12 +1255,12 @@ const Roster = () => {
                   {/* Flight Number (only for Flight Duty) */}
                   {newEventTitle === 'FLIGHT_DUTY' && (
                     <>
-                      <Text style={styles.label}>Flight Number</Text>
+                      <Text style={styles.label}>Flight Number (optional)</Text>
                       <View style={styles.inputWrapper}>
                         <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
-                          placeholder="Enter flight number"
+                          placeholder="Enter flight number (optional)"
                           placeholderTextColor={'grey'}
                           value={newEventFlightNumber}
                           onChangeText={setNewEventFlightNumber}
@@ -1275,7 +1271,7 @@ const Roster = () => {
 
                   {newEventTitle === 'FLIGHT_DUTY' || newEventTitle === 'STANDBY' ? (
                     <>
-                      <Text style={styles.label}>Aircraft Type</Text>
+                      <Text style={styles.label}>Aircraft Type (optional)</Text>
                       <View style={styles.inputWrapper}>
                         <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
                         <RNPickerSelect
@@ -1306,7 +1302,7 @@ const Roster = () => {
                             }
                           }}
                           value={newEventAircraftType}
-                          placeholder={{ label: 'Select aircraft type', value: null }}
+                          placeholder={{ label: 'Select aircraft type (optional)', value: null }}
                           useNativeAndroidPickerStyle={false}
                         />
                       </View>

@@ -90,6 +90,7 @@ const generateNotificationContent = (event, reminderHoursBefore) => {
 export const scheduleNotification = async (event, reminderHoursBefore, timezone) => {
   const permissionGranted = await requestNotificationPermission()
   if (!permissionGranted) return
+  if (!event.departureTime || !event.origin?.IATA || !event.destination?.IATA) return
 
   const eventStartTime = event.departureTime ? moment.tz(event.departureTime, timezone) : null
 
@@ -97,9 +98,6 @@ export const scheduleNotification = async (event, reminderHoursBefore, timezone)
     console.warn('Invalid or missing start time for event:', event)
     return
   }
-
-  console.log('timezone: ', timezone)
-
   await cancelNotificationForEvent(event.id)
 
   const reminderTime = eventStartTime.clone().subtract(reminderHoursBefore, 'hours')
@@ -125,10 +123,10 @@ export const scheduleNotification = async (event, reminderHoursBefore, timezone)
 /**
  * Schedules a red-eye reminder for an event.
  * @param {Object} event - The event object containing details.
- * @param {number} redEyeReminderTime - The hour of the day for red-eye reminders.
+ * @param {number} redEyeReminderHour - The hour of the day for red-eye reminders (e.g., 18 for 6 PM).
  * @param {string} timezone - The timezone for the event.
  */
-export const scheduleRedEyeReminder = async (event, redEyeReminderTime, timezone) => {
+export const scheduleRedEyeReminder = async (event, redEyeReminderHour, timezone) => {
   const permissionGranted = await requestNotificationPermission()
   if (!permissionGranted) return
 
@@ -136,13 +134,21 @@ export const scheduleRedEyeReminder = async (event, redEyeReminderTime, timezone
   const departureHour = eventTime.hour()
 
   if (departureHour >= 0 && departureHour <= 7) {
-    const reminderDayBefore = eventTime.clone().subtract(1, 'day').set({
-      hour: redEyeReminderTime,
-      minute: 0
-    })
+    const reminderHour = Math.floor(redEyeReminderHour) // Integer part
+    const reminderMinutes = (redEyeReminderHour % 1) * 60 // Fractional part to minutes
 
-    if (reminderDayBefore.isAfter(moment())) {
+    const reminderTime = eventTime
+      .clone()
+      .subtract(1, 'day') // Day before the flight
+      .set({
+        hour: reminderHour,
+        minute: reminderMinutes,
+        second: 0,
+        millisecond: 0
+      })
+    if (reminderTime.isAfter(moment())) {
       await Notifications.scheduleNotificationAsync({
+        identifier: `${event.id}_redeye`,
         content: {
           title: `Red-Eye Flight Reminder`,
           body: `Your flight departs at ${eventTime.format('HH:mm [GMT]Z')}. Don't forget to prepare.`,
@@ -150,9 +156,11 @@ export const scheduleRedEyeReminder = async (event, redEyeReminderTime, timezone
           icon: '../../assets/images/icon.png'
         },
         trigger: {
-          date: reminderDayBefore.toDate()
+          date: reminderTime.toDate()
         }
       })
+    } else {
+      console.warn('Red-eye reminder time is in the past and will not be scheduled:', reminderTime.toString())
     }
   }
 }
@@ -183,14 +191,15 @@ export const rescheduleNotifications = async (
 
   // Schedule notifications for all events
   for (const event of events) {
-    await scheduleNotification(event, customReminderHour, timezone)
+    await scheduleNotification(event, customReminderHour, event.origin?.tz_database || timezone)
 
     if (event.type === 'FLIGHT_DUTY') {
-      await scheduleRedEyeReminder(event, redEyeReminderTime, timezone)
+      await scheduleRedEyeReminder(event, redEyeReminderTime, event.origin?.tz_database || timezone)
     }
   }
-  const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync()
-  console.log(scheduledNotifications)
+  // For debugging
+  // const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync()
+  // console.log('my notis', scheduledNotifications)
 }
 
 /**
@@ -231,11 +240,11 @@ export const cancelNotificationForEvent = async eventId => {
   try {
     const allNotifications = await Notifications.getAllScheduledNotificationsAsync()
     for (const notification of allNotifications) {
-      if (notification.identifier === eventId) {
+      if (notification.identifier === eventId || notification.identifier === `${eventId}_redeye`) {
         await Notifications.cancelScheduledNotificationAsync(notification.identifier)
       }
     }
   } catch (error) {
-    console.error(`Error canceling notification for event ${eventId}:`, error)
+    console.error(`Error canceling notifications for event ${eventId}:`, error)
   }
 }

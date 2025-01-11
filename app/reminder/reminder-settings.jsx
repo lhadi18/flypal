@@ -12,21 +12,18 @@ import { getAllRosterEntries } from '@/services/utils/database'
 import eventEmitter from '../../services/utils/event-emitter'
 import React, { useState, useEffect, useRef } from 'react'
 import Slider from '@react-native-community/slider'
-import * as Notifications from 'expo-notifications'
 import * as SecureStore from 'expo-secure-store'
 import { debounce } from 'lodash'
 
 const ReminderSettings = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-  const [redEyeReminderTime, setRedEyeReminderTime] = useState(new Date())
+  const [redEyeReminderTime, setRedEyeReminderTime] = useState(18) // Default 6:00 PM
   const [customReminderHour, setCustomReminderHour] = useState(2) // Default to 2 hours before flight
   const [homebaseTZ, setHomebaseTZ] = useState('UTC') // Default timezone
 
   // Local state to track the slider's live value
   const [liveCustomReminderHour, setLiveCustomReminderHour] = useState(customReminderHour)
-  const [liveRedEyeReminderTime, setLiveRedEyeReminderTime] = useState(
-    redEyeReminderTime.getHours() + redEyeReminderTime.getMinutes() / 60
-  )
+  const [liveRedEyeReminderTime, setLiveRedEyeReminderTime] = useState(redEyeReminderTime)
 
   // Create debounced versions of the setters
   const debouncedSetCustomReminderHour = useRef(debounce(value => setCustomReminderHour(value), 300)).current
@@ -46,9 +43,9 @@ const ReminderSettings = () => {
       const settings = await loadNotificationSettings()
       setNotificationsEnabled(settings.notificationsEnabled)
       setCustomReminderHour(settings.customReminderHour)
-      setRedEyeReminderTime(new Date(settings.redEyeReminderTime))
+      setRedEyeReminderTime(settings.redEyeReminderTime)
       setLiveCustomReminderHour(settings.customReminderHour)
-      setLiveRedEyeReminderTime(new Date(settings.redEyeReminderTime).getHours())
+      setLiveRedEyeReminderTime(settings.redEyeReminderTime)
     } catch (error) {
       console.error('Error loading settings:', error)
     }
@@ -59,7 +56,7 @@ const ReminderSettings = () => {
       await saveNotificationSettings({
         notificationsEnabled,
         customReminderHour,
-        redEyeReminderTime: redEyeReminderTime.toISOString()
+        redEyeReminderTime
       })
 
       eventEmitter.emit('settingsChanged', {
@@ -72,13 +69,7 @@ const ReminderSettings = () => {
         const userId = await SecureStore.getItemAsync('userId')
         const events = await getAllRosterEntries(userId)
         await requestNotificationPermission()
-        await rescheduleNotifications(
-          notificationsEnabled,
-          customReminderHour,
-          redEyeReminderTime.getHours(),
-          homebaseTZ,
-          events
-        )
+        await rescheduleNotifications(notificationsEnabled, customReminderHour, redEyeReminderTime, homebaseTZ, events)
       } else {
         await cancelAllNotifications()
       }
@@ -102,12 +93,12 @@ const ReminderSettings = () => {
 
   const toggleNotifications = () => setNotificationsEnabled(prev => !prev)
 
-  const getTimeForToday = (hours, minutes) => {
-    const date = new Date()
-    date.setHours(hours)
-    date.setMinutes(minutes)
-    date.setSeconds(0)
-    return date
+  const formatTime = value => {
+    const hours = Math.floor(value)
+    const minutes = (value % 1) * 60
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours
+    return `${displayHours}:${minutes === 0 ? '00' : '30'} ${ampm}`
   }
 
   const checkScheduledNotifications = async () => {
@@ -129,7 +120,7 @@ const ReminderSettings = () => {
         {/* Toggle for enabling/disabling notifications */}
         <View style={styles.setting}>
           <Text style={styles.label}>Enable Notifications</Text>
-          <Switch value={notificationsEnabled} onValueChange={toggleNotifications} />
+          <Switch style={styles.switch} value={notificationsEnabled} onValueChange={toggleNotifications} />
         </View>
 
         {/* Custom reminder time slider */}
@@ -146,7 +137,9 @@ const ReminderSettings = () => {
               debouncedSetCustomReminderHour(value) // Debounced backend update
             }}
           />
-          <Text>Reminder Time: {liveCustomReminderHour} hours prior</Text>
+          <Text>
+            Reminder Time: {liveCustomReminderHour} {liveCustomReminderHour === 1 ? 'hour' : 'hours'} prior
+          </Text>
         </View>
 
         {/* Red-eye flight reminder time slider */}
@@ -159,20 +152,15 @@ const ReminderSettings = () => {
             step={0.5}
             value={liveRedEyeReminderTime}
             onValueChange={value => {
-              setLiveRedEyeReminderTime(value) // Update local live value instantly
-              debouncedSetRedEyeReminderTime(getTimeForToday(Math.floor(value), (value % 1) * 60)) // Debounced backend update
+              setLiveRedEyeReminderTime(value)
+              debouncedSetRedEyeReminderTime(value)
             }}
           />
-          <Text>
-            Selected Red-Eye Reminder Time:{' '}
-            {getTimeForToday(Math.floor(liveRedEyeReminderTime), (liveRedEyeReminderTime % 1) * 60).toLocaleTimeString(
-              [],
-              { hour: '2-digit', minute: '2-digit' }
-            )}
-          </Text>
+          <Text>Selected Red-Eye Reminder Time: {formatTime(liveRedEyeReminderTime)}</Text>
         </View>
 
         {/* Button to check pending notifications */}
+        {/* Uncomment for debugging */}
         {/* <View style={styles.setting}>
           <Button title="Check Pending Notifications" onPress={checkScheduledNotifications} />
         </View> */}
@@ -194,6 +182,9 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     marginBottom: 5
+  },
+  switch: {
+    alignSelf: 'flex-start'
   }
 })
 
