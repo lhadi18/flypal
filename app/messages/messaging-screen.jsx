@@ -56,7 +56,7 @@ const MessagingScreen = () => {
         let privateKeyStr = null
 
         // Attempt to fetch private key from the server
-        const response = await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/key/keys/${userId}`, {
+        const response = await fetch(`https://flypal-server.click/api/key/keys/${userId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         })
@@ -99,7 +99,7 @@ const MessagingScreen = () => {
           }
 
           // Store public key and secret key on the server
-          const response = await fetch('https://b17e-47-128-181-39.ngrok-free.app/api/key/keys', {
+          const response = await fetch('https://flypal-server.click/api/key/keys', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -126,7 +126,7 @@ const MessagingScreen = () => {
   useEffect(() => {
     const fetchRecipientKey = async () => {
       try {
-        const response = await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/key/keys/${recipientId}`)
+        const response = await fetch(`https://flypal-server.click/api/key/keys/${recipientId}`)
         const data = await response.json()
         setRecipientPublicKey(decodeBase64(data.publicKey))
       } catch (error) {
@@ -222,7 +222,7 @@ const MessagingScreen = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/messages/${userId}/${recipientId}`)
+        const response = await fetch(`https://flypal-server.click/api/messages/${userId}/${recipientId}`)
         const data = await response.json()
         setMessages(data)
       } catch (error) {
@@ -233,7 +233,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     const setupWebSocket = () => {
-      ws.current = new WebSocket('wss://b17e-47-128-181-39.ngrok-free.app')
+      ws.current = new WebSocket('wss://flypal-server.click')
 
       ws.current.onopen = () => {
         // console.log('WebSocket connected')

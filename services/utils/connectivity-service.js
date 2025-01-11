@@ -16,6 +16,7 @@ class ConnectivityService {
 
   static async checkConnection({ showAlert = false } = {}) {
     const state = await NetInfo.fetch()
+    // const state = false // Simulate no internet connection (comment out for production/deployment)
     if (!state.isConnected && showAlert) {
       ConnectivityService.showNoConnectionAlert()
     }

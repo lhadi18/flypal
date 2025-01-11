@@ -49,77 +49,77 @@ export function setupWebSocketServer(server: any) {
         }
 
         if (parsedData.type === 'friend_request') {
-          const { senderId, recipientId } = parsedData;
+          const { senderId, recipientId } = parsedData
           if (clients.has(recipientId)) {
-            clients.get(recipientId).send(JSON.stringify({
-              type: 'friend_request',
-              senderId,
-              message: 'You have a new friend request.',
-            }));
+            clients.get(recipientId).send(
+              JSON.stringify({
+                type: 'friend_request',
+                senderId,
+                message: 'You have a new friend request.'
+              })
+            )
           } else {
-            console.log(`User ${recipientId} is offline. Sending push notification.`);
-            await sendPushNotification(recipientId, 'Friend Request', 'You have a new friend request.');
-          }          
-          return;
+            console.log(`User ${recipientId} is offline. Sending push notification.`)
+            await sendPushNotification(recipientId, 'Friend Request', 'You have a new friend request.')
+          }
+          return
         }
 
         if (parsedData.type === 'friend_added') {
-          console.log("nigga")
-          const { userId, friendId } = parsedData;
+          console.log('nigga')
+          const { userId, friendId } = parsedData
           // Broadcast the update to both users
-          [userId, friendId].forEach((id) => {
+          ;[userId, friendId].forEach(id => {
             if (clients.has(id)) {
               clients.get(id).send(
                 JSON.stringify({
                   type: 'friend_added',
                   userId: id === userId ? friendId : userId,
-                  message: 'You are now friends.',
+                  message: 'You are now friends.'
                 })
-              );
+              )
             }
-          });
-
-          [userId, friendId].forEach((id) => {
+          })
+          ;[userId, friendId].forEach(id => {
             if (clients.has(id)) {
               clients.get(id).send(
                 JSON.stringify({
                   type: 'friend_added_connection',
                   userId: id === userId ? friendId : userId,
-                  message: 'You are now friends.',
+                  message: 'You are now friends.'
                 })
-              );
+              )
             }
-          });
+          })
           return
         }
 
         if (parsedData.type === 'friend_removed') {
-          const { userId, friendId } = parsedData;
-        
+          const { userId, friendId } = parsedData
+
           // Notify both users about the removal
-          [userId, friendId].forEach((id) => {
+          ;[userId, friendId].forEach(id => {
             if (clients.has(id)) {
               clients.get(id).send(
                 JSON.stringify({
                   type: 'friend_removed',
                   otherUserId: id === userId ? friendId : userId,
-                  message: 'Friend has been removed.',
+                  message: 'Friend has been removed.'
                 })
-              );
+              )
             }
-          });
-
-          [userId, friendId].forEach((id) => {
+          })
+          ;[userId, friendId].forEach(id => {
             if (clients.has(id)) {
               clients.get(id).send(
                 JSON.stringify({
                   type: 'friend_removed_connection',
                   otherUserId: id === userId ? friendId : userId,
-                  message: 'Friend has been removed.',
+                  message: 'Friend has been removed.'
                 })
-              );
+              )
             }
-          });
+          })
           return
         }
 
@@ -137,7 +137,7 @@ export function setupWebSocketServer(server: any) {
 
         // Handle chat messages
         if (parsedData.type === 'chat_message') {
-          const { sender, recipient, encryptedContent, nonce, plainText } = parsedData
+          const { sender, recipient, encryptedContent, nonce, plainText, isRosterShare } = parsedData
 
           if (!sender || !recipient || !encryptedContent || !nonce || !plainText) {
             console.error('Missing fields in chat message:', parsedData)
@@ -165,18 +165,56 @@ export function setupWebSocketServer(server: any) {
           const notificationBody = plainText.length > 50 ? `${plainText.slice(0, 50)}...` : plainText
 
           // Send the message to the recipient if connected
+          await sendPushNotification(recipient, 'New Message', notificationBody, senderName)
+
           if (clients.has(recipient)) {
             clients.get(recipient).send(JSON.stringify(chatMessage))
             console.log(`Message forwarded to user ${recipient}`)
           } else {
-            console.log(`User ${recipient} is offline. Sending push notification.`)
-            await sendPushNotification(recipient, 'New Message', notificationBody, senderName)
+            if (!isRosterShare) {
+              console.log(`User ${recipient} is offline. Sending push notification.`)
+            }
           }
 
           if (clients.has(sender)) {
             clients.get(sender).send(JSON.stringify(chatMessage))
           }
 
+          return
+        }
+
+        if (parsedData.type === 'roster_shared') {
+          const { senderId, recipientId, message } = parsedData
+
+          if (!senderId || !recipientId || !message) {
+            console.error('Missing fields in roster_shared notification:', parsedData)
+            return
+          }
+
+          const senderInfo = await User.findById(senderId).select('firstName lastName')
+          const senderName = senderInfo ? `${senderInfo.firstName} ${senderInfo.lastName}` : 'Unknown User'
+
+          const notificationMessage = {
+            type: 'roster_shared',
+            senderId,
+            recipientId,
+            message,
+            senderName
+          }
+
+          await sendPushNotification(
+            recipientId,
+            'Roster Shared',
+            `${senderName} has shared their monthly roster with you.`,
+            senderName
+          )
+
+          if (clients.has(recipientId)) {
+            clients.get(recipientId).send(JSON.stringify(notificationMessage))
+            console.log(`Roster shared notification sent to ${recipientId}`)
+          } else {
+            console.log(`User ${recipientId} is offline. Sending push notification.`)
+          }
           return
         }
 

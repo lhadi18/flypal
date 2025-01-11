@@ -31,6 +31,7 @@ import {
   getAircraftsFromDatabase
 } from '../../services/utils/database'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import ConnectivityService from '@/services/utils/connectivity-service'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import eventEmitter from '@/services/utils/event-emitter'
@@ -325,6 +326,11 @@ const Roster = () => {
   const showToast = message => {
     setToastMessage(message)
     setToastVisible(true)
+  }
+
+  const checkInternetConnection = async () => {
+    const isConnected = await ConnectivityService.checkConnection({ showAlert: true })
+    return isConnected
   }
 
   const handleDeleteEvent = rosterId => {
@@ -759,9 +765,13 @@ const Roster = () => {
   }
 
   const handlePickDocument = async () => {
+    if (!(await checkInternetConnection())) {
+      return
+    }
+
     const userId = await SecureStore.getItemAsync('userId')
 
-    const response = await axios.get(`https://4ca1-103-18-0-17.ngrok-free.app/api/airline/${userId}/canUploadRoster`)
+    const response = await axios.get(`https://flypal-server.click/api/airline/${userId}/canUploadRoster`)
 
     if (!response.data || !response.data.canUploadRoster) {
       Alert.alert('Roster Import Not Supported', 'We have yet to support roster imports for your airline.')
@@ -793,7 +803,7 @@ const Roster = () => {
           type: file.mimeType
         })
 
-        const response = await axios.post('https://4ca1-103-18-0-17.ngrok-free.app/api/pdf/upload', formData, {
+        const response = await axios.post('https://flypal-server.click/api/pdf/upload', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }

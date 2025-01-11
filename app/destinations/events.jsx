@@ -28,16 +28,14 @@ const Events = () => {
         const userId = await SecureStore.getItemAsync('userId')
 
         // Fetch Bookmarks
-        const bookmarksResponse = await axios.get(
-          `https://b17e-47-128-181-39.ngrok-free.app/api/bookmarks/user/${userId}`
-        )
+        const bookmarksResponse = await axios.get(`https://flypal-server.click/api/bookmarks/user/${userId}`)
         const userBookmarks = bookmarksResponse.data
         const bookmarkedEventKeys = userBookmarks
           .filter(b => b.sourceType === 'EVENT_API')
           .map(b => generateEventId(b.name, b.eventTime)) // generate IDs for comparison
 
         // Fetch Events
-        const eventsResponse = await axios.get('https://b17e-47-128-181-39.ngrok-free.app/api/events/getEvents', {
+        const eventsResponse = await axios.get('https://flypal-server.click/api/events/getEvents', {
           params: {
             city: selectedAirport.city,
             country: selectedAirport.country
@@ -69,7 +67,7 @@ const Events = () => {
       const isBookmarked = bookmarks.includes(bookmarkKey)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
 
-      await axios.post(`https://b17e-47-128-181-39.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await axios.post(`https://flypal-server.click/api/bookmarks/${endpoint}`, {
         userId,
         eventId: id,
         airportId: selectedAirport.id || selectedAirport.objectId || selectedAirport.value,
@@ -254,7 +252,9 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#FFF',
-    marginRight: 5
+    marginRight: 5,
+    fontWeight: 'bold',
+    textAlign: 'center'
   },
   errorText: {
     fontSize: 16,

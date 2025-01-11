@@ -62,7 +62,7 @@ const Dining = () => {
     const fetchBookmarks = async () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
-        const response = await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/bookmarks/user/${userId}`)
+        const response = await fetch(`https://flypal-server.click/api/bookmarks/user/${userId}`)
         if (response.ok) {
           const userBookmarks = await response.json()
           const bookmarkedIds = userBookmarks.map(b => b.diningId)
@@ -151,7 +151,7 @@ const Dining = () => {
         airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value
       }
 
-      await fetch(`https://b17e-47-128-181-39.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await fetch(`https://flypal-server.click/api/bookmarks/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -646,14 +646,6 @@ const Dining = () => {
           )}
 
           {/* Modal for Adding Dining Option */}
-          <Modal transparent={true} visible={postModalVisible} onRequestClose={() => setPostModalVisible(false)}>
-            <View style={styles.modalView}>
-              <Text style={styles.formTitle}>Add Dining Option</Text>
-              <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </Modal>
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>

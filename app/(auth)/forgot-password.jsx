@@ -27,7 +27,7 @@ const ForgotPassword = () => {
 
     try {
       const response = await axios.post(
-        'https://b17e-47-128-181-39.ngrok-free.app/api/users/forgotPassword', // Replace with your actual backend URL
+        'https://flypal-server.click/api/users/forgotPassword', // Replace with your actual backend URL
         { email, newPassword }
       )
       if (response.status === 200) {

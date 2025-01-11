@@ -231,8 +231,8 @@ export const getUserDiningBookmarks = async (req: Request, res: Response) => {
         const diningData = diningMap[objBookmark.diningId.toString()]
         return {
           ...objBookmark,
-          likes: diningData?.likes,
-          rating: diningData?.rating,
+          likes: diningData?.likes ?? 0,
+          rating: diningData?.rating ?? objBookmark.rating,
           userName: diningData?.user ? `${diningData.user.firstName} ${diningData.user.lastName}` : null
         }
       }
@@ -240,7 +240,7 @@ export const getUserDiningBookmarks = async (req: Request, res: Response) => {
       return {
         ...objBookmark,
         rating: objBookmark.rating ?? null,
-        likes: objBookmark.likes ?? null
+        likes: objBookmark.likes ?? 0
       }
     })
 

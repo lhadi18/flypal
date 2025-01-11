@@ -45,13 +45,10 @@ const EventsBookmark = () => {
         const userId = await SecureStore.getItemAsync('userId')
         const source = axios.CancelToken.source()
 
-        const response = await axios.get(
-          `https://b17e-47-128-181-39.ngrok-free.app/api/bookmarks/user/${userId}/events-paginated`,
-          {
-            params: { page, limit: 10, search: query },
-            cancelToken: source.token
-          }
-        )
+        const response = await axios.get(`https://flypal-server.click/api/bookmarks/user/${userId}/events-paginated`, {
+          params: { page, limit: 10, search: query },
+          cancelToken: source.token
+        })
 
         console.log(response.data)
 
@@ -88,7 +85,7 @@ const EventsBookmark = () => {
           onPress: async () => {
             try {
               const userId = await SecureStore.getItemAsync('userId')
-              await axios.post('https://b17e-47-128-181-39.ngrok-free.app/api/bookmarks/unbookmark', {
+              await axios.post('https://flypal-server.click/api/bookmarks/unbookmark', {
                 userId,
                 sourceType: 'EVENT_API',
                 eventId: item.eventId,
