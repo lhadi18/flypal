@@ -139,42 +139,53 @@ const MessagingScreen = () => {
     }
   }, [recipientId])
 
+  // const encryptMessage = message => {
+  //   const nonce = randomBytes(24)
+  //   const encryptedMsg = box(new Uint8Array(Buffer.from(message)), nonce, recipientPublicKey, keyPair.secretKey)
+  //   return {
+  //     encryptedContent: encodeBase64(encryptedMsg),
+  //     nonce: encodeBase64(nonce)
+  //   }
+  // }
+
   const encryptMessage = message => {
-    const nonce = randomBytes(24)
-    const encryptedMsg = box(new Uint8Array(Buffer.from(message)), nonce, recipientPublicKey, keyPair.secretKey)
     return {
-      encryptedContent: encodeBase64(encryptedMsg),
-      nonce: encodeBase64(nonce)
+      encryptedContent: message, // Send the plain text as "encrypted content"
+      nonce: 'dummy-nonce' // Use a dummy nonce
     }
   }
 
   const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
-    try {
-      // console.log('Attempting to decrypt message...');
-      // console.log('Encrypted Content:', encryptedContent);
-      // console.log('Nonce:', nonce);
-      // console.log('Sender Public Key:', encodeBase64(senderPublicKey));
-      // console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
-
-      const decrypted = box.open(
-        decodeBase64(encryptedContent),
-        decodeBase64(nonce),
-        senderPublicKey,
-        keyPair.secretKey
-      )
-
-      if (!decrypted) {
-        throw new Error('Failed to decrypt message: Decryption returned null')
-      }
-
-      const decryptedMessage = Buffer.from(decrypted).toString()
-      // console.log('Decrypted Message:', decryptedMessage);
-      return decryptedMessage
-    } catch (error) {
-      console.error('Error decrypting message:', error)
-      return '[Unable to decrypt message]'
-    }
+    return encryptedContent // Directly return the content without decryption
   }
+
+  // const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
+  //   try {
+  //     // console.log('Attempting to decrypt message...');
+  //     // console.log('Encrypted Content:', encryptedContent);
+  //     // console.log('Nonce:', nonce);
+  //     // console.log('Sender Public Key:', encodeBase64(senderPublicKey));
+  //     // console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
+
+  //     const decrypted = box.open(
+  //       decodeBase64(encryptedContent),
+  //       decodeBase64(nonce),
+  //       senderPublicKey,
+  //       keyPair.secretKey
+  //     )
+
+  //     if (!decrypted) {
+  //       throw new Error('Failed to decrypt message: Decryption returned null')
+  //     }
+
+  //     const decryptedMessage = Buffer.from(decrypted).toString()
+  //     // console.log('Decrypted Message:', decryptedMessage);
+  //     return decryptedMessage
+  //   } catch (error) {
+  //     console.error('Error decrypting message:', error)
+  //     return '[Unable to decrypt message]'
+  //   }
+  // }
 
   useEffect(() => {
     const loadDraft = async () => {
@@ -324,9 +335,9 @@ const MessagingScreen = () => {
         _id: Date.now().toString(),
         sender: { _id: userId },
         recipient: recipientId,
-        encryptedContent,
-        nonce,
-        plainText: inputText,
+        encryptedContent, // Use plain text
+        nonce, // Use dummy nonce
+        plainText: inputText, // Keep plain text for testing
         timestamp: new Date().toISOString(),
         read: false
       }
