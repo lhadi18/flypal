@@ -10,6 +10,7 @@ import {
   Platform,
   Image
 } from 'react-native'
+import webSocketService from '@/services/utils/websocket-service'
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
 import React, { useState, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
@@ -46,6 +47,7 @@ const MessagingScreen = () => {
   const [selectedUser, setSelectedUser] = useState(null)
   const [keyPair, setKeyPair] = useState(null)
   const [recipientPublicKey, setRecipientPublicKey] = useState(null)
+  const [isFriend, setIsFriend] = useState(true)
 
   const ws = useRef(null)
   const flatListRef = useRef(null)
@@ -139,7 +141,7 @@ const MessagingScreen = () => {
     }
   }, [recipientId])
 
-  const encryptMessage = message => {
+  const encryptMessage = async message => {
     const nonce = randomBytes(24)
     const encryptedMsg = box(new Uint8Array(Buffer.from(message)), nonce, recipientPublicKey, keyPair.secretKey)
     return {
@@ -147,6 +149,17 @@ const MessagingScreen = () => {
       nonce: encodeBase64(nonce)
     }
   }
+
+  // const encryptMessage = message => {
+  //   return {
+  //     encryptedContent: message, // Send the plain text as "encrypted content"
+  //     nonce: 'dummy-nonce' // Use a dummy nonce
+  //   }
+  // }
+
+  // const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
+  //   return encryptedContent // Directly return the content without decryption
+  // }
 
   const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
     try {
@@ -232,70 +245,120 @@ const MessagingScreen = () => {
 
     fetchMessages()
 
-    const setupWebSocket = () => {
-      ws.current = new WebSocket('ws://10.171.60.173:8080')
+    //   const setupWebSocket = () => {
+    //     ws.current = new WebSocket('ws://10.171.60.173:8080')
 
-      ws.current.onopen = () => {
-        // console.log('WebSocket connected')
-        ws.current.send(JSON.stringify({ type: 'register', userId }))
-      }
+    //     ws.current.onopen = () => {
+    //       // console.log('WebSocket connected')
+    //       ws.current.send(JSON.stringify({ type: 'register', userId }))
+    //     }
 
-      ws.current.onmessage = event => {
-        // console.log('Raw WebSocket Message:', event.data); // Log raw message
-        const data = JSON.parse(event.data)
-        // console.log('Parsed WebSocket Message:', data);
+    //     ws.current.onmessage = event => {
+    //       // console.log('Raw WebSocket Message:', event.data); // Log raw message
+    //       const data = JSON.parse(event.data)
+    //       // console.log('Parsed WebSocket Message:', data);
 
-        if (data.type === 'online_users') {
-          data.users.forEach(user => {
-            // Update user statuses based on the online_users list
-            if (user.userId === recipientId) {
-              setUserStatus('online')
-            }
-          })
+    //       if (data.type === 'online_users') {
+    //         data.users.forEach(user => {
+    //           // Update user statuses based on the online_users list
+    //           if (user.userId === recipientId) {
+    //             setUserStatus('online')
+    //           }
+    //         })
+    //       }
+
+    //       if (data.type === 'status_change' && data.userId === recipientId) {
+    //         setUserStatus(data.status)
+    //       }
+
+    //       // Handle incoming chat messages
+    //       if (data.type === 'chat_message') {
+    //         // console.log('Incoming Chat Message:', data);
+    //         // console.log(data.encryptedContent)
+    //         // console.log(data.nonce)
+
+    //         if (!data.encryptedContent || !data.nonce) {
+    //           console.error('Encrypted content or nonce is missing in the message:', data)
+    //           return
+    //         }
+
+    //         setMessages(prevMessages => [...prevMessages, data])
+
+    //         // console.log('Message added to state:', data);
+
+    //         // Auto-scroll only if the user is already at the bottom
+    //         if (isAtBottom) {
+    //           flatListRef.current?.scrollToEnd({ animated: true })
+    //         }
+    //       }
+
+    //       if (data.type === 'read_receipt') {
+    //         setMessages(prevMessages =>
+    //           prevMessages.map(message => (data.messageIds.includes(message._id) ? { ...message, read: true } : message))
+    //         )
+    //       }
+    //     }
+
+    //     ws.current.onclose = () => {
+    //       // console.log('WebSocket disconnected. Reconnecting...')
+    //       setTimeout(setupWebSocket, 3000)
+    //     }
+    //   }
+
+    //   setupWebSocket()
+
+    //   return () => {
+    //     ws.current?.close()
+    //   }
+  }, [userId])
+
+  useEffect(() => {
+    if (!userId) return
+
+    const handleWebSocketMessage = message => {
+      if (message.type === 'chat_message') {
+        setMessages(prevMessages => [...prevMessages, message])
+        if (isAtBottom) {
+          flatListRef.current?.scrollToEnd({ animated: true })
         }
-
-        if (data.type === 'status_change' && data.userId === recipientId) {
-          setUserStatus(data.status)
-        }
-
-        // Handle incoming chat messages
-        if (data.type === 'chat_message') {
-          // console.log('Incoming Chat Message:', data);
-          // console.log(data.encryptedContent)
-          // console.log(data.nonce)
-
-          if (!data.encryptedContent || !data.nonce) {
-            console.error('Encrypted content or nonce is missing in the message:', data)
-            return
-          }
-
-          setMessages(prevMessages => [...prevMessages, data])
-
-          // console.log('Message added to state:', data);
-
-          // Auto-scroll only if the user is already at the bottom
-          if (isAtBottom) {
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
-        }
-
-        if (data.type === 'read_receipt') {
-          setMessages(prevMessages =>
-            prevMessages.map(message => (data.messageIds.includes(message._id) ? { ...message, read: true } : message))
-          )
-        }
-      }
-
-      ws.current.onclose = () => {
-        // console.log('WebSocket disconnected. Reconnecting...')
-        setTimeout(setupWebSocket, 3000)
+      } else if (message.type === 'read_receipt') {
+        setMessages(prevMessages =>
+          prevMessages.map(msg => (message.messageIds.includes(msg._id) ? { ...msg, read: true } : msg))
+        )
+      } else if (message.type === 'online_users') {
+        const isRecipientOnline = message.users.some(user => user.userId === recipientId)
+        setUserStatus(isRecipientOnline ? 'online' : 'offline')
+      } else if (message.type === 'status_change' && message.userId === recipientId) {
+        setUserStatus(message.status)
       }
     }
 
-    setupWebSocket()
+    const handleWebSocketOpen = () => {
+      console.log('WebSocket connected')
+      webSocketService.send({ type: 'register', userId })
+    }
+
+    const handleWebSocketClose = () => {
+      console.log('WebSocket disconnected')
+    }
+
+    const handleWebSocketError = error => {
+      console.error('WebSocket error:', error)
+    }
+
+    webSocketService.on('message', handleWebSocketMessage)
+    webSocketService.on('open', handleWebSocketOpen)
+    webSocketService.on('close', handleWebSocketClose)
+    webSocketService.on('error', handleWebSocketError)
+
+    webSocketService.connect('ws://10.171.60.173:8080', userId)
 
     return () => {
-      ws.current?.close()
+      webSocketService.off('message', handleWebSocketMessage)
+      webSocketService.off('open', handleWebSocketOpen)
+      webSocketService.off('close', handleWebSocketClose)
+      webSocketService.off('error', handleWebSocketError)
+      webSocketService.close()
     }
   }, [userId])
 
@@ -314,29 +377,21 @@ const MessagingScreen = () => {
 
   const handleSendMessage = async () => {
     if (inputText.trim() && keyPair && recipientPublicKey) {
-      const startTime = Date.now()
-      console.log('Start sending message:', startTime)
-
-      const { encryptedContent, nonce } = encryptMessage(inputText)
-      console.log('Encryption completed in:', Date.now() - startTime, 'ms')
-
+      const { encryptedContent, nonce } = await encryptMessage(inputText)
       const message = {
         _id: Date.now().toString(),
         sender: { _id: userId },
         recipient: recipientId,
         encryptedContent,
         nonce,
-        plainText: inputText,
+        plainText: inputText, // Keep plain text for testing
         timestamp: new Date().toISOString(),
-        read: false
+        read: false,
+        type: 'chat_message'
       }
 
       try {
-        const sendStart = Date.now()
-        ws.current.send(JSON.stringify({ ...message, type: 'chat_message' }))
-        console.log('WebSocket send took:', Date.now() - sendStart, 'ms')
-
-        const stateUpdateStart = Date.now()
+        webSocketService.send(message)
         setMessages(prevMessages => [
           ...prevMessages,
           {
@@ -344,16 +399,6 @@ const MessagingScreen = () => {
             content: inputText
           }
         ])
-        console.log('State update took:', Date.now() - stateUpdateStart, 'ms')
-
-        // Performance issue for this
-        // const secureStoreStart = Date.now()
-        // await SecureStore.deleteItemAsync(`draft_${recipientId}`)
-        // console.log('SecureStore delete took:', Date.now() - secureStoreStart, 'ms')
-
-        const endTime = Date.now()
-        console.log('Total time to send message:', endTime - startTime, 'ms')
-
         setInputText('')
         setDrafts(prevDrafts => ({ ...prevDrafts, [recipientId]: '' }))
       } catch (error) {
@@ -395,14 +440,12 @@ const MessagingScreen = () => {
       .map(item => item.item.message._id)
 
     if (unreadMessages.length > 0) {
-      ws.current.send(
-        JSON.stringify({
-          type: 'read_receipt',
-          senderId: userId,
-          recipientId: recipientId,
-          messageIds: unreadMessages
-        })
-      )
+      webSocketService.send({
+        type: 'read_receipt',
+        senderId: userId,
+        recipientId,
+        messageIds: unreadMessages
+      })
     }
   }
 
@@ -424,6 +467,40 @@ const MessagingScreen = () => {
     })
   }
 
+  const checkFriendshipStatus = async (userId, recipientId) => {
+    try {
+      const response = await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/users/checkFriendship/${userId}/${recipientId}`);
+      if (!response.ok) {
+        return;
+      }
+  
+      const data = await response.json();
+      console.log('Friendship status response:', data);
+  
+      // Make sure to access the correct data
+      if (data.hasOwnProperty('isFriend')) {
+        return data.isFriend;
+      } else {
+        console.error('Response does not contain isFriend property');
+        return false; // Return false if the expected property is missing
+      }
+    } catch (error) {
+      console.error('Error checking friendship status:', error);
+      return false; // Default to false in case of an error
+    }
+  };
+  
+  useEffect(() => {
+    const fetchFriendshipStatus = async () => {
+      const status = await checkFriendshipStatus(userId, recipientId);
+      console.log('Friendship status:', status);
+      setIsFriend(status); // Update state with the actual status
+    };
+  
+    fetchFriendshipStatus();
+  }, [userId, recipientId]); // Add dependencies to update when userId or recipientId changes
+
+  
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
       return <Text style={styles.dateHeader}>{item.date}</Text>
@@ -535,6 +612,8 @@ const MessagingScreen = () => {
 
         {/* Input Field */}
         <View style={styles.inputContainer}>
+        {isFriend ? (
+          <>
           <TextInput
             style={styles.textInput}
             placeholder="Type your message..."
@@ -546,7 +625,13 @@ const MessagingScreen = () => {
           <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
             <Text style={styles.sendButtonText}>Send</Text>
           </TouchableOpacity>
-        </View>
+          </>
+        ) : (
+          <Text style={styles.noFriendText}>
+            You are no longer friends with this person
+          </Text>
+        )}
+      </View>
       </KeyboardAvoidingView>
       <ProfileModal
         visible={isProfileModalVisible}
