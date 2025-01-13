@@ -33,27 +33,46 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('wss://flypal-server.click')
+    let reconnectInterval = null
 
-    ws.current.onopen = () => {
-      console.log('WebSocket connected')
+    const connectWebSocket = () => {
+      ws.current = new WebSocket('wss://flypal-server.click')
+
+      ws.current.onopen = () => {
+        console.log('WebSocket connected')
+        if (reconnectInterval) {
+          clearInterval(reconnectInterval)
+          reconnectInterval = null
+        }
+      }
+
+      ws.current.onmessage = event => {
+        console.log('WebSocket message received:', event.data)
+      }
+
+      ws.current.onerror = error => {
+        console.error('WebSocket error:', error)
+      }
+
+      ws.current.onclose = () => {
+        console.log('WebSocket disconnected')
+        if (!reconnectInterval) {
+          reconnectInterval = setInterval(() => {
+            console.log('Attempting to reconnect WebSocket...')
+            connectWebSocket()
+          }, 5000)
+        }
+      }
     }
 
-    ws.current.onmessage = event => {
-      console.log('WebSocket message received:', event.data)
-    }
-
-    ws.current.onerror = error => {
-      console.error('WebSocket error:', error)
-    }
-
-    ws.current.onclose = () => {
-      console.log('WebSocket disconnected')
-    }
+    connectWebSocket()
 
     return () => {
       if (ws.current) {
         ws.current.close()
+      }
+      if (reconnectInterval) {
+        clearInterval(reconnectInterval)
       }
     }
   }, [])
