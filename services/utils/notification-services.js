@@ -6,6 +6,18 @@ const NOTIFICATIONS_ENABLED_KEY = 'notificationsEnabled'
 const CUSTOM_REMINDER_HOUR_KEY = 'customReminderHour'
 const RED_EYE_REMINDER_TIME_KEY = 'redEyeReminderTime'
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true, // Show notifications as alerts
+    shouldPlaySound: true, // Play sound for notifications
+    shouldSetBadge: true // Set the app badge number (iOS only)
+  })
+})
+
+Notifications.addNotificationReceivedListener(notification => {
+  console.log('Foreground notification received:', notification)
+})
+
 /**
  * Requests notification permissions from the user.
  * @returns {Promise<boolean>} - Returns `true` if permission is granted.
