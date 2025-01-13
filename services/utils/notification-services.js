@@ -95,7 +95,7 @@ export const scheduleNotification = async (event, reminderHoursBefore, timezone)
   const eventStartTime = event.departureTime ? moment.tz(event.departureTime, timezone) : null
 
   if (!eventStartTime || !eventStartTime.isValid()) {
-    console.warn('Invalid or missing start time for event:', event)
+    // console.warn('Invalid or missing start time for event:', event)
     return
   }
   await cancelNotificationForEvent(event.id)
@@ -160,7 +160,7 @@ export const scheduleRedEyeReminder = async (event, redEyeReminderHour, timezone
         }
       })
     } else {
-      console.warn('Red-eye reminder time is in the past and will not be scheduled:', reminderTime.toString())
+      // console.warn('Red-eye reminder time is in the past and will not be scheduled:', reminderTime.toString())
     }
   }
 }

@@ -10,6 +10,7 @@ import {
   Platform,
   Image
 } from 'react-native'
+import webSocketService from '@/services/utils/websocket-service'
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
 import React, { useState, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
@@ -243,70 +244,120 @@ const MessagingScreen = () => {
 
     fetchMessages()
 
-    const setupWebSocket = () => {
-      ws.current = new WebSocket('wss://flypal-server.click')
+    //   const setupWebSocket = () => {
+    //     ws.current = new WebSocket('wss://flypal-server.click')
 
-      ws.current.onopen = () => {
-        // console.log('WebSocket connected')
-        ws.current.send(JSON.stringify({ type: 'register', userId }))
-      }
+    //     ws.current.onopen = () => {
+    //       // console.log('WebSocket connected')
+    //       ws.current.send(JSON.stringify({ type: 'register', userId }))
+    //     }
 
-      ws.current.onmessage = event => {
-        // console.log('Raw WebSocket Message:', event.data); // Log raw message
-        const data = JSON.parse(event.data)
-        // console.log('Parsed WebSocket Message:', data);
+    //     ws.current.onmessage = event => {
+    //       // console.log('Raw WebSocket Message:', event.data); // Log raw message
+    //       const data = JSON.parse(event.data)
+    //       // console.log('Parsed WebSocket Message:', data);
 
-        if (data.type === 'online_users') {
-          data.users.forEach(user => {
-            // Update user statuses based on the online_users list
-            if (user.userId === recipientId) {
-              setUserStatus('online')
-            }
-          })
+    //       if (data.type === 'online_users') {
+    //         data.users.forEach(user => {
+    //           // Update user statuses based on the online_users list
+    //           if (user.userId === recipientId) {
+    //             setUserStatus('online')
+    //           }
+    //         })
+    //       }
+
+    //       if (data.type === 'status_change' && data.userId === recipientId) {
+    //         setUserStatus(data.status)
+    //       }
+
+    //       // Handle incoming chat messages
+    //       if (data.type === 'chat_message') {
+    //         // console.log('Incoming Chat Message:', data);
+    //         // console.log(data.encryptedContent)
+    //         // console.log(data.nonce)
+
+    //         if (!data.encryptedContent || !data.nonce) {
+    //           console.error('Encrypted content or nonce is missing in the message:', data)
+    //           return
+    //         }
+
+    //         setMessages(prevMessages => [...prevMessages, data])
+
+    //         // console.log('Message added to state:', data);
+
+    //         // Auto-scroll only if the user is already at the bottom
+    //         if (isAtBottom) {
+    //           flatListRef.current?.scrollToEnd({ animated: true })
+    //         }
+    //       }
+
+    //       if (data.type === 'read_receipt') {
+    //         setMessages(prevMessages =>
+    //           prevMessages.map(message => (data.messageIds.includes(message._id) ? { ...message, read: true } : message))
+    //         )
+    //       }
+    //     }
+
+    //     ws.current.onclose = () => {
+    //       // console.log('WebSocket disconnected. Reconnecting...')
+    //       setTimeout(setupWebSocket, 3000)
+    //     }
+    //   }
+
+    //   setupWebSocket()
+
+    //   return () => {
+    //     ws.current?.close()
+    //   }
+  }, [userId])
+
+  useEffect(() => {
+    if (!userId) return
+
+    const handleWebSocketMessage = message => {
+      if (message.type === 'chat_message') {
+        setMessages(prevMessages => [...prevMessages, message])
+        if (isAtBottom) {
+          flatListRef.current?.scrollToEnd({ animated: true })
         }
-
-        if (data.type === 'status_change' && data.userId === recipientId) {
-          setUserStatus(data.status)
-        }
-
-        // Handle incoming chat messages
-        if (data.type === 'chat_message') {
-          // console.log('Incoming Chat Message:', data);
-          // console.log(data.encryptedContent)
-          // console.log(data.nonce)
-
-          if (!data.encryptedContent || !data.nonce) {
-            console.error('Encrypted content or nonce is missing in the message:', data)
-            return
-          }
-
-          setMessages(prevMessages => [...prevMessages, data])
-
-          // console.log('Message added to state:', data);
-
-          // Auto-scroll only if the user is already at the bottom
-          if (isAtBottom) {
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
-        }
-
-        if (data.type === 'read_receipt') {
-          setMessages(prevMessages =>
-            prevMessages.map(message => (data.messageIds.includes(message._id) ? { ...message, read: true } : message))
-          )
-        }
-      }
-
-      ws.current.onclose = () => {
-        // console.log('WebSocket disconnected. Reconnecting...')
-        setTimeout(setupWebSocket, 3000)
+      } else if (message.type === 'read_receipt') {
+        setMessages(prevMessages =>
+          prevMessages.map(msg => (message.messageIds.includes(msg._id) ? { ...msg, read: true } : msg))
+        )
+      } else if (message.type === 'online_users') {
+        const isRecipientOnline = message.users.some(user => user.userId === recipientId)
+        setUserStatus(isRecipientOnline ? 'online' : 'offline')
+      } else if (message.type === 'status_change' && message.userId === recipientId) {
+        setUserStatus(message.status)
       }
     }
 
-    setupWebSocket()
+    const handleWebSocketOpen = () => {
+      console.log('WebSocket connected')
+      webSocketService.send({ type: 'register', userId })
+    }
+
+    const handleWebSocketClose = () => {
+      console.log('WebSocket disconnected')
+    }
+
+    const handleWebSocketError = error => {
+      console.error('WebSocket error:', error)
+    }
+
+    webSocketService.on('message', handleWebSocketMessage)
+    webSocketService.on('open', handleWebSocketOpen)
+    webSocketService.on('close', handleWebSocketClose)
+    webSocketService.on('error', handleWebSocketError)
+
+    webSocketService.connect('wss://flypal-server.click', userId)
 
     return () => {
-      ws.current?.close()
+      webSocketService.off('message', handleWebSocketMessage)
+      webSocketService.off('open', handleWebSocketOpen)
+      webSocketService.off('close', handleWebSocketClose)
+      webSocketService.off('error', handleWebSocketError)
+      webSocketService.close()
     }
   }, [userId])
 
@@ -325,29 +376,21 @@ const MessagingScreen = () => {
 
   const handleSendMessage = async () => {
     if (inputText.trim() && keyPair && recipientPublicKey) {
-      const startTime = Date.now()
-      console.log('Start sending message:', startTime)
-
       const { encryptedContent, nonce } = await encryptMessage(inputText)
-      console.log('Encryption completed in:', Date.now() - startTime, 'ms')
-
       const message = {
         _id: Date.now().toString(),
         sender: { _id: userId },
         recipient: recipientId,
-        encryptedContent, // Use plain text
-        nonce, // Use dummy nonce
+        encryptedContent,
+        nonce,
         plainText: inputText, // Keep plain text for testing
         timestamp: new Date().toISOString(),
-        read: false
+        read: false,
+        type: 'chat_message'
       }
 
       try {
-        const sendStart = Date.now()
-        ws.current.send(JSON.stringify({ ...message, type: 'chat_message' }))
-        console.log('WebSocket send took:', Date.now() - sendStart, 'ms')
-
-        const stateUpdateStart = Date.now()
+        webSocketService.send(message)
         setMessages(prevMessages => [
           ...prevMessages,
           {
@@ -355,16 +398,6 @@ const MessagingScreen = () => {
             content: inputText
           }
         ])
-        console.log('State update took:', Date.now() - stateUpdateStart, 'ms')
-
-        // Performance issue for this
-        // const secureStoreStart = Date.now()
-        // await SecureStore.deleteItemAsync(`draft_${recipientId}`)
-        // console.log('SecureStore delete took:', Date.now() - secureStoreStart, 'ms')
-
-        const endTime = Date.now()
-        console.log('Total time to send message:', endTime - startTime, 'ms')
-
         setInputText('')
         setDrafts(prevDrafts => ({ ...prevDrafts, [recipientId]: '' }))
       } catch (error) {
@@ -406,14 +439,12 @@ const MessagingScreen = () => {
       .map(item => item.item.message._id)
 
     if (unreadMessages.length > 0) {
-      ws.current.send(
-        JSON.stringify({
-          type: 'read_receipt',
-          senderId: userId,
-          recipientId: recipientId,
-          messageIds: unreadMessages
-        })
-      )
+      webSocketService.send({
+        type: 'read_receipt',
+        senderId: userId,
+        recipientId,
+        messageIds: unreadMessages
+      })
     }
   }
 

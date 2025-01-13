@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator
 } from 'react-native'
+import webSocketService from '@/services/utils/websocket-service'
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
 import React, { useState, useEffect, useRef } from 'react'
 import * as SecureStore from 'expo-secure-store'
@@ -33,49 +34,14 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   const ws = useRef(null)
 
   useEffect(() => {
-    let reconnectInterval = null
-
-    const connectWebSocket = () => {
-      ws.current = new WebSocket('wss://flypal-server.click')
-
-      ws.current.onopen = () => {
-        console.log('WebSocket connected')
-        if (reconnectInterval) {
-          clearInterval(reconnectInterval)
-          reconnectInterval = null
-        }
-      }
-
-      ws.current.onmessage = event => {
-        console.log('WebSocket message received:', event.data)
-      }
-
-      ws.current.onerror = error => {
-        console.error('WebSocket error:', error)
-      }
-
-      ws.current.onclose = () => {
-        console.log('WebSocket disconnected')
-        if (!reconnectInterval) {
-          reconnectInterval = setInterval(() => {
-            console.log('Attempting to reconnect WebSocket...')
-            connectWebSocket()
-          }, 5000)
-        }
-      }
+    if (currentUserId) {
+      webSocketService.connect('wss://flypal-server.click', currentUserId)
     }
-
-    connectWebSocket()
 
     return () => {
-      if (ws.current) {
-        ws.current.close()
-      }
-      if (reconnectInterval) {
-        clearInterval(reconnectInterval)
-      }
+      webSocketService.close()
     }
-  }, [])
+  }, [currentUserId])
 
   useEffect(() => {
     const fetchKeys = async () => {
@@ -286,12 +252,8 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
           message: `${currentUserId} has shared their monthly roster with you.`
         }
 
-        if (ws.current.readyState === WebSocket.OPEN) {
-          ws.current.send(JSON.stringify(messagePayload))
-          ws.current.send(JSON.stringify(notificationPayload))
-        } else {
-          console.error(`WebSocket connection is not open. Failed to send to ${recipientId}`)
-        }
+        webSocketService.send(messagePayload)
+        webSocketService.send(notificationPayload)
       }
 
       Alert.alert('Success', 'Roster shared successfully!')

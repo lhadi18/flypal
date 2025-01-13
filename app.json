@@ -4,7 +4,7 @@
     "slug": "flypal",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "../assets/images/icon.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -13,7 +13,7 @@
       "backgroundColor": "#ffffff"
     },
     "notification": {
-      "icon": "../assets/images/icon.png",
+      "icon": "./assets/images/icon.png",
       "color": "#FFFFFF",
       "iosDisplayInForeground": true
     },
@@ -35,7 +35,8 @@
       },
       "package": "com.lhadi18.flypal",
       "permissions": ["INTERNET", "ACCESS_NETWORK_STATE", "NOTIFICATIONS", "VIBRATE"],
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "googleServicesFile": "./flypal-f15ef-firebase-adminsdk-84lkc-b4826d27b9.json"
     },
     "web": {
       "bundler": "metro",
