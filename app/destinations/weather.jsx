@@ -33,7 +33,7 @@ const Weather = () => {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const response = await axios.get('http://api.weatherapi.com/v1/forecast.json', {
+        const response = await axios.get('https://api.weatherapi.com/v1/forecast.json', {
           params: {
             key: '3771168436784bab93922931240606',
             q: `${selectedAirport.city},${selectedAirport.country}`,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFD700' // gold background for error
+    backgroundColor: 'white'
   },
   header: {
     justifyContent: 'center',

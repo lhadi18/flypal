@@ -18,13 +18,15 @@
       "iosDisplayInForeground": true
     },
     "ios": {
+      "simulator": true,
       "supportsTablet": false,
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         },
         "UIBackgroundModes": ["remote-notification"]
-      }
+      },
+      "bundleIdentifier": "com.lhadi18.flypal"
     },
     "android": {
       "adaptiveIcon": {
