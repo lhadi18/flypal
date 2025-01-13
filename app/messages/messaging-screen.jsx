@@ -11,6 +11,7 @@ import {
   Image
 } from 'react-native'
 import webSocketService from '@/services/utils/websocket-service'
+import webSocketService from '@/services/utils/websocket-service'
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
 import React, { useState, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
@@ -47,6 +48,7 @@ const MessagingScreen = () => {
   const [selectedUser, setSelectedUser] = useState(null)
   const [keyPair, setKeyPair] = useState(null)
   const [recipientPublicKey, setRecipientPublicKey] = useState(null)
+  const [isFriend, setIsFriend] = useState(true)
 
   const ws = useRef(null)
   const flatListRef = useRef(null)
@@ -74,9 +76,9 @@ const MessagingScreen = () => {
           const privateKey = decodeBase64(privateKeyStr)
           const publicKey = nacl.box.keyPair.fromSecretKey(privateKey).publicKey
 
-          // console.log('Loaded existing key pair from server:');
-          // console.log('Public Key:', encodeBase64(publicKey));
-          // console.log('Secret Key:', encodeBase64(privateKey));
+          console.log('Loaded existing key pair from server:')
+          console.log('Public Key:', encodeBase64(publicKey))
+          console.log('Secret Key:', encodeBase64(privateKey))
 
           setKeyPair({
             publicKey,
@@ -143,6 +145,13 @@ const MessagingScreen = () => {
   const encryptMessage = async message => {
     const nonce = randomBytes(24)
     const encryptedMsg = box(new Uint8Array(Buffer.from(message)), nonce, recipientPublicKey, keyPair.secretKey)
+
+    console.log('Attempting to encrypt message...')
+    console.log('Plaintext message:', message)
+    console.log('Nonce:', encodeBase64(nonce))
+    console.log('Sender Public Key:', encodeBase64(recipientPublicKey))
+    console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey))
+
     return {
       encryptedContent: encodeBase64(encryptedMsg),
       nonce: encodeBase64(nonce)
@@ -162,11 +171,11 @@ const MessagingScreen = () => {
 
   const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
     try {
-      // console.log('Attempting to decrypt message...');
-      // console.log('Encrypted Content:', encryptedContent);
-      // console.log('Nonce:', nonce);
-      // console.log('Sender Public Key:', encodeBase64(senderPublicKey));
-      // console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
+      console.log('Attempting to decrypt message...')
+      console.log('Encrypted Content:', encryptedContent)
+      console.log('Nonce:', nonce)
+      console.log('Sender Public Key:', encodeBase64(senderPublicKey))
+      console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey))
 
       const decrypted = box.open(
         decodeBase64(encryptedContent),
@@ -466,6 +475,41 @@ const MessagingScreen = () => {
     })
   }
 
+  const checkFriendshipStatus = async (userId, recipientId) => {
+    try {
+      const response = await fetch(
+        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/checkFriendship/${userId}/${recipientId}`
+      )
+      if (!response.ok) {
+        return
+      }
+
+      const data = await response.json()
+      console.log('Friendship status response:', data)
+
+      // Make sure to access the correct data
+      if (data.hasOwnProperty('isFriend')) {
+        return data.isFriend
+      } else {
+        console.error('Response does not contain isFriend property')
+        return false // Return false if the expected property is missing
+      }
+    } catch (error) {
+      console.error('Error checking friendship status:', error)
+      return false // Default to false in case of an error
+    }
+  }
+
+  useEffect(() => {
+    const fetchFriendshipStatus = async () => {
+      const status = await checkFriendshipStatus(userId, recipientId)
+      console.log('Friendship status:', status)
+      setIsFriend(status) // Update state with the actual status
+    }
+
+    fetchFriendshipStatus()
+  }, [userId, recipientId]) // Add dependencies to update when userId or recipientId changes
+
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
       return <Text style={styles.dateHeader}>{item.date}</Text>
@@ -577,17 +621,23 @@ const MessagingScreen = () => {
 
         {/* Input Field */}
         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type your message..."
-            value={inputText}
-            onChangeText={handleInputChange}
-            onFocus={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          />
+          {isFriend ? (
+            <>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type your message..."
+                value={inputText}
+                onChangeText={handleInputChange}
+                onFocus={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              />
 
-          <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>Send</Text>
-          </TouchableOpacity>
+              <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
+                <Text style={styles.sendButtonText}>Send</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.noFriendText}>You are no longer friends with this person</Text>
+          )}
         </View>
       </KeyboardAvoidingView>
       <ProfileModal

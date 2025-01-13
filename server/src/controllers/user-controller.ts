@@ -443,6 +443,30 @@ export const getNonFriends = async (req: Request, res: Response): Promise<void> 
   }
 }
 
+export const checkFriendship = async (req: Request, res: Response) => {
+  const { userId, friendId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(friendId)) {
+    return res.status(400).json({ error: 'Invalid userId or recipientId' });
+  }
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if friendId exists in the friends array
+    const isFriend = user.friends.some(friend => String(friend) === String(friendId));
+
+    res.status(200).json({ isFriend });
+  } catch (error) {
+    console.error('Error checking friendship:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 // For Admin Dashboard
 export const getUsers = async (req: Request, res: Response) => {
   const { page = 1, limit = 5, search = '' } = req.query
