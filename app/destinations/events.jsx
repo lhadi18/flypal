@@ -41,7 +41,18 @@ const Events = () => {
             country: selectedAirport.country
           }
         })
-        const fetchedEvents = eventsResponse.data.events.map(event => ({
+
+        const uniqueEvents = []
+        const seenTitles = new Set()
+
+        eventsResponse.data.events.forEach(event => {
+          if (!seenTitles.has(event.title)) {
+            seenTitles.add(event.title)
+            uniqueEvents.push(event)
+          }
+        })
+
+        const fetchedEvents = uniqueEvents.map(event => ({
           ...event,
           uniqueId: generateEventId(event.title, event.date.when),
           bookmarked: bookmarkedEventKeys.includes(generateEventId(event.title, event.date.when))
@@ -252,7 +263,6 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#FFF',
-    marginRight: 5,
     fontWeight: 'bold',
     textAlign: 'center'
   },

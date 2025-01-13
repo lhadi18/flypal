@@ -22,6 +22,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import StyledAirportSearch from '@/components/sign-up-airport-search'
+import webSocketService from '@/services/utils/websocket-service'
 import AirlineSearch from '@/components/sign-up-airline-search'
 import eventEmitter from '@/services/utils/event-emitter'
 import RNPickerSelect from 'react-native-picker-select'
@@ -203,16 +204,14 @@ const Settings = () => {
         body: JSON.stringify({ userId, deviceId })
       })
 
+      webSocketService.disconnect()
+
       await SecureStore.deleteItemAsync('userId')
       await SecureStore.deleteItemAsync('pushToken')
       router.replace('/sign-in')
     } catch (error) {
       console.error('Error during logout:', error)
     }
-  }
-
-  const handleImagePress = () => {
-    setShowModal(true)
   }
 
   const closeModal = () => {

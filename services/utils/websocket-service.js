@@ -8,7 +8,7 @@ class WebSocketService {
 
   connect(url, userId) {
     if (this.ws && this.isConnected) {
-      console.warn('WebSocket is already connected')
+      // console.warn('WebSocket is already connected')
       return
     }
 
@@ -35,7 +35,7 @@ class WebSocketService {
     }
 
     this.ws.onerror = error => {
-      console.error('WebSocket error:', error)
+      // console.error('WebSocket error:', error)
       this.emitEvent('error', error)
     }
   }
@@ -70,6 +70,14 @@ class WebSocketService {
   emitEvent(event, data) {
     if (this.eventListeners[event]) {
       this.eventListeners[event].forEach(callback => callback(data))
+    }
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close()
+      this.ws = null
+      this.isConnected = false
     }
   }
 }

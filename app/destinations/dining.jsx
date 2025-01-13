@@ -241,7 +241,7 @@ const Dining = () => {
       location: values.location,
       review: values.review,
       rating: values.rating,
-      tags: values.tags,
+      tags: selectedDietaryOption ? [selectedDietaryOption] : [],
       airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value,
       image: values.image
     }
