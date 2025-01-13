@@ -11,6 +11,7 @@ import {
   Image
 } from 'react-native'
 import webSocketService from '@/services/utils/websocket-service'
+import webSocketService from '@/services/utils/websocket-service'
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
 import React, { useState, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
@@ -58,7 +59,7 @@ const MessagingScreen = () => {
         let privateKeyStr = null
 
         // Attempt to fetch private key from the server
-        const response = await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/key/keys/${userId}`, {
+        const response = await fetch(`https://flypal-server.click/api/key/keys/${userId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         })
@@ -75,9 +76,9 @@ const MessagingScreen = () => {
           const privateKey = decodeBase64(privateKeyStr)
           const publicKey = nacl.box.keyPair.fromSecretKey(privateKey).publicKey
 
-          console.log('Loaded existing key pair from server:');
-          console.log('Public Key:', encodeBase64(publicKey));
-          console.log('Secret Key:', encodeBase64(privateKey));
+          console.log('Loaded existing key pair from server:')
+          console.log('Public Key:', encodeBase64(publicKey))
+          console.log('Secret Key:', encodeBase64(privateKey))
 
           setKeyPair({
             publicKey,
@@ -101,7 +102,7 @@ const MessagingScreen = () => {
           }
 
           // Store public key and secret key on the server
-          const response = await fetch('https://c6f8-103-18-0-18.ngrok-free.app/api/key/keys', {
+          const response = await fetch('https://flypal-server.click/api/key/keys', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -128,7 +129,7 @@ const MessagingScreen = () => {
   useEffect(() => {
     const fetchRecipientKey = async () => {
       try {
-        const response = await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/key/keys/${recipientId}`)
+        const response = await fetch(`https://flypal-server.click/api/key/keys/${recipientId}`)
         const data = await response.json()
         setRecipientPublicKey(decodeBase64(data.publicKey))
       } catch (error) {
@@ -145,11 +146,11 @@ const MessagingScreen = () => {
     const nonce = randomBytes(24)
     const encryptedMsg = box(new Uint8Array(Buffer.from(message)), nonce, recipientPublicKey, keyPair.secretKey)
 
-      console.log('Attempting to encrypt message...');
-      console.log('Plaintext message:', message);
-      console.log('Nonce:', encodeBase64(nonce));
-      console.log('Sender Public Key:', encodeBase64(recipientPublicKey));
-      console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
+    console.log('Attempting to encrypt message...')
+    console.log('Plaintext message:', message)
+    console.log('Nonce:', encodeBase64(nonce))
+    console.log('Sender Public Key:', encodeBase64(recipientPublicKey))
+    console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey))
 
     return {
       encryptedContent: encodeBase64(encryptedMsg),
@@ -170,11 +171,11 @@ const MessagingScreen = () => {
 
   const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
     try {
-      console.log('Attempting to decrypt message...');
-      console.log('Encrypted Content:', encryptedContent);
-      console.log('Nonce:', nonce);
-      console.log('Sender Public Key:', encodeBase64(senderPublicKey));
-      console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
+      console.log('Attempting to decrypt message...')
+      console.log('Encrypted Content:', encryptedContent)
+      console.log('Nonce:', nonce)
+      console.log('Sender Public Key:', encodeBase64(senderPublicKey))
+      console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey))
 
       const decrypted = box.open(
         decodeBase64(encryptedContent),
@@ -242,7 +243,7 @@ const MessagingScreen = () => {
 
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/messages/${userId}/${recipientId}`)
+        const response = await fetch(`https://flypal-server.click/api/messages/${userId}/${recipientId}`)
         const data = await response.json()
         setMessages(data)
       } catch (error) {
@@ -253,7 +254,7 @@ const MessagingScreen = () => {
     fetchMessages()
 
     //   const setupWebSocket = () => {
-    //     ws.current = new WebSocket('ws://10.171.60.173:8080')
+    //     ws.current = new WebSocket('wss://flypal-server.click')
 
     //     ws.current.onopen = () => {
     //       // console.log('WebSocket connected')
@@ -358,7 +359,7 @@ const MessagingScreen = () => {
     webSocketService.on('close', handleWebSocketClose)
     webSocketService.on('error', handleWebSocketError)
 
-    webSocketService.connect('ws://10.171.60.173:8080', userId)
+    webSocketService.connect('wss://flypal-server.click', userId)
 
     return () => {
       webSocketService.off('message', handleWebSocketMessage)
@@ -476,38 +477,39 @@ const MessagingScreen = () => {
 
   const checkFriendshipStatus = async (userId, recipientId) => {
     try {
-      const response = await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/users/checkFriendship/${userId}/${recipientId}`);
+      const response = await fetch(
+        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/checkFriendship/${userId}/${recipientId}`
+      )
       if (!response.ok) {
-        return;
+        return
       }
-  
-      const data = await response.json();
-      console.log('Friendship status response:', data);
-  
+
+      const data = await response.json()
+      console.log('Friendship status response:', data)
+
       // Make sure to access the correct data
       if (data.hasOwnProperty('isFriend')) {
-        return data.isFriend;
+        return data.isFriend
       } else {
-        console.error('Response does not contain isFriend property');
-        return false; // Return false if the expected property is missing
+        console.error('Response does not contain isFriend property')
+        return false // Return false if the expected property is missing
       }
     } catch (error) {
-      console.error('Error checking friendship status:', error);
-      return false; // Default to false in case of an error
+      console.error('Error checking friendship status:', error)
+      return false // Default to false in case of an error
     }
-  };
-  
+  }
+
   useEffect(() => {
     const fetchFriendshipStatus = async () => {
-      const status = await checkFriendshipStatus(userId, recipientId);
-      console.log('Friendship status:', status);
-      setIsFriend(status); // Update state with the actual status
-    };
-  
-    fetchFriendshipStatus();
-  }, [userId, recipientId]); // Add dependencies to update when userId or recipientId changes
+      const status = await checkFriendshipStatus(userId, recipientId)
+      console.log('Friendship status:', status)
+      setIsFriend(status) // Update state with the actual status
+    }
 
-  
+    fetchFriendshipStatus()
+  }, [userId, recipientId]) // Add dependencies to update when userId or recipientId changes
+
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
       return <Text style={styles.dateHeader}>{item.date}</Text>
@@ -619,26 +621,24 @@ const MessagingScreen = () => {
 
         {/* Input Field */}
         <View style={styles.inputContainer}>
-        {isFriend ? (
-          <>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type your message..."
-            value={inputText}
-            onChangeText={handleInputChange}
-            onFocus={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          />
+          {isFriend ? (
+            <>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type your message..."
+                value={inputText}
+                onChangeText={handleInputChange}
+                onFocus={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              />
 
-          <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
-            <Text style={styles.sendButtonText}>Send</Text>
-          </TouchableOpacity>
-          </>
-        ) : (
-          <Text style={styles.noFriendText}>
-            You are no longer friends with this person
-          </Text>
-        )}
-      </View>
+              <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
+                <Text style={styles.sendButtonText}>Send</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.noFriendText}>You are no longer friends with this person</Text>
+          )}
+        </View>
       </KeyboardAvoidingView>
       <ProfileModal
         visible={isProfileModalVisible}

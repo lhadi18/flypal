@@ -201,6 +201,7 @@ const SignUp = () => {
                           }}
                           Icon={null}
                           value={values.role}
+                          placeholderTextColor={'grey'}
                         />
                       )}
                     </View>

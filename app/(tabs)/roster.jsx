@@ -31,7 +31,7 @@ import {
   getAircraftsFromDatabase
 } from '../../services/utils/database'
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import ConnectivityService from '@/services/utils/connectivity-service'
 import DateTimePickerModal from 'react-native-modal-datetime-picker'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import eventEmitter from '@/services/utils/event-emitter'
@@ -49,12 +49,6 @@ import uuid from 'react-native-uuid'
 import moment from 'moment-timezone'
 import axios from 'axios'
 
-// Constants for keys used to store settings
-const NOTIFICATIONS_ENABLED_KEY = 'notificationsEnabled'
-const CUSTOM_REMINDER_HOUR_KEY = 'customReminderHour'
-const REST_REMINDER_ENABLED_KEY = 'restReminderEnabled'
-const RED_EYE_REMINDER_TIME_KEY = 'redEyeReminderTime'
-
 const Roster = () => {
   const [selectedDate, setSelectedDate] = useState('')
   const [events, setEvents] = useState([])
@@ -67,7 +61,6 @@ const Roster = () => {
   const [newEventFlightNumber, setNewEventFlightNumber] = useState('')
   const [newEventAircraftType, setNewEventAircraftType] = useState('')
   const [newEventNotes, setNewEventNotes] = useState('')
-  const [document, setDocument] = useState(null)
   const [isDeparturePickerVisible, setDeparturePickerVisible] = useState(false)
   const [isArrivalPickerVisible, setArrivalPickerVisible] = useState(false)
   const [aircraftTypeData, setAircraftTypeData] = useState([])
@@ -335,6 +328,11 @@ const Roster = () => {
     setToastVisible(true)
   }
 
+  const checkInternetConnection = async () => {
+    const isConnected = await ConnectivityService.checkConnection({ showAlert: true })
+    return isConnected
+  }
+
   const handleDeleteEvent = rosterId => {
     Alert.alert(
       'Confirm Delete',
@@ -439,6 +437,12 @@ const Roster = () => {
                   End: {getLocalTime(item.arrivalTime, item.origin?.tz_database || homebaseTZ)}
                 </Text>
               </View>
+              {item.notes && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Notes: {item.notes}</Text>
+                </View>
+              )}
             </>
           ) : item.type === 'TRAINING' ? (
             <>
@@ -560,6 +564,12 @@ const Roster = () => {
                 <View style={styles.eventRow}>
                   <Ionicons name="airplane-outline" size={18} color="#045D91" />
                   <Text style={styles.eventText}>Aircraft: {item.aircraftType.model}</Text>
+                </View>
+              )}
+              {item.notes && (
+                <View style={styles.eventRow}>
+                  <Ionicons name="clipboard-outline" size={18} color="#045D91" />
+                  <Text style={styles.eventText}>Notes: {item.notes}</Text>
                 </View>
               )}
             </>
@@ -755,11 +765,13 @@ const Roster = () => {
   }
 
   const handlePickDocument = async () => {
+    if (!(await checkInternetConnection())) {
+      return
+    }
+
     const userId = await SecureStore.getItemAsync('userId')
 
-    const response = await axios.get(
-      `https://c6f8-103-18-0-18.ngrok-free.app/api/airline/${userId}/canUploadRoster`
-    )
+    const response = await axios.get(`https://flypal-server.click/api/airline/${userId}/canUploadRoster`)
 
     if (!response.data || !response.data.canUploadRoster) {
       Alert.alert('Roster Import Not Supported', 'We have yet to support roster imports for your airline.')
@@ -791,15 +803,11 @@ const Roster = () => {
           type: file.mimeType
         })
 
-        const response = await axios.post(
-          'https://c6f8-103-18-0-18.ngrok-free.app/api/pdf/upload',
-          formData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
+        const response = await axios.post('https://flypal-server.click/api/pdf/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
           }
-        )
+        })
 
         if (response.data.parsedData) {
           const { duties, startDate, endDate } = response.data.parsedData
@@ -810,7 +818,7 @@ const Roster = () => {
           setUploadedRosterData(duties)
           setShowRosterModal(true)
         } else {
-          Alert.alert('Error', 'Unable to read the uploaded roster.')
+          Alert.alert('Error', 'Please upload a valid roster format.')
         }
       } catch (error) {
         console.error('Error uploading file:', error)
@@ -895,6 +903,8 @@ const Roster = () => {
       setUploadedRosterData([])
       setShowRosterModal(false)
       Alert.alert('Success', 'All roster entries have been saved successfully.')
+
+      await fetchRosterEntries(selectedDate)
     } catch (error) {
       console.error('Error saving uploaded roster entries:', error)
       Alert.alert('Error', 'An error occurred while saving the roster entries. Please try again.')
@@ -1255,12 +1265,12 @@ const Roster = () => {
                   {/* Flight Number (only for Flight Duty) */}
                   {newEventTitle === 'FLIGHT_DUTY' && (
                     <>
-                      <Text style={styles.label}>Flight Number</Text>
+                      <Text style={styles.label}>Flight Number (optional)</Text>
                       <View style={styles.inputWrapper}>
                         <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
-                          placeholder="Enter flight number"
+                          placeholder="Enter flight number (optional)"
                           placeholderTextColor={'grey'}
                           value={newEventFlightNumber}
                           onChangeText={setNewEventFlightNumber}
@@ -1271,7 +1281,7 @@ const Roster = () => {
 
                   {newEventTitle === 'FLIGHT_DUTY' || newEventTitle === 'STANDBY' ? (
                     <>
-                      <Text style={styles.label}>Aircraft Type</Text>
+                      <Text style={styles.label}>Aircraft Type (optional)</Text>
                       <View style={styles.inputWrapper}>
                         <Ionicons name="airplane-outline" size={20} color="#045D91" style={styles.inputIcon} />
                         <RNPickerSelect
@@ -1302,7 +1312,7 @@ const Roster = () => {
                             }
                           }}
                           value={newEventAircraftType}
-                          placeholder={{ label: 'Select aircraft type', value: null }}
+                          placeholder={{ label: 'Select aircraft type (optional)', value: null }}
                           useNativeAndroidPickerStyle={false}
                         />
                       </View>

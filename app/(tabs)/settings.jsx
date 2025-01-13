@@ -22,6 +22,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome'
 import StyledAirportSearch from '@/components/sign-up-airport-search'
+import webSocketService from '@/services/utils/websocket-service'
 import AirlineSearch from '@/components/sign-up-airline-search'
 import eventEmitter from '@/services/utils/event-emitter'
 import RNPickerSelect from 'react-native-picker-select'
@@ -37,9 +38,9 @@ import axios from 'axios'
 
 const Settings = () => {
   const [currentScreen, setCurrentScreen] = useState('Settings')
-  const [errorMessage, setErrorMessage] = useState('');
-  const [firstNameError, setFirstNameError] = useState('');
-  const [lastNameError, setLastNameError] = useState('');
+  const [errorMessage, setErrorMessage] = useState('')
+  const [firstNameError, setFirstNameError] = useState('')
+  const [lastNameError, setLastNameError] = useState('')
   const [userDetails, setUserDetails] = useState({
     firstName: '',
     lastName: '',
@@ -63,7 +64,7 @@ const Settings = () => {
     userDetails.profilePicture || 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
   )
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [isPickerOpen, setPickerOpen] = useState(false); // State for open/close
+  const [isPickerOpen, setPickerOpen] = useState(false) // State for open/close
 
   const [error, setError] = useState('')
   const router = useRouter()
@@ -74,14 +75,11 @@ const Settings = () => {
     setLoading(true)
     try {
       const userId = await SecureStore.getItemAsync('userId')
-      const response = await axios.get(
-        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/getUserId`,
-        {
-          params: {
-            userId
-          }
+      const response = await axios.get(`https://flypal-server.click/api/users/getUserId`, {
+        params: {
+          userId
         }
-      )
+      })
       setUserDetails(response.data)
       console.log(userDetails.role.value)
       setImage(
@@ -104,11 +102,13 @@ const Settings = () => {
       try {
         setLoadingRoles(true)
         const rolesData = await getRoles()
-        setRoles(rolesData.map(role => ({
-          label: role.value,   // Display label for the role (e.g., "Captain")
-          value: role.value,   // The value of the role (e.g., "Captain")
-          _id: role._id        // Include the _id for updating the role
-        })))
+        setRoles(
+          rolesData.map(role => ({
+            label: role.value, // Display label for the role (e.g., "Captain")
+            value: role.value, // The value of the role (e.g., "Captain")
+            _id: role._id // Include the _id for updating the role
+          }))
+        )
         console.log(roles)
       } catch (error) {
         console.error('Error fetching roles:', error)
@@ -132,14 +132,14 @@ const Settings = () => {
     }
 
     if (!currentUserDetails.firstName || !currentUserDetails.lastName) {
-      setErrorMessage('First name or last name is required');
-      return;
+      setErrorMessage('First name or last name is required')
+      return
     } else if (currentUserDetails.firstName.length > 24 || currentUserDetails.lastName.length > 24) {
-      setErrorMessage('First or last name should not be too long');
-      return;
+      setErrorMessage('First or last name should not be too long')
+      return
     }
-  
-    setErrorMessage(''); // Clear previous errors
+
+    setErrorMessage('') // Clear previous errors
 
     const updatedUserData = {
       userId: currentUserDetails.userId,
@@ -153,7 +153,7 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://flypal-server.click/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       fetchUserDetails()
@@ -187,10 +187,7 @@ const Settings = () => {
     }
 
     try {
-      const response = await axios.put(
-        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/updatePassword/${userId}`,
-        data
-      )
+      const response = await axios.put(`https://flypal-server.click/api/users/updatePassword/${userId}`, data)
       console.log('Password updated:', response.data)
       setPassword('')
       setConfirmNewPassword('')
@@ -215,9 +212,7 @@ const Settings = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(
-                `https://c6f8-103-18-0-18.ngrok-free.app/api/users/deleteUser/${userId}`
-              )
+              await axios.delete(`https://flypal-server.click/api/users/deleteUser/${userId}`)
               router.push('/sign-in')
             } catch (error) {
               console.error('Error deleting account:', error)
@@ -234,11 +229,13 @@ const Settings = () => {
       const userId = await SecureStore.getItemAsync('userId')
       const deviceId = Device.osBuildId || Device.deviceName || 'unknown-device-id'
 
-      await fetch('https://c6f8-103-18-0-18.ngrok-free.app/api/push-token/delete-device', {
+      await fetch('https://flypal-server.click/api/push-token/delete-device', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, deviceId })
       })
+
+      webSocketService.disconnect()
 
       await SecureStore.deleteItemAsync('userId')
       await SecureStore.deleteItemAsync('pushToken')
@@ -246,10 +243,6 @@ const Settings = () => {
     } catch (error) {
       console.error('Error during logout:', error)
     }
-  }
-
-  const handleImagePress = () => {
-    setShowModal(true)
   }
 
   const closeModal = () => {
@@ -342,7 +335,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://flypal-server.click/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -568,9 +561,7 @@ const Settings = () => {
                   <TextInput
                     style={styles.infoStyles}
                     value={currentUserDetails?.firstName || ''}
-                    onChangeText={(text) =>
-                      setCurrentUserDetails({ ...currentUserDetails, firstName: text })
-                    }
+                    onChangeText={text => setCurrentUserDetails({ ...currentUserDetails, firstName: text })}
                   />
                 </View>
                 <View style={styles.infoColumn}>
@@ -578,17 +569,11 @@ const Settings = () => {
                   <TextInput
                     style={styles.infoStyles}
                     value={currentUserDetails?.lastName || ''}
-                    onChangeText={(text) =>
-                      setCurrentUserDetails({ ...currentUserDetails, lastName: text })
-                    }
+                    onChangeText={text => setCurrentUserDetails({ ...currentUserDetails, lastName: text })}
                   />
                 </View>
               </View>
-              {errorMessage ? (
-                <Text style={{ color: 'red', marginBottom: 5,}}>
-                  {errorMessage}
-                </Text>
-              ) : null}
+              {errorMessage ? <Text style={{ color: 'red', marginBottom: 5 }}>{errorMessage}</Text> : null}
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>E-mail Address</Text>
                 <View style={styles.infoStyles}>
@@ -647,9 +632,9 @@ const Settings = () => {
                       useNativeAndroidPickerStyle={false}
                     />
                   )}
-                {currentUserDetails?.role === null && (
-                  <Text style={{ color: 'red', marginTop: 5 }}>Role must not be empty</Text>
-                )}
+                  {currentUserDetails?.role === null && (
+                    <Text style={{ color: 'red', marginTop: 5 }}>Role must not be empty</Text>
+                  )}
                 </View>
               </View>
               <View style={styles.infoRow}>

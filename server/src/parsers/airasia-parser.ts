@@ -45,7 +45,7 @@ const parseAirAsiaRoster = async (lines: string[]): Promise<{ duties: Duty[]; st
   let startDate = ''
   let endDate = ''
 
-  const isTime = (str: string) => /^\d{2}:\d{2}$/.test(str)
+  const isTime = (str: string) => /^A?\d{2}:\d{2}$/.test(str)
   const isFlightNumber = (str: string) => /^D\d{3,4}$/.test(str)
   const isAirportCode = (str: string) => /^[A-Z]{3}$/.test(str.replace('*', ''))
 
@@ -63,6 +63,8 @@ const parseAirAsiaRoster = async (lines: string[]): Promise<{ duties: Duty[]; st
     if (standbyMatch) {
       line = standbyMatch[0]
     }
+
+    if (line == 'TRG' || line == 'CRM') continue
 
     if (isFlightNumber(line)) {
       if (Object.keys(currentDuty).length > 0) {

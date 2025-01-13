@@ -22,12 +22,9 @@ const StyledAirportSearch = forwardRef(({ placeholder, onSelect, initialValue },
 
   const fetchAirports = async searchQuery => {
     try {
-      const response = await axios.get(
-        `https://c6f8-103-18-0-18.ngrok-free.app/api/airport/getAirport`,
-        {
-          params: { query: searchQuery }
-        }
-      )
+      const response = await axios.get(`https://flypal-server.click/api/airport/getAirport`, {
+        params: { query: searchQuery }
+      })
       setResults(response.data)
     } catch (error) {
       console.error('Error fetching airports:', error)

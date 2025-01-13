@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator
 } from 'react-native'
+import webSocketService from '@/services/utils/websocket-service'
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
 import React, { useState, useEffect, useRef } from 'react'
 import * as SecureStore from 'expo-secure-store'
@@ -33,37 +34,21 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   const ws = useRef(null)
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://10.171.60.173:8080')
-
-    ws.current.onopen = () => {
-      console.log('WebSocket connected')
-    }
-
-    ws.current.onmessage = event => {
-      console.log('WebSocket message received:', event.data)
-    }
-
-    ws.current.onerror = error => {
-      console.error('WebSocket error:', error)
-    }
-
-    ws.current.onclose = () => {
-      console.log('WebSocket disconnected')
+    if (currentUserId) {
+      webSocketService.connect('wss://flypal-server.click', currentUserId)
     }
 
     return () => {
-      if (ws.current) {
-        ws.current.close()
-      }
+      webSocketService.close()
     }
-  }, [])
+  }, [currentUserId])
 
   useEffect(() => {
     const fetchKeys = async () => {
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
 
-      const response = await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/key/keys/${userId}`)
+      const response = await fetch(`https://flypal-server.click/api/key/keys/${userId}`)
       const data = await response.json()
 
       setKeyPair({
@@ -80,7 +65,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
       const userId = await SecureStore.getItemAsync('userId')
       setCurrentUserId(userId)
       setLoading(true)
-      const response = await axios.get(`https://c6f8-103-18-0-18.ngrok-free.app/api/users/friendList/${userId}`)
+      const response = await axios.get(`https://flypal-server.click/api/users/friendList/${userId}`)
       setConnections(response.data)
       setFilteredConnections(response.data)
     } catch (error) {
@@ -92,7 +77,7 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
   }
 
   const fetchRecipientPublicKey = async recipientId => {
-    const response = await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/key/keys/${recipientId}`)
+    const response = await fetch(`https://flypal-server.click/api/key/keys/${recipientId}`)
     const data = await response.json()
     return decodeBase64(data.publicKey)
   }
@@ -256,14 +241,19 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
           encryptedContent,
           nonce,
           plainText: formattedRoster,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          isRosterShare: true
         }
 
-        if (ws.current.readyState === WebSocket.OPEN) {
-          ws.current.send(JSON.stringify(messagePayload))
-        } else {
-          console.error(`WebSocket connection is not open. Failed to send to ${recipientId}`)
+        const notificationPayload = {
+          type: 'roster_shared',
+          senderId: currentUserId,
+          recipientId,
+          message: `${currentUserId} has shared their monthly roster with you.`
         }
+
+        webSocketService.send(messagePayload)
+        webSocketService.send(notificationPayload)
       }
 
       Alert.alert('Success', 'Roster shared successfully!')
@@ -302,6 +292,10 @@ const ShareModal = ({ visible, onClose, selectedMonthRoster, currentMonthYear })
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#4386AD" />
+            </View>
+          ) : filteredConnections.length === 0 ? (
+            <View style={styles.noConnectionsContainer}>
+              <Text style={styles.noConnectionsText}>You currently have no connections.</Text>
             </View>
           ) : (
             <FlatList
@@ -506,7 +500,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20
   },
-
+  noConnectionsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  noConnectionsText: {
+    fontSize: 16,
+    color: 'grey',
+    textAlign: 'center'
+  },
   instructionsOverlay: {
     flex: 1,
     justifyContent: 'center',

@@ -33,7 +33,7 @@ const SignIn = () => {
       await SecureStore.setItemAsync('homebaseTZDatabase', homebaseTZDatabase)
       await handlePushToken(userId)
 
-      Alert.alert('Login Successful', `Welcome back, ${email}`)
+      Alert.alert('Login Successful', `Welcome`)
       router.replace('/roster')
     } catch (error) {
       Alert.alert('Login Failed', error.message || 'Invalid email or password')

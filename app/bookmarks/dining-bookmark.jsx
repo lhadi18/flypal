@@ -42,12 +42,12 @@ const DiningBookmark = () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
         const response = await axios.get(
-          `https://c6f8-103-18-0-18.ngrok-free.app/api/bookmarks/user/${userId}/bookmarks-paginated`,
+          `https://flypal-server.click/api/bookmarks/user/${userId}/bookmarks-paginated`,
           {
             params: { page, limit: 10, search: query }
           }
         )
-
+        console.log('API Response:', response.data)
         const newBookmarks = response.data
 
         if (newBookmarks.length === 0) {
@@ -121,7 +121,7 @@ const DiningBookmark = () => {
           onPress: async () => {
             try {
               const userId = await SecureStore.getItemAsync('userId')
-              const response = await axios.post('https://c6f8-103-18-0-18.ngrok-free.app/api/bookmarks/unbookmark', {
+              const response = await axios.post('https://flypal-server.click/api/bookmarks/unbookmark', {
                 userId,
                 sourceType,
                 diningId,

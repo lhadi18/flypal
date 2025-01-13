@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, Image, TouchableOpacity } from 'react-native'
+import ConnectivityService from '@/services/utils/connectivity-service'
 import { getAllRosterEntries } from '@/services/utils/database'
 import { useFocusEffect } from '@react-navigation/native'
 import AirportSearch from '@/components/airport-search'
@@ -14,10 +15,19 @@ const Destination = () => {
   const router = useRouter()
   const setSelectedAirport = useGlobalStore(state => state.setSelectedAirport)
 
-  const handleSelectAirport = airport => {
+  const checkInternetConnection = async action => {
+    const isConnected = await ConnectivityService.checkConnection({ showAlert: true })
+    if (isConnected) {
+      action()
+    }
+  }
+
+  const handleSelectAirport = async airport => {
     if (airport) {
-      setSelectedAirport(airport)
-      router.push('destinations/events')
+      await checkInternetConnection(() => {
+        setSelectedAirport(airport)
+        router.push('destinations/events')
+      })
     }
   }
 
@@ -57,6 +67,7 @@ const Destination = () => {
       console.error('Error fetching roster data from SQLite:', error)
     }
   }
+
   useFocusEffect(
     useCallback(() => {
       fetchRoster()
@@ -68,20 +79,32 @@ const Destination = () => {
       <ScrollView contentContainerStyle={styles.container}>
         <AirportSearch placeholder="Search for Airports" onSelect={handleSelectAirport} />
         <Text style={styles.journeyHeader}>Journey Ahead: Your next stops</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('bookmarks/dining-bookmark')}>
+
+        {/* Bookmarks */}
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => checkInternetConnection(() => router.push('bookmarks/dining-bookmark'))}
+        >
           <View style={styles.buttonTextContainer}>
             <AntDesign name="book" size={16} color="#4386AD" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>My Bookmarks</Text>
           </View>
           <AntDesign name="right" size={16} color="#4386AD" style={styles.arrowIcon} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('recommendations/my-recommendation')}>
+
+        {/* Recommendations */}
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => checkInternetConnection(() => router.push('recommendations/my-recommendation'))}
+        >
           <View style={styles.buttonTextContainer}>
             <AntDesign name="staro" size={16} color="#4386AD" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>My Recommendations</Text>
           </View>
           <AntDesign name="right" size={16} color="#4386AD" style={styles.arrowIcon} />
         </TouchableOpacity>
+
+        {/* Destinations List */}
         {roster.length > 0 ? (
           <View style={styles.rosterContainer}>
             {roster.map((item, index) => (

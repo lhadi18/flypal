@@ -22,12 +22,9 @@ const AirlineSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
 
   const fetchAirlines = async searchQuery => {
     try {
-      const response = await axios.get(
-        `https://c6f8-103-18-0-18.ngrok-free.app/api/airline/getAirlines`,
-        {
-          params: { query: searchQuery }
-        }
-      )
+      const response = await axios.get(`https://flypal-server.click/api/airline/getAirlines`, {
+        params: { query: searchQuery }
+      })
       setResults(response.data)
     } catch (error) {
       console.error('Error fetching airlines:', error)

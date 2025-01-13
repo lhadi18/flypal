@@ -129,10 +129,7 @@ const Checklists = () => {
 
     try {
       // API call to create checklist
-      const response = await axios.post(
-        'https://c6f8-103-18-0-18.ngrok-free.app/api/checklist/createChecklist',
-        checklistData
-      )
+      const response = await axios.post('https://flypal-server.click/api/checklist/createChecklist', checklistData)
       console.log('Checklist created:', response.data)
 
       // Reset form and fetch updated checklists
@@ -147,7 +144,7 @@ const Checklists = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       console.log(userId)
-      const response = await axios.get(`https://c6f8-103-18-0-18.ngrok-free.app/api/checklist/getChecklist`, {
+      const response = await axios.get(`https://flypal-server.click/api/checklist/getChecklist`, {
         params: {
           userId
         }
@@ -179,9 +176,7 @@ const Checklists = () => {
           text: 'Yes',
           onPress: async () => {
             try {
-              await axios.delete(
-                `https://c6f8-103-18-0-18.ngrok-free.app/api/checklist/deleteChecklist/${checklistId}`
-              )
+              await axios.delete(`https://flypal-server.click/api/checklist/deleteChecklist/${checklistId}`)
               await fetchChecklists()
             } catch (error) {
               console.error('Error deleting checklist:', error)
@@ -233,7 +228,7 @@ const Checklists = () => {
 
     try {
       const response = await axios.put(
-        `https://c6f8-103-18-0-18.ngrok-free.app/api/checklist/updateChecklist/${currentChecklist._id}`,
+        `https://flypal-server.click/api/checklist/updateChecklist/${currentChecklist._id}`,
         updatedChecklistData
       )
       console.log('Checklist updated:', response.data)

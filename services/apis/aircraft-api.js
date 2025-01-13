@@ -2,7 +2,7 @@ import axios from 'axios'
 
 export const fetchAircraftTypes = async () => {
   try {
-    const response = await axios.get('https://c6f8-103-18-0-18.ngrok-free.app/api/aircraft/getAircraft')
+    const response = await axios.get('https://flypal-server.click/api/aircraft/getAircraft')
     const data = response.data
       .map(item => ({
         label: `${item.Model}`,

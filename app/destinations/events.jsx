@@ -28,22 +28,31 @@ const Events = () => {
         const userId = await SecureStore.getItemAsync('userId')
 
         // Fetch Bookmarks
-        const bookmarksResponse = await axios.get(
-          `https://c6f8-103-18-0-18.ngrok-free.app/api/bookmarks/user/${userId}`
-        )
+        const bookmarksResponse = await axios.get(`https://flypal-server.click/api/bookmarks/user/${userId}`)
         const userBookmarks = bookmarksResponse.data
         const bookmarkedEventKeys = userBookmarks
           .filter(b => b.sourceType === 'EVENT_API')
           .map(b => generateEventId(b.name, b.eventTime)) // generate IDs for comparison
 
         // Fetch Events
-        const eventsResponse = await axios.get('https://c6f8-103-18-0-18.ngrok-free.app/api/events/getEvents', {
+        const eventsResponse = await axios.get('https://flypal-server.click/api/events/getEvents', {
           params: {
             city: selectedAirport.city,
             country: selectedAirport.country
           }
         })
-        const fetchedEvents = eventsResponse.data.events.map(event => ({
+
+        const uniqueEvents = []
+        const seenTitles = new Set()
+
+        eventsResponse.data.events.forEach(event => {
+          if (!seenTitles.has(event.title)) {
+            seenTitles.add(event.title)
+            uniqueEvents.push(event)
+          }
+        })
+
+        const fetchedEvents = uniqueEvents.map(event => ({
           ...event,
           uniqueId: generateEventId(event.title, event.date.when),
           bookmarked: bookmarkedEventKeys.includes(generateEventId(event.title, event.date.when))
@@ -69,7 +78,7 @@ const Events = () => {
       const isBookmarked = bookmarks.includes(bookmarkKey)
       const endpoint = isBookmarked ? 'unbookmark' : 'bookmark'
 
-      await axios.post(`https://c6f8-103-18-0-18.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await axios.post(`https://flypal-server.click/api/bookmarks/${endpoint}`, {
         userId,
         eventId: id,
         airportId: selectedAirport.id || selectedAirport.objectId || selectedAirport.value,
@@ -254,7 +263,8 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#FFF',
-    marginRight: 5
+    fontWeight: 'bold',
+    textAlign: 'center'
   },
   errorText: {
     fontSize: 16,

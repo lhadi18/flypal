@@ -1,4 +1,5 @@
 // _layout.jsx
+import ConnectivityService from '@/services/utils/connectivity-service'
 import { View, Text, Image, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useNavigation } from 'expo-router'
@@ -46,7 +47,14 @@ const TabsLayout = () => {
             headerShown: true,
             headerLeft: () => (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 18 }}>
-                <TouchableOpacity onPress={() => navigation.navigate('roster', { action: 'showShareModal' })}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const isConnected = await ConnectivityService.checkConnection({ showAlert: true })
+                    if (isConnected) {
+                      navigation.navigate('roster', { action: 'showShareModal' })
+                    }
+                  }}
+                >
                   <Ionicons name="share" size={26} color="white" style={{ marginTop: 3 }} />
                 </TouchableOpacity>
               </View>

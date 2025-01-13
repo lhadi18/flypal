@@ -30,7 +30,7 @@ const AirportSearch = forwardRef(({ placeholder, onSelect, initialValue }, ref) 
     if (isConnected) {
       // try {
       //   const response = await axios.get(
-      //     `https://c6f8-103-18-0-18.ngrok-free.app/api/airport/getAirport`,
+      //     `https://flypal-server.click/api/airport/getAirport`,
       //     { params: { query: searchQuery } }
       //   )
       //   if (response.data.length === 0) {

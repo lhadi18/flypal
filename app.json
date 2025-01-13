@@ -18,18 +18,23 @@
       "iosDisplayInForeground": true
     },
     "ios": {
+      "simulator": true,
       "supportsTablet": false,
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         },
         "UIBackgroundModes": ["remote-notification"]
-      }
+      },
+      "bundleIdentifier": "com.lhadi18.flypal"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "background": {
+        "UIBackgroundModes": ["remote-notification"]
       },
       "package": "com.lhadi18.flypal",
       "permissions": ["INTERNET", "ACCESS_NETWORK_STATE", "NOTIFICATIONS", "VIBRATE"],
