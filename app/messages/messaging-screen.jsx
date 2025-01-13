@@ -75,9 +75,9 @@ const MessagingScreen = () => {
           const privateKey = decodeBase64(privateKeyStr)
           const publicKey = nacl.box.keyPair.fromSecretKey(privateKey).publicKey
 
-          // console.log('Loaded existing key pair from server:');
-          // console.log('Public Key:', encodeBase64(publicKey));
-          // console.log('Secret Key:', encodeBase64(privateKey));
+          console.log('Loaded existing key pair from server:');
+          console.log('Public Key:', encodeBase64(publicKey));
+          console.log('Secret Key:', encodeBase64(privateKey));
 
           setKeyPair({
             publicKey,
@@ -144,6 +144,13 @@ const MessagingScreen = () => {
   const encryptMessage = async message => {
     const nonce = randomBytes(24)
     const encryptedMsg = box(new Uint8Array(Buffer.from(message)), nonce, recipientPublicKey, keyPair.secretKey)
+
+      console.log('Attempting to encrypt message...');
+      console.log('Plaintext message:', message);
+      console.log('Nonce:', encodeBase64(nonce));
+      console.log('Sender Public Key:', encodeBase64(recipientPublicKey));
+      console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
+
     return {
       encryptedContent: encodeBase64(encryptedMsg),
       nonce: encodeBase64(nonce)
@@ -163,11 +170,11 @@ const MessagingScreen = () => {
 
   const decryptMessage = (encryptedContent, nonce, senderPublicKey) => {
     try {
-      // console.log('Attempting to decrypt message...');
-      // console.log('Encrypted Content:', encryptedContent);
-      // console.log('Nonce:', nonce);
-      // console.log('Sender Public Key:', encodeBase64(senderPublicKey));
-      // console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
+      console.log('Attempting to decrypt message...');
+      console.log('Encrypted Content:', encryptedContent);
+      console.log('Nonce:', nonce);
+      console.log('Sender Public Key:', encodeBase64(senderPublicKey));
+      console.log('Recipient Secret Key:', encodeBase64(keyPair.secretKey));
 
       const decrypted = box.open(
         decodeBase64(encryptedContent),

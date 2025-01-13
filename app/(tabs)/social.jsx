@@ -533,7 +533,6 @@ const Message = ({ isActive }) => {
     try {
       // Fetch user conversations from the API
       const response = await axios.get(`https://c6f8-103-18-0-18.ngrok-free.app/api/messages/conversations/${userId}`)
-      console.log(response.data)
 
       const conversations = response.data
 
