@@ -242,7 +242,7 @@ const Dining = () => {
       review: values.review,
       rating: values.rating,
       tags: values.tags,
-      airportId: selectedAirport.objectId || selectedAirport.id,
+      airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value,
       image: values.image
     }
 
@@ -259,7 +259,9 @@ const Dining = () => {
     try {
       await saveRecommendation(data)
       console.log('Dining recommendation added successfully')
-      fetchCrewPicks(selectedAirport.objectId || selectedAirport.id).then(data => setCrewPicks(data)) // Refresh Crew Picks
+      fetchCrewPicks(selectedAirport.objectId || selectedAirport.id || selectedAirport.value).then(data =>
+        setCrewPicks(data)
+      ) // Refresh Crew Picks
     } catch (error) {
       console.error('Error:', error)
     } finally {
