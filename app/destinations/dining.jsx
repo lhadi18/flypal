@@ -62,7 +62,7 @@ const Dining = () => {
     const fetchBookmarks = async () => {
       try {
         const userId = await SecureStore.getItemAsync('userId')
-        const response = await fetch(`https://6f9f-103-18-0-17.ngrok-free.app/api/bookmarks/user/${userId}`)
+        const response = await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/bookmarks/user/${userId}`)
         if (response.ok) {
           const userBookmarks = await response.json()
           const bookmarkedIds = userBookmarks.map(b => b.diningId)
@@ -151,7 +151,7 @@ const Dining = () => {
         airportId: selectedAirport.objectId || selectedAirport.id || selectedAirport.value
       }
 
-      await fetch(`https://6f9f-103-18-0-17.ngrok-free.app/api/bookmarks/${endpoint}`, {
+      await fetch(`https://c6f8-103-18-0-18.ngrok-free.app/api/bookmarks/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -38,6 +38,8 @@ import axios from 'axios'
 const Settings = () => {
   const [currentScreen, setCurrentScreen] = useState('Settings')
   const [errorMessage, setErrorMessage] = useState('');
+  const [firstNameError, setFirstNameError] = useState('');
+  const [lastNameError, setLastNameError] = useState('');
   const [userDetails, setUserDetails] = useState({
     firstName: '',
     lastName: '',
@@ -61,6 +63,7 @@ const Settings = () => {
     userDetails.profilePicture || 'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
   )
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [isPickerOpen, setPickerOpen] = useState(false); // State for open/close
 
   const [error, setError] = useState('')
   const router = useRouter()
@@ -72,7 +75,7 @@ const Settings = () => {
     try {
       const userId = await SecureStore.getItemAsync('userId')
       const response = await axios.get(
-        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/getUserId`,
+        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/getUserId`,
         {
           params: {
             userId
@@ -80,6 +83,7 @@ const Settings = () => {
         }
       )
       setUserDetails(response.data)
+      console.log(userDetails.role.value)
       setImage(
         response.data.profilePicture ||
           'https://storage.googleapis.com/flypal/profile-pictures/default-profile-picture.jpg'
@@ -100,7 +104,12 @@ const Settings = () => {
       try {
         setLoadingRoles(true)
         const rolesData = await getRoles()
-        setRoles(rolesData.map(role => ({ label: role.value, value: role._id })))
+        setRoles(rolesData.map(role => ({
+          label: role.value,   // Display label for the role (e.g., "Captain")
+          value: role.value,   // The value of the role (e.g., "Captain")
+          _id: role._id        // Include the _id for updating the role
+        })))
+        console.log(roles)
       } catch (error) {
         console.error('Error fetching roles:', error)
       } finally {
@@ -125,6 +134,9 @@ const Settings = () => {
     if (!currentUserDetails.firstName || !currentUserDetails.lastName) {
       setErrorMessage('First name or last name is required');
       return;
+    } else if (currentUserDetails.firstName.length > 24 || currentUserDetails.lastName.length > 24) {
+      setErrorMessage('First or last name should not be too long');
+      return;
     }
   
     setErrorMessage(''); // Clear previous errors
@@ -134,14 +146,14 @@ const Settings = () => {
       firstName: currentUserDetails.firstName,
       lastName: currentUserDetails.lastName,
       email: currentUserDetails.email,
-      role: currentUserDetails.role?.value || '',
+      role: currentUserDetails.role?._id || '',
       homebase: currentUserDetails.homebase,
       airline: currentUserDetails.airline
     }
 
     try {
       const response = await axios.put(
-        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
+        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/updateUserId/${currentUserDetails._id}`,
         updatedUserData
       )
       fetchUserDetails()
@@ -176,10 +188,12 @@ const Settings = () => {
 
     try {
       const response = await axios.put(
-        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/updatePassword/${userId}`,
+        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/updatePassword/${userId}`,
         data
       )
       console.log('Password updated:', response.data)
+      setPassword('')
+      setConfirmNewPassword('')
       Alert.alert('Password updated successfully!')
       setCurrentScreen('Settings')
     } catch (error) {
@@ -202,7 +216,7 @@ const Settings = () => {
           onPress: async () => {
             try {
               await axios.delete(
-                `https://6f9f-103-18-0-17.ngrok-free.app/api/users/deleteUser/${userId}`
+                `https://c6f8-103-18-0-18.ngrok-free.app/api/users/deleteUser/${userId}`
               )
               router.push('/sign-in')
             } catch (error) {
@@ -220,7 +234,7 @@ const Settings = () => {
       const userId = await SecureStore.getItemAsync('userId')
       const deviceId = Device.osBuildId || Device.deviceName || 'unknown-device-id'
 
-      await fetch('https://6f9f-103-18-0-17.ngrok-free.app/api/push-token/delete-device', {
+      await fetch('https://c6f8-103-18-0-18.ngrok-free.app/api/push-token/delete-device', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, deviceId })
@@ -328,7 +342,7 @@ const Settings = () => {
       })
 
       const response = await axios.put(
-        `https://6f9f-103-18-0-17.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
+        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/updateProfilePicture/${userId}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -633,6 +647,9 @@ const Settings = () => {
                       useNativeAndroidPickerStyle={false}
                     />
                   )}
+                {currentUserDetails?.role === null && (
+                  <Text style={{ color: 'red', marginTop: 5 }}>Role must not be empty</Text>
+                )}
                 </View>
               </View>
               <View style={styles.infoRow}>
@@ -646,6 +663,9 @@ const Settings = () => {
                     value={currentUserDetails.homebase}
                   />
                 </View>
+                {currentUserDetails.homebase === '' && (
+                  <Text style={{ color: 'red', marginTop: 5 }}>Homebase must not be empty</Text>
+                )}
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoTitle}>Airline</Text>
@@ -658,6 +678,9 @@ const Settings = () => {
                     value={userDetails.airline}
                   />
                 </View>
+                {currentUserDetails.airline === '' && (
+                  <Text style={{ color: 'red', marginTop: 5 }}>Airline must not be empty</Text>
+                )}
               </View>
               <View style={styles.buttonEdit}>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentScreen('UserProfile')}>

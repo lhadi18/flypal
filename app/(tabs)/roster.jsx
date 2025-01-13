@@ -758,7 +758,7 @@ const Roster = () => {
     const userId = await SecureStore.getItemAsync('userId')
 
     const response = await axios.get(
-      `https://6f9f-103-18-0-17.ngrok-free.app/api/airline/${userId}/canUploadRoster`
+      `https://c6f8-103-18-0-18.ngrok-free.app/api/airline/${userId}/canUploadRoster`
     )
 
     if (!response.data || !response.data.canUploadRoster) {
@@ -792,7 +792,7 @@ const Roster = () => {
         })
 
         const response = await axios.post(
-          'https://6f9f-103-18-0-17.ngrok-free.app/api/pdf/upload',
+          'https://c6f8-103-18-0-18.ngrok-free.app/api/pdf/upload',
           formData,
           {
             headers: {
