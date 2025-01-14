@@ -11,7 +11,6 @@ import {
   Image
 } from 'react-native'
 import webSocketService from '@/services/utils/websocket-service'
-import webSocketService from '@/services/utils/websocket-service'
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util'
 import React, { useState, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
@@ -48,7 +47,7 @@ const MessagingScreen = () => {
   const [selectedUser, setSelectedUser] = useState(null)
   const [keyPair, setKeyPair] = useState(null)
   const [recipientPublicKey, setRecipientPublicKey] = useState(null)
-  const [isFriend, setIsFriend] = useState(true)
+  // const [isFriend, setIsFriend] = useState(true)
 
   const ws = useRef(null)
   const flatListRef = useRef(null)
@@ -475,40 +474,38 @@ const MessagingScreen = () => {
     })
   }
 
-  const checkFriendshipStatus = async (userId, recipientId) => {
-    try {
-      const response = await fetch(
-        `https://c6f8-103-18-0-18.ngrok-free.app/api/users/checkFriendship/${userId}/${recipientId}`
-      )
-      if (!response.ok) {
-        return
-      }
+  // const checkFriendshipStatus = async (userId, recipientId) => {
+  //   try {
+  //     const response = await fetch(`https://flypal-server.click/api/users/checkFriendship/${userId}/${recipientId}`)
+  //     if (!response.ok) {
+  //       return
+  //     }
 
-      const data = await response.json()
-      console.log('Friendship status response:', data)
+  //     const data = await response.json()
+  //     console.log('Friendship status response:', data)
 
-      // Make sure to access the correct data
-      if (data.hasOwnProperty('isFriend')) {
-        return data.isFriend
-      } else {
-        console.error('Response does not contain isFriend property')
-        return false // Return false if the expected property is missing
-      }
-    } catch (error) {
-      console.error('Error checking friendship status:', error)
-      return false // Default to false in case of an error
-    }
-  }
+  //     // Make sure to access the correct data
+  //     if (data.hasOwnProperty('isFriend')) {
+  //       return data.isFriend
+  //     } else {
+  //       console.error('Response does not contain isFriend property')
+  //       return false // Return false if the expected property is missing
+  //     }
+  //   } catch (error) {
+  //     console.error('Error checking friendship status:', error)
+  //     return false // Default to false in case of an error
+  //   }
+  // }
 
-  useEffect(() => {
-    const fetchFriendshipStatus = async () => {
-      const status = await checkFriendshipStatus(userId, recipientId)
-      console.log('Friendship status:', status)
-      setIsFriend(status) // Update state with the actual status
-    }
+  // useEffect(() => {
+  //   const fetchFriendshipStatus = async () => {
+  //     const status = await checkFriendshipStatus(userId, recipientId)
+  //     console.log('Friendship status:', status)
+  //     setIsFriend(status) // Update state with the actual status
+  //   }
 
-    fetchFriendshipStatus()
-  }, [userId, recipientId]) // Add dependencies to update when userId or recipientId changes
+  //   fetchFriendshipStatus()
+  // }, [userId, recipientId]) // Add dependencies to update when userId or recipientId changes
 
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
@@ -621,23 +618,17 @@ const MessagingScreen = () => {
 
         {/* Input Field */}
         <View style={styles.inputContainer}>
-          {isFriend ? (
-            <>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Type your message..."
-                value={inputText}
-                onChangeText={handleInputChange}
-                onFocus={() => flatListRef.current?.scrollToEnd({ animated: true })}
-              />
+          <TextInput
+            style={styles.textInput}
+            placeholder="Type your message..."
+            value={inputText}
+            onChangeText={handleInputChange}
+            onFocus={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          />
 
-              <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
-                <Text style={styles.sendButtonText}>Send</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <Text style={styles.noFriendText}>You are no longer friends with this person</Text>
-          )}
+          <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
+            <Text style={styles.sendButtonText}>Send</Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
       <ProfileModal

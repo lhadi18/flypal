@@ -867,18 +867,25 @@ const Roster = () => {
                   .toISOString()
               : null
 
-        const arrivalTime =
+        let arrivalTime =
           entry.type === 'STANDBY'
             ? endTime
             : entry.arrivalTime
-              ? moment
-                  .tz(
-                    `${selectedDate} ${entry.arrivalTime}`,
-                    'YYYY-MM-DD HH:mm',
-                    entry.arrivalAirport?.tz_database || homebaseTZ
-                  )
-                  .toISOString()
+              ? moment.tz(
+                  `${selectedDate} ${entry.arrivalTime}`,
+                  'YYYY-MM-DD HH:mm',
+                  entry.arrivalAirport?.tz_database || homebaseTZ
+                )
               : null
+
+        // Adjust for overnight flights
+        if (entry.overnight && arrivalTime) {
+          // Ensure arrivalTime is a moment object before adding days
+          arrivalTime = moment(arrivalTime).add(1, 'days').toISOString()
+        } else if (arrivalTime) {
+          // Ensure arrivalTime is properly formatted as ISO string
+          arrivalTime = moment(arrivalTime).toISOString()
+        }
 
         return {
           id: uuid.v4(),
